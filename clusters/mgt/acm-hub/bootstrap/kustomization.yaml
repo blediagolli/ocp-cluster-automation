@@ -6,3 +6,4 @@ resources:
   - subscription.yaml
   - argocd.yaml
   - platform-project.yaml
+  - clusterrolebinding.yaml
