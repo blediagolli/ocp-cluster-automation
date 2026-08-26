@@ -1,5 +1,4 @@
 cluster:
   name: acm-hub
-  fqdn: acm-hub
   environment: mgt
   address: "https://kubernetes.default.svc"

@@ -4,24 +4,27 @@ metadata:
   name: cluster-config-overlays
   namespace: openshift-gitops
 spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
   generators:
-  - git:
-      repoURL: git@github.com:blediagolli/gitops-for-organizations.git
-      revision: main
-      files:
-        - path: "clusters/**/conf.yaml"
+    - git:
+        repoURL: git@github.com:blediagolli/gitops-for-organizations.git
+        revision: main
+        files:
+          - path: "clusters/**/conf.yaml"
   template:
     metadata:
-      name: "config-{{cluster.environment}}-{{cluster.name}}-overlay"
+      name: 'config-{{.cluster.environment}}-{{.cluster.name}}-overlay'
       labels:
-        environment: "{{cluster.environment}}"
-        cluster: "{{cluster.name}}"
+        environment: '{{.cluster.environment}}'
+        cluster: '{{.cluster.name}}'
     spec:
       project: platform
       source:
         repoURL: git@github.com:blediagolli/gitops-for-organizations.git
         targetRevision: main
-        path: clusters/{{cluster.environment}}/{{cluster.fqdn}}/overlay
+        path: '{{.path.path}}/overlay'
       destination:
-        server: "{{cluster.address}}"
+        server: '{{.cluster.address}}'
       syncPolicy: {}

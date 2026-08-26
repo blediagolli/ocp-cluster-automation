@@ -1,6 +1,5 @@
 cluster:
   name: dev
-  fqdn: dev.example.com
   environment: dev
   address: "https://kubernetes.default.svc"
 

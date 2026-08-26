@@ -1,6 +1,5 @@
 cluster:
   name: prod
-  fqdn: prod.example.com
   baseDomain:
   environment: prod
   type: vsphere

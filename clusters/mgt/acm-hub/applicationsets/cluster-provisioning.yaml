@@ -4,6 +4,9 @@ metadata:
   name: cluster-provisioning
   namespace: openshift-gitops
 spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
   generators:
     - git:
         repoURL: git@github.com:blediagolli/gitops-for-organizations.git
@@ -12,10 +15,10 @@ spec:
           - path: "clusters/**/provision.yaml"
   template:
     metadata:
-      name: "provision-{{cluster.environment}}-{{cluster.name}}"
+      name: 'provision-{{.cluster.environment}}-{{.cluster.name}}'
       labels:
-        environment: "{{cluster.environment}}"
-        cluster: "{{cluster.name}}"
+        environment: '{{.cluster.environment}}'
+        cluster: '{{.cluster.name}}'
     spec:
       project: platform
       source:
@@ -24,8 +27,8 @@ spec:
         path: base/provision/openshift-provisioning
         helm:
           valueFiles:
-            - /conf/{{cluster.environment}}/provision.yaml
-            - /clusters/{{cluster.environment}}/{{cluster.fqdn}}/provision.yaml
+            - '/conf/{{.cluster.environment}}/provision.yaml'
+            - '/{{.path.path}}/provision.yaml'
       destination:
         server: 'https://kubernetes.default.svc'
         namespace:

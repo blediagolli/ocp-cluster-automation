@@ -1,6 +1,5 @@
 cluster:
   name: prod
-  fqdn: prod.example.com
   environment: prod
   address: "https://kubernetes.default.svc"
 

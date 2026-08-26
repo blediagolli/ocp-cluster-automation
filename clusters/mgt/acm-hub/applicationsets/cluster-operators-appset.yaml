@@ -27,8 +27,8 @@ spec:
         path: base/operators
         helm:
           valueFiles:
-            - /conf/{{.cluster.environment}}/conf.yaml
-            - /clusters/{{.cluster.environment}}/{{.cluster.fqdn}}/conf.yaml
+            - '/conf/{{.cluster.environment}}/conf.yaml'
+            - '/{{.path.path}}/conf.yaml'
       destination:
         server: '{{.cluster.address}}'
       syncPolicy:

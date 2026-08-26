@@ -4,6 +4,9 @@ metadata:
   name: cluster-config
   namespace: openshift-gitops
 spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
   generators:
     - matrix:
         generators:
@@ -19,20 +22,20 @@ spec:
                 - template: openshift-marketplace
   template:
     metadata:
-      name: "config-{{cluster.environment}}-{{cluster.name}}-{{template}}"
+      name: 'config-{{.cluster.environment}}-{{.cluster.name}}-{{.template}}'
       labels:
-        environment: "{{cluster.environment}}"
-        cluster: "{{cluster.name}}"
+        environment: '{{.cluster.environment}}'
+        cluster: '{{.cluster.name}}'
     spec:
       project: platform
       source:
         repoURL: git@github.com:blediagolli/gitops-for-organizations.git
         targetRevision: main
-        path: base/config/{{template}}
+        path: 'base/config/{{.template}}'
         helm:
           valueFiles:
-            - /conf/{{cluster.environment}}/conf.yaml
-            - /clusters/{{cluster.environment}}/{{cluster.fqdn}}/conf.yaml
+            - '/conf/{{.cluster.environment}}/conf.yaml'
+            - '/{{.path.path}}/conf.yaml'
       destination:
-        server: "{{cluster.address}}"
+        server: '{{.cluster.address}}'
       syncPolicy: {}
