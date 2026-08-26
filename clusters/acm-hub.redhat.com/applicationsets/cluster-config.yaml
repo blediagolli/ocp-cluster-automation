@@ -26,7 +26,7 @@ spec:
         region: "{{cluster.region}}"
         cloud: "{{cluster.cloud}}"
     spec:
-      project: default
+      project: platform
       source:
         repoURL: https://github.com/albertogd/gitops-for-organizations.git
         targetRevision: main

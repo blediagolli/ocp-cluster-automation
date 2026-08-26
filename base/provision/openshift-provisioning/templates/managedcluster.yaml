@@ -7,7 +7,11 @@ metadata:
     cloud: vSphere
     name: {{ .Values.cluster.name }}
     vendor: OpenShift
-    cluster.open-cluster-management.io/clusterset: all-openshift-clusters
+    environment: {{ .Values.cluster.environment }}
+    fleet.openshift.io/operators-managed: "true"
+    fleet.openshift.io/cluster-type: {{ .Values.cluster.operatorClusterType | default "prod" }}
+    fleet.openshift.io/operator-profile: {{ .Values.cluster.operatorProfile | default "ocp-4.22" }}
+    cluster.open-cluster-management.io/clusterset: vmware
   name: {{ .Values.cluster.name }}
 spec:
   hubAcceptsClient: true

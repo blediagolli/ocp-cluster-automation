@@ -1,0 +1,11 @@
+{{- $target := index .Values.targets .Values.profile .Values.clusterType }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-operators-config
+  namespace: openshift-gitops
+data:
+  cluster-type: {{ .Values.clusterType }}
+  operator-profile: {{ .Values.profile }}
+  enabled-operators: |
+{{ toYaml $target.operators | indent 4 }}

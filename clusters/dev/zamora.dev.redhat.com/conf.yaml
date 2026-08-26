@@ -10,7 +10,7 @@ cluster:
   registry: quay-dev.io
 
 catalogSource:
-  rh_catalog_version: v4.10
+  rh_catalog_version: v4.22
 
 ingress:
   controller:

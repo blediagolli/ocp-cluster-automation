@@ -15,19 +15,19 @@ workers:
 imageContentSources:
     mirror: dev-registry/openshift4 
     registry: dev-registry
-    username: dev-test
-    password: dev-test
+    username: REPLACE_ME
+    password: REPLACE_ME
     email: test@redhat.com
 
 provider:
-    username: dev-test
-    password: dev-test
-    vcenter: dev-test
-    vmClusterName: dev-test 
-    datacenter: dev-test
-    datastore: dev-test
-    baseDomain: dev-test
-    folder: dev-test
+    username: REPLACE_ME
+    password: REPLACE_ME
+    vcenter: REPLACE_ME
+    vmClusterName: REPLACE_ME
+    datacenter: REPLACE_ME
+    datastore: REPLACE_ME
+    baseDomain: REPLACE_ME
+    folder: REPLACE_ME
     sshPrivatekey:
     sshPublickey: 
     cacertificate:

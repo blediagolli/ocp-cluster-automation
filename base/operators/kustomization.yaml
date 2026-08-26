@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Full operator catalog. Building this directory renders every operator and is
+# intended for validation. Clusters consume individual bases via the overlays.
+resources:
+  - operators-list.yaml
+  - openshift-gitops/install
+  - openshift-gitops/instances/default
+  - advanced-cluster-management/install
+  - advanced-cluster-management/instances/default
+  - openshift-local-storage/install
+  - odf-operator/install
+  - odf-operator/instances/default
+  - external-secrets-operator/install
+  - openshift-logging/install
+  - openshift-logging/instances/default
+
+patches:
+  - path: patches/namespace-patches.yaml
+
+labels:
+  - includeSelectors: false
+    pairs:
+      app.kubernetes.io/managed-by: multi-cluster-config
+      app.kubernetes.io/part-of: platform-core
+
+commonAnnotations:
+  fleet.openshift.io/managed-by: gitops

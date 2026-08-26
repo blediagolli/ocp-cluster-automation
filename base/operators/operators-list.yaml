@@ -1,0 +1,75 @@
+# Human-readable manifest of the operator catalog.
+#
+# This ConfigMap is documentation + optional input for cluster-side reporting.
+# kustomize does NOT read it to decide what to install — overlays do that by
+# listing operator bases explicitly under `resources:`. Keep this in sync when
+# you add or retire an operator. Profile overlays may override channels and approval.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: operators-manifest
+  namespace: openshift-gitops
+data:
+  operators.yaml: |
+    groups:
+      core:
+        - name: openshift-gitops
+          install: base/operators/openshift-gitops/install
+          instancePath: base/operators/openshift-gitops/instances/default
+          namespace: openshift-gitops
+          channel: gitops-1.21
+          source: redhat-operators
+          installPlanApproval: Automatic
+          clusters: [hub, prod, dev]
+          instance: ArgoCD/openshift-gitops
+
+        - name: advanced-cluster-management
+          install: base/operators/advanced-cluster-management/install
+          instancePath: base/operators/advanced-cluster-management/instances/default
+          namespace: open-cluster-management
+          channel: release-2.17
+          source: redhat-operators
+          installPlanApproval: Automatic
+          clusters: [hub]
+          instance: MultiClusterHub/multiclusterhub
+
+      storage:
+        - name: openshift-local-storage
+          install: base/operators/openshift-local-storage/install
+          namespace: openshift-local-storage
+          channel: stable
+          source: redhat-operators
+          installPlanApproval: Automatic
+          clusters: [hub]
+          instance: null
+
+        - name: odf-operator
+          install: base/operators/odf-operator/install
+          instancePath: base/operators/odf-operator/instances/default
+          namespace: openshift-storage
+          channel: stable-4.22
+          source: redhat-operators
+          installPlanApproval: Automatic
+          clusters: [hub]
+          instance: StorageCluster/ocs-external-storagecluster
+
+      security:
+        - name: external-secrets-operator
+          install: base/operators/external-secrets-operator/install
+          namespace: external-secrets-operator
+          channel: stable
+          source: community-operators
+          installPlanApproval: Automatic
+          clusters: [hub, prod]
+          instance: null
+
+      monitoring:
+        - name: openshift-logging
+          install: base/operators/openshift-logging/install
+          instancePath: base/operators/openshift-logging/instances/default
+          namespace: openshift-logging
+          channel: stable-6.6
+          source: redhat-operators
+          installPlanApproval: Automatic
+          clusters: [hub]
+          instance: ClusterLogging/instance

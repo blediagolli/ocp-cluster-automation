@@ -1,0 +1,26 @@
+{{- $target := index .Values.targets .Values.profile .Values.clusterType }}
+{{- range $name := $target.operators }}
+{{- $operator := index $.Values.operators $name }}
+{{- if $operator.instance }}
+{{- $instance := index $.Values.instances $operator.instance }}
+{{- $spec := deepCopy $instance.spec }}
+{{- if $target.instanceOverrides }}
+{{- $override := index $target.instanceOverrides $operator.instance }}
+{{- if $override }}
+{{- $spec = mergeOverwrite $spec $override }}
+{{- end }}
+{{- end }}
+apiVersion: {{ $instance.apiVersion }}
+kind: {{ $instance.kind }}
+metadata:
+  name: {{ $instance.name }}
+  namespace: {{ $operator.namespace }}
+  labels:
+    app.kubernetes.io/managed-by: multi-cluster-config
+    app.kubernetes.io/part-of: platform-core
+    operator: {{ $name }}
+spec:
+{{ toYaml $spec | indent 2 }}
+---
+{{- end }}
+{{- end }}

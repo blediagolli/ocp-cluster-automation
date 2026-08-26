@@ -1,0 +1,17 @@
+# Hub ArgoCD runs HA — it drives the whole fleet.
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: openshift-gitops
+  namespace: openshift-gitops
+spec:
+  ha:
+    enabled: true
+  server:
+    replicas: 2
+  controller:
+    replicas: 1
+  repo:
+    replicas: 2
+  applicationSet:
+    replicas: 2

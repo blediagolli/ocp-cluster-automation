@@ -18,10 +18,10 @@ This solution doesn't rely on any specific application/orchestrator. This soluti
 
 ### Cluster Parameters
 
-Instead of creating all the objects needed by ACM in the frontend, we just need to create a 2 objects:
-- `conf.yaml`: contains all the configuration parameters of the cluster.
-- `provision.yaml`: contains the parameters needed to provision the cluster, like `intall-config.yaml`.
+Instead of creating all the objects needed by ACM in the frontend, we just need to create 2 objects:
 
+* **conf.yaml**: cluster configuration for Day 2 (environment, address, registry, catalog source)
+* **provision.yaml**: cluster provisioning parameters for the ACM Helm chart (compute, network, credentials)
 
 In our example repository, we can see these files for the cluster example [zamora.dev.redhat.com](../clusters/dev/zamora.dev.redhat.com):
 
@@ -54,12 +54,12 @@ We’re using an ApplicationSet to search for provision.yaml files, and it’ll 
 
 This application uses a Helm chart to deploy all the ACM objects needed:
 
-- ClusterDeployment
-- KlusterletAddonConfig
-- MachinePool
-- ManagedCluster
-- Namespace
-- Secrets: pull-secret, install-config, ssh-private-key and creds
+* ClusterDeployment
+* ManagedCluster
+* KlusterletAddonConfig
+* MachinePool
+* Namespace
+* Secrets
 
 The Helm [ACM provision chart](../base/provision/openshift-provisioning/templates) has these templates: 
 
@@ -137,12 +137,13 @@ Once the ACM objects are synchronized to the cluster, ACM will start to provisio
 
 ## Day 2 Configuration
 
-To add each new cluster to GitOps, we need to create this 3 objects in ACM:
-- ManagedClusterSetBinding
-- Placement
-- GitOpsCluster
+To add each new cluster to GitOps, we need to create these 3 objects in ACM:
 
-These objects will be also stored in git, as explained in the next part, [Configuring Openshift cluster with ApplicationSets using Helm+Kustomize and ACM Policies](Part-2.md):
+* **ManagedClusterSetBinding**: binds a ManagedClusterSet to the openshift-gitops namespace
+* **Placement**: selects clusters by label (e.g. platform = vmware)
+* **GitOpsCluster**: registers the selected clusters with an ArgoCD instance
+
+These objects will also be stored in git, as explained in the next part, [Configuring Openshift cluster with ApplicationSets using Helm+Kustomize and ACM Policies](Part-2.md):
 
 ```
 └── clusters

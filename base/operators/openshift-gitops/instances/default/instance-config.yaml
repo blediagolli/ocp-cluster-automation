@@ -1,0 +1,27 @@
+# Default (non-HA) ArgoCD instance. Overlays patch replicas / ha.enabled.
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: openshift-gitops
+  namespace: openshift-gitops
+spec:
+  ha:
+    enabled: false
+  server:
+    replicas: 1
+    route:
+      enabled: true
+  controller:
+    replicas: 1
+  repo:
+    replicas: 1
+  applicationSet:
+    replicas: 1
+  sso:
+    provider: dex
+    dex:
+      openShiftOAuth: true
+  rbac:
+    policy: |
+      g, admins, role:admin
+    scopes: '[groups]'

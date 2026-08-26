@@ -1,0 +1,13 @@
+{{- $target := index .Values.targets .Values.profile .Values.clusterType }}
+{{- range $name := $target.operators }}
+{{- $operator := index $.Values.operators $name }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $operator.namespace }}
+  labels:
+    app.kubernetes.io/managed-by: multi-cluster-config
+    app.kubernetes.io/part-of: platform-core
+    operator: {{ $name }}
+---
+{{- end }}

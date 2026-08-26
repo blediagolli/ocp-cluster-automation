@@ -1,0 +1,54 @@
+# Fans this repo out to every managed cluster.
+#
+# Operator inventory is stored with each cluster's configuration under clusters/.
+# The cluster registration must use the address recorded in that inventory.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: multi-cluster-config
+  namespace: openshift-gitops
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - git:
+        repoURL: https://github.com/albertogd/gitops-for-organizations.git
+        revision: main
+        files:
+          - path: "clusters/**/operator-conf.yaml"
+  template:
+    metadata:
+      name: '{{.cluster.name}}-operators'
+    spec:
+      project: platform
+      source:
+        repoURL: https://github.com/albertogd/gitops-for-organizations.git
+        targetRevision: main
+        path: operators/chart
+        helm:
+          parameters:
+            - name: profile
+              value: '{{.operator.profile}}'
+            - name: clusterType
+              value: '{{.operator.clusterType}}'
+      destination:
+        server: '{{.cluster.address}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ApplyOutOfSyncOnly=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 30s
+            maxDuration: 10m
+            factor: 2
+  # Operators can take a while to reconcile their CRs; don't thrash on transient
+  # "waiting for CRD" errors.
+  ignoreApplicationDifferences:
+    - jsonPointers:
+        - /spec/syncPolicy

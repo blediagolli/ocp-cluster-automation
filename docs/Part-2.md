@@ -79,7 +79,7 @@ There are several generators, but we’ll use a combination of 2 generators to s
 * With the **git generator**, we get all the conf.yaml objects. Each of them defines a cluster.
 * With the **list generator**, we define all the argo Applications we have for each cluster. Each configuration type will become an Application.
 
-With the **matrix generator**, we create all the list elements for each cluster. For example, for the cluster  salamanca.pre.redhat.com, we’ll have 3 Argo Applications:
+With the **matrix generator**, we create all the list elements for each cluster. For example, for the cluster zamora.dev.redhat.com, we’ll have 3 Argo Applications:
 
 * openshift-machine-config application for the cluster 
 * openshift-ingress application for the cluster 
@@ -174,7 +174,7 @@ There are 3 main directories:
     * `ManagedClusterSetBinding.yaml`: Binding for the ClusterSet
     * `Placement.yaml`: Placement to select ManagedClusters
   * **policies**: policies used to configure the ManagedClusters
-* **conf**: here we’ll keep the default values (`conf.yaml` and `provision.yaml`) for each environment (dev, pre and pro).
+  * **conf**: here we’ll keep the default values (`conf.yaml` and `provision.yaml`) for each environment (dev and prod).
 
 ```
 ├── base
@@ -238,20 +238,22 @@ There are 3 main directories:
 │   │   └── zamora.dev.redhat.com
 │   |       ├──  provision.yaml
 │   |       ├──  conf.yaml
+│   |       ├──  operator-conf.yaml
 │   |       └──  overlay
 │   |            ├── kustomization.yaml
 │   |            └── project.yaml
-│   └── pre
-│       └── salamanca.pre.redhat.com
+│   └── prod
+│       └── leon.pro.redhat.com
 │           ├──  provision.yaml
 │           ├──  conf.yaml
+│           ├──  operator-conf.yaml
 │           └──  overlay
 │   
 └── conf
     ├── dev
     │   ├── conf.yaml
     │   └── provision.yaml
-    └── pre
+    └── prod
         ├── conf.yaml
         └── provision.yaml
 ```

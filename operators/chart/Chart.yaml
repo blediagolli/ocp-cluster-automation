@@ -1,0 +1,6 @@
+apiVersion: v2
+name: cluster-operators
+description: OpenShift operator installations and instances per cluster target
+type: application
+version: 1.0.0
+appVersion: "1.0"

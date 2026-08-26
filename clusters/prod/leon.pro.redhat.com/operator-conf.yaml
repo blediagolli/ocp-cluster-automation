@@ -1,0 +1,9 @@
+cluster:
+  name: leon
+  address: https://kubernetes.default.svc
+  environment: prod
+
+operator:
+  managed: true
+  clusterType: prod
+  profile: ocp-4.22

@@ -12,5 +12,4 @@ spec:
           operator: "In"
           values:
           - dev
-          - pre
-          - pro
+          - prod

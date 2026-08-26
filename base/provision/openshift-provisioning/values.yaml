@@ -1,0 +1,47 @@
+# Safe defaults for chart rendering. Credentials and cluster-specific values
+# must be supplied through protected values or an external secret workflow.
+cluster:
+  name: example
+  environment: dev
+  operatorClusterType: dev
+  operatorProfile: ocp-4.22
+
+masters:
+  count: 3
+  cpus: 4
+  coresPerSocket: 2
+  memoryMB: 16384
+  diskGB: 120
+
+workers:
+  count: 3
+  cpus: 4
+  coresPerSocket: 2
+  memoryMB: 16384
+  diskGB: 120
+
+imageContentSources:
+  mirror: registry.example.invalid/openshift4
+  registry: registry.example.invalid
+  username: REPLACE_ME
+  password: REPLACE_ME
+  email: platform@example.invalid
+
+provider:
+  username: REPLACE_ME
+  password: REPLACE_ME
+  vcenter: vcenter.example.invalid
+  vmClusterName: REPLACE_ME
+  datacenter: REPLACE_ME
+  datastore: REPLACE_ME
+  baseDomain: example.invalid
+  folder: REPLACE_ME
+  sshPrivatekey: REPLACE_ME
+  sshPublickey: REPLACE_ME
+  cacertificate: ""
+  additionalTrustBundle: ""
+
+network:
+  networkName: REPLACE_ME
+  apiVIP: 192.0.2.10
+  ingressVIP: 192.0.2.11

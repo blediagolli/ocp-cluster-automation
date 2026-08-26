@@ -27,6 +27,50 @@ This solution is explained in more detail in these 2 parts:
 
 The repository used for the solution demonstration purposes is: [Gitops for Organizations](https://github.com/albertogd/gitops-for-organizations)
 
+## Repository layout
+
+This repository also contains the day-2 operator fleet under `operators/`. The
+provisioning and ACM lifecycle resources remain under `base/provision`, `clusters/`,
+and `clusters/acm-hub.redhat.com/policies/`. Operator installation and instances are
+kept separate under `base/operators/`, and Argo CD deploys explicit targets
+from `operators/targets/<operator-profile>/<cluster-type>`.
+
+The operator ApplicationSet selects cluster inventory files in Git and uses their
+operator profile, cluster role, and registered Argo CD server address. See
+[operators/README.md](operators/README.md) for the inventory contract.
+
+Provisioned clusters should opt into day-2 operator management only after they are
+registered in OpenShift GitOps. Add an `operator-conf.yaml` beside the cluster's
+`conf.yaml`:
+
+```yaml
+operator:
+	managed: true
+	clusterType: prod
+	profile: ocp-4.22
+```
+
+The `cluster.address` field must contain the destination server from the Argo CD cluster
+registration. Do not use `https://kubernetes.default.svc` for a remote spoke.
+
+The ACM hub must also provide a `ManagedClusterSet` named `vmware`; the provisioning
+chart assigns new `ManagedCluster` objects to that set and the GitOps placement binds to
+it. Create or choose the set as part of ACM hub bootstrap rather than duplicating it in
+the provisioning chart.
+
+The legacy 4.11 policy bundle is no longer active. Operator channels and instances are
+managed by the versioned targets under `operators/targets/`; cluster lifecycle policies
+should be reintroduced only with a tested OpenShift-version profile.
+
+## Secrets and credentials
+
+Provisioning values under `conf/` are examples and must not contain real credentials.
+The provisioning chart currently renders provider credentials, pull-secret data, and SSH
+material into Kubernetes Secrets, so production deployments must supply those values
+through a protected secret workflow and avoid committing them to Git. External Secrets,
+Vault, or an equivalent secret manager should be integrated before using the provisioning
+flow with real infrastructure credentials.
+
 
 ### Tools
 

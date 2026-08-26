@@ -1,0 +1,11 @@
+# Minimal collector-only logging: vector collector, no in-cluster log store.
+# Add a LokiStack + ClusterLogForwarder for retention/forwarding as needed.
+apiVersion: logging.openshift.io/v1
+kind: ClusterLogging
+metadata:
+  name: instance
+  namespace: openshift-logging
+spec:
+  managementState: Managed
+  collection:
+    type: vector

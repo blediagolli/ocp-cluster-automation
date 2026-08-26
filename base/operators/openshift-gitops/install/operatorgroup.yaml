@@ -1,0 +1,7 @@
+# openshift-gitops-operator is cluster-scoped: AllNamespaces install mode (empty spec).
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: openshift-gitops-operator
+  namespace: openshift-gitops
+spec: {}

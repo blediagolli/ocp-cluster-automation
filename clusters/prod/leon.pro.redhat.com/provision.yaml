@@ -1,0 +1,17 @@
+cluster:
+  name: leon
+  fqdn: leon.pro.redhat.com 
+  baseDomain: pro.redhat.com
+  environment: prod
+  datacenter: europe
+  cloud: vmware
+  region: eu
+  type: vsphere
+  imageName: 4.22.10
+  operatorClusterType: prod
+  operatorProfile: ocp-4.22
+
+network:
+    networkName:
+    apiVIP:
+    ingressVIP:

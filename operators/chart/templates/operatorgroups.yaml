@@ -1,0 +1,19 @@
+{{- $target := index .Values.targets .Values.profile .Values.clusterType }}
+{{- range $name := $target.operators }}
+{{- $operator := index $.Values.operators $name }}
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: {{ $operator.operatorGroup }}
+  namespace: {{ $operator.namespace }}
+  labels:
+    operator: {{ $name }}
+{{- if ne $name "openshift-gitops" }}
+spec:
+  targetNamespaces:
+    - {{ $operator.namespace }}
+{{- else }}
+spec: {}
+{{- end }}
+---
+{{- end }}

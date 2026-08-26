@@ -1,0 +1,8 @@
+# Hub-only. Overlays set spec.availabilityConfig (Basic vs High).
+apiVersion: operator.open-cluster-management.io/v1
+kind: MultiClusterHub
+metadata:
+  name: multiclusterhub
+  namespace: open-cluster-management
+spec:
+  availabilityConfig: Basic
