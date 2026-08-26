@@ -6,6 +6,6 @@ cluster:
 
 operators:
   openshift-gitops:
-    include: true
+    include: false
   advanced-cluster-management:
     include: false
