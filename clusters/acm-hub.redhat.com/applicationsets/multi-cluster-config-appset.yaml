@@ -1,7 +1,3 @@
-# Fans this repo out to every managed cluster.
-#
-# Operator inventory is stored with each cluster's configuration under clusters/.
-# The cluster registration must use the address recorded in that inventory.
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -16,22 +12,23 @@ spec:
         repoURL: https://github.com/albertogd/gitops-for-organizations.git
         revision: main
         files:
-          - path: "clusters/**/operator-conf.yaml"
+          - path: "clusters/**/conf.yaml"
   template:
     metadata:
       name: '{{.cluster.name}}-operators'
+      labels:
+        environment: '{{.cluster.environment}}'
+        cluster: '{{.cluster.fqdn}}'
     spec:
       project: platform
       source:
         repoURL: https://github.com/albertogd/gitops-for-organizations.git
         targetRevision: main
-        path: operators/chart
+        path: base/operators
         helm:
-          parameters:
-            - name: profile
-              value: '{{.operator.profile}}'
-            - name: clusterType
-              value: '{{.operator.clusterType}}'
+          valueFiles:
+            - /conf/{{.cluster.environment}}/conf.yaml
+            - /clusters/{{.cluster.environment}}/{{.cluster.fqdn}}/conf.yaml
       destination:
         server: '{{.cluster.address}}'
       syncPolicy:
@@ -47,8 +44,6 @@ spec:
             duration: 30s
             maxDuration: 10m
             factor: 2
-  # Operators can take a while to reconcile their CRs; don't thrash on transient
-  # "waiting for CRD" errors.
   ignoreApplicationDifferences:
     - jsonPointers:
         - /spec/syncPolicy

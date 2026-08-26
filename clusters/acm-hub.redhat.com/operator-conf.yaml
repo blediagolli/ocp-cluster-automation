@@ -1,9 +1,0 @@
-cluster:
-  name: hub
-  address: https://kubernetes.default.svc
-  environment: hub
-
-operator:
-  managed: true
-  clusterType: hub
-  profile: ocp-4.22

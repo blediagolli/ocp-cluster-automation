@@ -11,3 +11,9 @@ cluster:
 
 catalogSource:
   rh_catalog_version: v4.22
+
+operators:
+  openshift-gitops:
+    include: true
+  external-secrets-operator:
+    include: true

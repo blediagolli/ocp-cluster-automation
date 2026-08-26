@@ -30,3 +30,8 @@ config:
 # MachineConfig
 machineConfig:
   include: true
+
+# Operators
+operators:
+  openshift-gitops:
+    include: true

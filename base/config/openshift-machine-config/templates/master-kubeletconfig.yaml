@@ -1,4 +1,4 @@
----
+{{- if .Values.machineConfig.include }}
 apiVersion: machineconfiguration.openshift.io/v1
 kind: KubeletConfig
 metadata:
@@ -30,3 +30,4 @@ spec:
   machineConfigPoolSelector:
     matchLabels:
       pools.operator.machineconfiguration.openshift.io/master: ""
+{{- end }}

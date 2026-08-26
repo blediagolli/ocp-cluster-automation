@@ -1,4 +1,4 @@
 apiVersion: v1
-name: cluster
+name: openshift-marketplace
 version: "1"
-description: Test
+description: OpenShift Marketplace CatalogSource configuration

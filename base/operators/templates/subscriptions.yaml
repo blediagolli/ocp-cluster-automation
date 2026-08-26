@@ -1,6 +1,5 @@
-{{- $target := index .Values.targets .Values.profile .Values.clusterType }}
-{{- range $name := $target.operators }}
-{{- $operator := index $.Values.operators $name }}
+{{- range $name, $operator := .Values.operators }}
+{{- if $operator.include }}
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
@@ -10,9 +9,10 @@ metadata:
     operator: {{ $name }}
 spec:
   name: {{ $operator.package }}
-  channel: {{ index $operator.channelByProfile $.Values.profile }}
+  channel: {{ $operator.channel }}
   source: {{ $operator.source }}
   sourceNamespace: {{ $operator.sourceNamespace }}
   installPlanApproval: Automatic
 ---
+{{- end }}
 {{- end }}

@@ -16,3 +16,7 @@ ingress:
   controller:
     syslog:
       address: 10.9.0.1
+
+operators:
+  openshift-gitops:
+    include: true

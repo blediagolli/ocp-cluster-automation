@@ -1,0 +1,49 @@
+operators:
+  openshift-gitops:
+    include: false
+    namespace: openshift-gitops
+    operatorGroup: openshift-gitops-operator
+    package: openshift-gitops-operator
+    channel: gitops-1.21
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  advanced-cluster-management:
+    include: false
+    namespace: open-cluster-management
+    operatorGroup: open-cluster-management
+    package: advanced-cluster-management
+    channel: release-2.17
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  openshift-local-storage:
+    include: false
+    namespace: openshift-local-storage
+    operatorGroup: openshift-local-storage
+    package: local-storage-operator
+    channel: stable
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  odf-operator:
+    include: false
+    namespace: openshift-storage
+    operatorGroup: openshift-storage-operator
+    package: odf-operator
+    channel: stable-4.22
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  external-secrets-operator:
+    include: false
+    namespace: external-secrets-operator
+    operatorGroup: external-secrets-operator
+    package: external-secrets-operator
+    channel: stable
+    source: community-operators
+    sourceNamespace: openshift-marketplace
+  openshift-logging:
+    include: false
+    namespace: openshift-logging
+    operatorGroup: openshift-logging
+    package: cluster-logging
+    channel: stable-6.6
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace

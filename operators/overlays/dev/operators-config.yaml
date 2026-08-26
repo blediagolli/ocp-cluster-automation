@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: cluster-operators-config
-  namespace: openshift-gitops
-data:
-  cluster-type: dev
-  enabled-operators: |
-    - openshift-gitops

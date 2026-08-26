@@ -1,8 +1,0 @@
-# Shared namespace tuning applied to bases that define this namespace.
-# Strategic-merge patch, matched by GVK + name.
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: openshift-logging
-  labels:
-    openshift.io/cluster-monitoring: "true"

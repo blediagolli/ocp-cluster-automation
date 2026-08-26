@@ -1,0 +1,12 @@
+{{- range $name, $operator := .Values.operators }}
+{{- if $operator.include }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $operator.namespace }}
+  labels:
+    app.kubernetes.io/managed-by: multi-cluster-config
+    operator: {{ $name }}
+---
+{{- end }}
+{{- end }}

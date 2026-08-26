@@ -1,9 +1,0 @@
-cluster:
-  name: zamora
-  address: https://kubernetes.default.svc
-  environment: dev
-
-operator:
-  managed: true
-  clusterType: dev
-  profile: ocp-4.22

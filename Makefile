@@ -1,6 +1,6 @@
 KUSTOMIZE ?= oc kustomize
 OPERATOR_TARGETS := \
-	operators/chart
+	base/operators
 
 .PHONY: help validate validate-operators validate-hub validate-provisioning
 
@@ -19,12 +19,14 @@ validate-hub:
 
 validate-operators:
 	@helm lint $(OPERATOR_TARGETS)
-	@for profile in ocp-4.21 ocp-4.22; do \
-		for cluster_type in hub prod dev; do \
-			helm template cluster-operators $(OPERATOR_TARGETS) \
-				--set profile=$$profile --set clusterType=$$cluster_type > /dev/null || exit 1; \
-			echo "OK   operators/chart/$$profile/$$cluster_type"; \
-		done; \
+	@for environment in dev prod; do \
+		if [ "$$environment" = dev ]; then cluster=zamora.dev.redhat.com; \
+		elif [ "$$environment" = prod ]; then cluster=leon.pro.redhat.com; \
+		fi; \
+		helm template cluster-operators $(OPERATOR_TARGETS) \
+			-f conf/$$environment/conf.yaml \
+			-f clusters/$$environment/$$cluster/conf.yaml > /dev/null || exit 1; \
+		echo "OK   operators/$$environment/$$cluster"; \
 	done
 
 validate-provisioning:
