@@ -6,7 +6,7 @@ metadata:
 spec:
   generators:
   - git:
-      repoURL: https://github.com/albertogd/gitops-for-organizations.git
+      repoURL: https://github.com/blediagolli/gitops-for-organizations.git
       revision: main
       files:
         - path: "clusters/**/conf.yaml"
@@ -15,13 +15,11 @@ spec:
       name: "config-{{cluster.environment}}-{{cluster.name}}-overlay"
       labels:
         environment: "{{cluster.environment}}"
-        cluster: "{{cluster.fqdn}}"
-        region: "{{cluster.region}}"
-        cloud: "{{cluster.cloud}}"
+        cluster: "{{cluster.name}}"
     spec:
       project: platform
       source:
-        repoURL: https://github.com/albertogd/gitops-for-organizations.git
+        repoURL: https://github.com/blediagolli/gitops-for-organizations.git
         targetRevision: main
         path: clusters/{{cluster.environment}}/{{cluster.fqdn}}/overlay
       destination:

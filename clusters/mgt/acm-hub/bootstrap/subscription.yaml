@@ -1,0 +1,13 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: openshift-gitops-operator
+  namespace: openshift-gitops-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  name: openshift-gitops-operator
+  channel: gitops-1.21
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic

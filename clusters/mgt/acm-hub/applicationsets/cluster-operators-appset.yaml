@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: multi-cluster-config
+  name: cluster-operators
   namespace: openshift-gitops
 spec:
   goTemplate: true
@@ -9,7 +9,7 @@ spec:
     - missingkey=error
   generators:
     - git:
-        repoURL: https://github.com/albertogd/gitops-for-organizations.git
+        repoURL: https://github.com/blediagolli/gitops-for-organizations.git
         revision: main
         files:
           - path: "clusters/**/conf.yaml"
@@ -18,11 +18,11 @@ spec:
       name: '{{.cluster.name}}-operators'
       labels:
         environment: '{{.cluster.environment}}'
-        cluster: '{{.cluster.fqdn}}'
+        cluster: '{{.cluster.name}}'
     spec:
       project: platform
       source:
-        repoURL: https://github.com/albertogd/gitops-for-organizations.git
+        repoURL: https://github.com/blediagolli/gitops-for-organizations.git
         targetRevision: main
         path: base/operators
         helm:

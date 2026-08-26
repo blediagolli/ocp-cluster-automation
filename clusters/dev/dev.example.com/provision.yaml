@@ -1,0 +1,11 @@
+cluster:
+  name: dev
+  baseDomain:
+  environment: dev
+  type: vsphere
+  imageName: 4.22.10
+
+network:
+    networkName:
+    apiVIP:
+    ingressVIP:

@@ -1,0 +1,27 @@
+# Cluster
+cluster:
+  environment: mgt
+
+# Marketplace
+catalogSource:
+  include: false
+
+# Openshift-ingress
+ingress:
+  service:
+    include: false
+  controller:
+    include: false
+
+# Openshift Config
+config:
+  include: false
+
+# MachineConfig
+machineConfig:
+  include: false
+
+# Operators
+operators:
+  openshift-gitops:
+    include: true

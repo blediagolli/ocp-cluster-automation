@@ -1,17 +1,16 @@
-apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
   name: openshift-gitops
   namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   server:
     autoscale:
       enabled: false
-    grpc:
-      ingress:
-        enabled: false
-    ingress:
-      enabled: false
+    route:
+      enabled: true
     resources:
       limits:
         cpu: 500m
@@ -19,42 +18,6 @@ spec:
       requests:
         cpu: 125m
         memory: 128Mi
-    route:
-      enabled: true
-    service:
-      type: ''
-  grafana:
-    enabled: false
-    ingress:
-      enabled: false
-    resources:
-      limits:
-        cpu: 500m
-        memory: 256Mi
-      requests:
-        cpu: 250m
-        memory: 128Mi
-    route:
-      enabled: false
-  notifications:
-    enabled: false
-  prometheus:
-    enabled: false
-    ingress:
-      enabled: false
-    route:
-      enabled: false
-  sso:
-    dex:
-      openShiftOAuth: true
-      resources:
-        limits:
-          cpu: 500m
-          memory: 256Mi
-        requests:
-          cpu: 250m
-          memory: 128Mi
-    provider: dex
   applicationSet:
     resources:
       limits:
@@ -86,15 +49,6 @@ spec:
       - PipelineRun
   ha:
     enabled: false
-    resources:
-      limits:
-        cpu: 500m
-        memory: 256Mi
-      requests:
-        cpu: 250m
-        memory: 128Mi
-  tls:
-    ca: {}
   redis:
     resources:
       limits:
@@ -103,9 +57,7 @@ spec:
       requests:
         cpu: 250m
         memory: 128Mi
-  configManagementPlugins:
   controller:
-    processors: {}
     resources:
       limits:
         cpu: '2'
@@ -113,7 +65,3 @@ spec:
       requests:
         cpu: 250m
         memory: 1Gi
-    sharding: {}
-  initialRepositories:
-  repositoryCredentials:
-  initialSSHKnownHosts:

@@ -1,0 +1,11 @@
+cluster:
+  name: acm-hub
+  fqdn: acm-hub
+  environment: mgt
+  address: "https://kubernetes.default.svc"
+
+operators:
+  openshift-gitops:
+    include: true
+  advanced-cluster-management:
+    include: false

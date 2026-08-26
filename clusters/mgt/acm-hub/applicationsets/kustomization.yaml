@@ -4,4 +4,4 @@ resources:
 - cluster-config.yaml
 - cluster-config-overlays.yaml
 - cluster-provisioning.yaml
-- multi-cluster-config-appset.yaml
+- cluster-operators-appset.yaml

@@ -4,15 +4,15 @@ cluster:
 
 # Marketplace
 catalogSource:
-  include: true
+  include: false
   rh_catalog_version: v4.22
 
 # Openshift-ingress
 ingress:
   service:
-    include: true
+    include: false
   controller:
-    include: true
+    include: false
     default:
       placement: node-role.kubernetes.io/master
       replicas: 1
@@ -25,13 +25,13 @@ ingress:
 
 # Openshift Config
 config:
-  include: true
+  include: false
 
 # MachineConfig
 machineConfig:
-  include: true
+  include: false
 
 # Operators
 operators:
   openshift-gitops:
-    include: true
+    include: false

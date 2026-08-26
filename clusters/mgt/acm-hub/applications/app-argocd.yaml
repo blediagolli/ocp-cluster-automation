@@ -8,8 +8,8 @@ spec:
     server: 'https://kubernetes.default.svc'
   project: default
   source:
-    path: clusters/acm-hub.redhat.com
+    path: clusters/mgt/acm-hub
     repoURL: >-
-      https://github.com/albertogd/gitops-for-organizations.git
+      https://github.com/blediagolli/gitops-for-organizations.git
     targetRevision: main
   syncPolicy: {}

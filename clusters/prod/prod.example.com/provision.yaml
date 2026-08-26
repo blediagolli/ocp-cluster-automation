@@ -1,0 +1,11 @@
+cluster:
+  name: prod
+  baseDomain:
+  environment: prod
+  type: vsphere
+  imageName: 4.22.10
+
+network:
+    networkName:
+    apiVIP:
+    ingressVIP:

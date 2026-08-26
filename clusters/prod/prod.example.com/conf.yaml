@@ -1,0 +1,11 @@
+cluster:
+  name: prod
+  fqdn: prod.example.com
+  environment: prod
+  address: "https://kubernetes.default.svc"
+
+operators:
+  openshift-gitops:
+    include: false
+  external-secrets-operator:
+    include: false
