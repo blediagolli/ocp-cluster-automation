@@ -1,5 +1,6 @@
 cluster:
   name: dev
+  fqdn: dev.example.com
   baseDomain:
   environment: dev
   type: vsphere
