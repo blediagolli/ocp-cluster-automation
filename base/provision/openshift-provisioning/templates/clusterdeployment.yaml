@@ -1,3 +1,4 @@
+{{- if .Values.provision.include }}
 apiVersion: hive.openshift.io/v1
 kind: ClusterDeployment
 metadata:
@@ -38,3 +39,4 @@ spec:
       name: img{{ .Values.imageName }}-x86-64
   pullSecretRef:
     name: {{ .Values.cluster.name }}-pull-secret
+{{- end }}

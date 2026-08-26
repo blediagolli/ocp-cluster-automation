@@ -1,3 +1,4 @@
+{{- if .Values.provision.include }}
 apiVersion: hive.openshift.io/v1
 kind: MachinePool
 metadata:
@@ -17,3 +18,4 @@ spec:
       osDisk:
         diskSizeGB: {{ .Values.workers.diskGB }}
   replicas: {{ .Values.workers.count }}
+{{- end }}

@@ -1,3 +1,4 @@
+{{- if .Values.provision.include }}
 apiVersion: v1
 data:
   operators-image.yml: |
@@ -33,3 +34,4 @@ metadata:
   name: {{ .Values.cluster.name }}-image-content-sources
   namespace: {{ .Values.cluster.name }}
 
+{{- end }}

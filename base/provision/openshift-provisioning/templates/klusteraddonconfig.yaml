@@ -1,3 +1,4 @@
+{{- if .Values.provision.include }}
 apiVersion: agent.open-cluster-management.io/v1
 kind: KlusterletAddonConfig
 metadata:
@@ -21,3 +22,4 @@ spec:
     enabled: true
   iamPolicyController:
     enabled: true
+{{- end }}

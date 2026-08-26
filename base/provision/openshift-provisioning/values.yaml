@@ -1,5 +1,6 @@
-# Safe defaults for chart rendering. Credentials and cluster-specific values
-# must be supplied through protected values or an external secret workflow.
+provision:
+  include: false
+
 cluster:
   name: example
   environment: dev
