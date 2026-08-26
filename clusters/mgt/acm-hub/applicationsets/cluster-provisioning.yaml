@@ -27,7 +27,6 @@ spec:
         path: base/provision/openshift-provisioning
         helm:
           valueFiles:
-            - '/conf/{{.cluster.environment}}/provision.yaml'
             - '/{{.path.path}}/provision.yaml'
       destination:
         server: 'https://kubernetes.default.svc'

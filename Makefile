@@ -36,7 +36,6 @@ validate-provisioning:
 		elif [ "$$environment" = prod ]; then cluster=prod.example.com; \
 		fi; \
 		helm lint base/provision/openshift-provisioning \
-			-f conf/$$environment/provision.yaml \
 			-f clusters/$$environment/$$cluster/provision.yaml || exit 1; \
 		echo "OK   provisioning/$$environment"; \
 	done
