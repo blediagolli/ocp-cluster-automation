@@ -8,7 +8,7 @@ metadata:
 spec:
   description: Provisioning, cluster configuration, and operator management
   sourceRepos:
-    - https://github.com/blediagolli/gitops-for-organizations.git
+    - git@github.com:blediagolli/gitops-for-organizations.git
   destinations:
     - namespace: '*'
       server: '*'

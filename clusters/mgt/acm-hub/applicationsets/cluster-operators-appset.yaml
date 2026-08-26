@@ -9,7 +9,7 @@ spec:
     - missingkey=error
   generators:
     - git:
-        repoURL: https://github.com/blediagolli/gitops-for-organizations.git
+        repoURL: git@github.com:blediagolli/gitops-for-organizations.git
         revision: main
         files:
           - path: "clusters/**/conf.yaml"
@@ -22,7 +22,7 @@ spec:
     spec:
       project: platform
       source:
-        repoURL: https://github.com/blediagolli/gitops-for-organizations.git
+        repoURL: git@github.com:blediagolli/gitops-for-organizations.git
         targetRevision: main
         path: base/operators
         helm:
