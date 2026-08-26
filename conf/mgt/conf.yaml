@@ -24,4 +24,4 @@ machineConfig:
 # Operators
 operators:
   openshift-gitops:
-    include: true
+    include: false
