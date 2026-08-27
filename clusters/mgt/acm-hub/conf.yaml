@@ -10,6 +10,21 @@ operators:
   advanced-cluster-security:
     include: true
     channel: stable
+central:
+  include: true
+  initBundle:
+    include: true
+  consoleLink:
+    include: true
+    centralUrl: "https://central-stackrox.apps.cluster-5cbhf.dyn.redhatworkshops.io"
+centralNamespace:
+  include: true
+securedCluster:
+  include: true
+  clusterName: acm-hub
+  centralEndpoint: "central-stackrox.apps.cluster-5cbhf.dyn.redhatworkshops.io:443"
+securedClusterNamespace:
+  include: true
   ansible-automation-platform:
     channel: stable-2.6
   cert-manager:
