@@ -28,6 +28,7 @@ spec:
                 # - template: logging-lokistack
                 # - template: nmstate-config
                 # - template: node-feature-discovery-instance
+                - template: acs-secured-cluster
     # Hub-only config charts — management clusters only
     - matrix:
         generators:
@@ -39,7 +40,6 @@ spec:
           - list:
               elements:
                 - template: acs-central
-                - template: acs-secured-cluster
                 # - template: acm-multiclusterhub
                 # - template: acm-observability
                 # - template: aap-instance
