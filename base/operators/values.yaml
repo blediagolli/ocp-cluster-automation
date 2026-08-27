@@ -24,6 +24,7 @@ operators:
     channel: change-me
     source: redhat-operators
     sourceNamespace: openshift-marketplace
+    clusterScoped: true
   ansible-automation-platform:
     include: false
     namespace: ansible-automation-platform
@@ -40,6 +41,7 @@ operators:
     channel: change-me
     source: redhat-operators
     sourceNamespace: openshift-marketplace
+    clusterScoped: true
   cloudnative-pg:
     include: false
     namespace: openshift-operators
@@ -51,12 +53,13 @@ operators:
     skipOperatorGroup: true
   cluster-observability:
     include: false
-    namespace: openshift-cluster-observability-operator
-    operatorGroup: openshift-cluster-observability-operator
+    namespace: openshift-operators
     package: cluster-observability-operator
     channel: change-me
     source: redhat-operators
     sourceNamespace: openshift-marketplace
+    skipNamespace: true
+    skipOperatorGroup: true
   compliance-operator:
     include: false
     namespace: openshift-compliance
@@ -82,6 +85,7 @@ operators:
     channel: change-me
     source: redhat-operators
     sourceNamespace: openshift-marketplace
+    clusterScoped: true
   external-secrets-operator:
     include: false
     namespace: external-secrets-operator
@@ -165,6 +169,7 @@ operators:
     channel: change-me
     source: redhat-operators
     sourceNamespace: openshift-marketplace
+    clusterScoped: true
   mtv:
     include: false
     namespace: openshift-mtv
@@ -191,12 +196,13 @@ operators:
     sourceNamespace: openshift-marketplace
   node-maintenance:
     include: false
-    namespace: openshift-workload-availability
-    operatorGroup: openshift-workload-availability
+    namespace: openshift-operators
     package: node-maintenance-operator
     channel: change-me
     source: redhat-operators
     sourceNamespace: openshift-marketplace
+    skipNamespace: true
+    skipOperatorGroup: true
   odf-operator:
     include: false
     namespace: openshift-storage
@@ -230,6 +236,7 @@ operators:
     channel: change-me
     source: redhat-operators
     sourceNamespace: openshift-marketplace
+    clusterScoped: true
   quay:
     include: false
     namespace: quay-operator
@@ -264,6 +271,7 @@ operators:
     channel: change-me
     source: certified-operators
     sourceNamespace: openshift-marketplace
+    clusterScoped: true
   trusted-artifact-signer:
     include: false
     namespace: openshift-operators
