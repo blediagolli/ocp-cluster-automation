@@ -1,0 +1,15 @@
+{{- if .Values.imageRegistry.include }}
+apiVersion: imageregistry.operator.openshift.io/v1
+kind: Config
+metadata:
+  name: cluster
+spec:
+  replicas: {{ .Values.imageRegistry.replicas }}
+  managementState: {{ .Values.imageRegistry.managementState }}
+  rolloutStrategy: {{ .Values.imageRegistry.rolloutStrategy }}
+  storage:
+    {{- if eq .Values.imageRegistry.storage.type "pvc" }}
+    pvc:
+      claim: {{ .Values.imageRegistry.storage.pvc.claim }}
+    {{- end }}
+{{- end }}

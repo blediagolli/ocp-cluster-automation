@@ -1,0 +1,27 @@
+{{- if .Values.clusterLogForwarder.include }}
+apiVersion: observability.openshift.io/v1
+kind: ClusterLogForwarder
+metadata:
+  name: {{ .Values.clusterLogForwarder.name }}
+  namespace: {{ .Values.clusterLogForwarder.namespace }}
+spec:
+  serviceAccount:
+    name: collector
+  outputs:
+    - name: default-lokistack
+      type: lokiStack
+      lokiStack:
+        target:
+          name: {{ .Values.lokiStack.name }}
+          namespace: {{ .Values.lokiStack.namespace }}
+        authentication:
+          token:
+            from: serviceAccount
+  pipelines:
+    - name: default-logstore
+      inputRefs:
+        - infrastructure
+        - application
+      outputRefs:
+        - default-lokistack
+{{- end }}

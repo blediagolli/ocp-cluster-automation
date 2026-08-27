@@ -1,0 +1,7 @@
+{{- if .Values.nmstate.include }}
+apiVersion: nmstate.io/v1
+kind: NMState
+metadata:
+  name: {{ .Values.nmstate.name }}
+spec: {}
+{{- end }}

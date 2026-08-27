@@ -1,0 +1,4 @@
+apiVersion: v2
+name: openshift-virtualization-instance
+description: OpenShift Virtualization HyperConverged instance
+version: 0.1.0

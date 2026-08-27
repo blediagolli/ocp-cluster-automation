@@ -1,0 +1,4 @@
+apiVersion: v2
+name: acs-secured-cluster
+description: ACS SecuredCluster instance
+version: 0.1.0

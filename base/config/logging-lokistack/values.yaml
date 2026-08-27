@@ -1,0 +1,12 @@
+lokiStack:
+  include: false
+  name: logging-lokistack
+  namespace: openshift-logging
+  size: 1x.extra-small
+  storageClassName: gp3-csi
+  storageSize: 10Gi
+  secretName: logging-loki-odf
+clusterLogForwarder:
+  include: false
+  name: logging
+  namespace: openshift-logging

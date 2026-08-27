@@ -1,0 +1,20 @@
+{{- if .Values.istio.include }}
+apiVersion: sailoperator.io/v1
+kind: Istio
+metadata:
+  name: {{ .Values.istio.name }}
+spec:
+  version: {{ .Values.istio.version }}
+  namespace: {{ .Values.istio.namespace }}
+  profile: {{ .Values.istio.profile }}
+  updateStrategy:
+    type: InPlace
+  values:
+    global:
+      platform: openshift
+    pilot:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+{{- end }}

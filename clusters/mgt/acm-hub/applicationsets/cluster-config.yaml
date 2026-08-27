@@ -20,6 +20,28 @@ spec:
                 - template: openshift-machine-config
                 - template: openshift-ingress
                 - template: openshift-marketplace
+                - template: openshift-dns
+                - template: openshift-image-registry
+                - template: user-workload-monitoring
+                - template: acm-multiclusterhub
+                - template: acm-observability
+                - template: acs-central
+                - template: acs-secured-cluster
+                - template: aap-instance
+                - template: cert-manager-certs
+                - template: compliance-scans
+                - template: local-storage-volumes
+                - template: logging-lokistack
+                - template: lvm-cluster
+                - template: metallb-config
+                - template: mtv-controller
+                - template: nmstate-config
+                - template: node-feature-discovery-instance
+                - template: odf-storagecluster
+                - template: openshift-virtualization-instance
+                - template: quay-registry
+                - template: servicemesh-ambient
+                - template: trident-config
   template:
     metadata:
       name: 'config-{{.cluster.environment}}-{{.cluster.name}}-{{.template}}'

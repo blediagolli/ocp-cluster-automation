@@ -1,0 +1,14 @@
+{{- if .Values.istioCNI.include }}
+apiVersion: sailoperator.io/v1
+kind: IstioCNI
+metadata:
+  name: {{ .Values.istioCNI.name }}
+spec:
+  version: {{ .Values.istioCNI.version }}
+  profile: {{ .Values.istioCNI.profile }}
+  namespace: {{ .Values.istioCNI.namespace }}
+  values:
+    cni:
+      ambient:
+        reconcileIptablesOnStartup: true
+{{- end }}

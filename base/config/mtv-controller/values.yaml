@@ -1,0 +1,4 @@
+forkliftController:
+  include: false
+  name: forklift-controller
+  namespace: openshift-mtv

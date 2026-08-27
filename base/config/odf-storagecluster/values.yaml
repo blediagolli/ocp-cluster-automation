@@ -1,0 +1,12 @@
+storageCluster:
+  include: false
+  name: ocs-storagecluster
+  namespace: openshift-storage
+  deviceSets:
+    count: 1
+    replicas: 3
+    storageSize: 512Gi
+    storageClassName: gp3-csi
+  encryption:
+    clusterWide: true
+  resourceProfile: balanced

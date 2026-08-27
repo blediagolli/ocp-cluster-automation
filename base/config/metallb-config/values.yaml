@@ -1,0 +1,16 @@
+metallb:
+  include: false
+  name: metallb
+  namespace: metallb-system
+ipAddressPools:
+  include: false
+  pools: []
+l2Advertisements:
+  include: false
+  advertisements: []
+bgpPeers:
+  include: false
+  peers: []
+bgpAdvertisements:
+  include: false
+  advertisements: []

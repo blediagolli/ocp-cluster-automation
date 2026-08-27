@@ -1,0 +1,8 @@
+securedCluster:
+  include: false
+  name: stackrox-secured-cluster-services
+  namespace: stackrox
+  clusterName: ""
+  centralEndpoint: ""
+securedClusterNamespace:
+  include: false

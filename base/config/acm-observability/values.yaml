@@ -1,0 +1,7 @@
+multiClusterObservability:
+  include: false
+  name: observability
+  namespace: open-cluster-management-observability
+  storageClass: gp3-csi
+observabilityNamespace:
+  include: false

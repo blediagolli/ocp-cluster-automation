@@ -1,0 +1,4 @@
+apiVersion: v2
+name: acm-observability
+description: ACM MultiClusterObservability instance
+version: 0.1.0

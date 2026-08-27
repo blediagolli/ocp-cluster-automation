@@ -1,0 +1,4 @@
+apiVersion: v2
+name: aap-instance
+description: Ansible Automation Platform instance
+version: 0.1.0

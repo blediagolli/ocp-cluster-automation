@@ -1,0 +1,41 @@
+{{- if .Values.apiCert.include }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: api-cert
+  namespace: {{ .Values.apiCert.namespace }}
+spec:
+  secretName: api-cert-tls
+  privateKey:
+    algorithm: ECDSA
+    size: 384
+  duration: {{ .Values.apiCert.duration }}
+  renewBefore: {{ .Values.apiCert.renewBefore }}
+  issuerRef:
+    name: {{ .Values.apiCert.issuerName }}
+    kind: ClusterIssuer
+    group: cert-manager.io
+  usages:
+    - server auth
+---
+{{- end }}
+{{- if .Values.ingressCert.include }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ingress-cert
+  namespace: {{ .Values.ingressCert.namespace }}
+spec:
+  secretName: ingress-cert-tls
+  privateKey:
+    algorithm: ECDSA
+    size: 384
+  duration: {{ .Values.ingressCert.duration }}
+  renewBefore: {{ .Values.ingressCert.renewBefore }}
+  issuerRef:
+    name: {{ .Values.ingressCert.issuerName }}
+    kind: ClusterIssuer
+    group: cert-manager.io
+  usages:
+    - server auth
+{{- end }}

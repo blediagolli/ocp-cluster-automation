@@ -1,0 +1,4 @@
+apiVersion: v2
+name: lvm-cluster
+description: LVM LVMCluster instance
+version: 0.1.0

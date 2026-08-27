@@ -1,0 +1,4 @@
+apiVersion: v2
+name: trident-config
+description: Trident orchestrator and storage configuration
+version: 0.1.0

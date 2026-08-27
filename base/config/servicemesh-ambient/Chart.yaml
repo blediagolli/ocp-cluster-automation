@@ -1,0 +1,4 @@
+apiVersion: v2
+name: servicemesh-ambient
+description: Service Mesh 3 ambient mode instances
+version: 0.1.0

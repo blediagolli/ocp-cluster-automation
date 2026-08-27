@@ -1,0 +1,20 @@
+{{- if .Values.bgpAdvertisements.include }}
+{{- range .Values.bgpAdvertisements.advertisements }}
+apiVersion: metallb.io/v1beta1
+kind: BGPAdvertisement
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.metallb.namespace }}
+spec:
+  {{- if .ipAddressPools }}
+  ipAddressPools:
+    {{- range .ipAddressPools }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- if .aggregationLength }}
+  aggregationLength: {{ .aggregationLength }}
+  {{- end }}
+---
+{{- end }}
+{{- end }}

@@ -1,0 +1,5 @@
+multiClusterHub:
+  include: false
+  name: multiclusterhub
+  namespace: open-cluster-management
+  availabilityConfig: High

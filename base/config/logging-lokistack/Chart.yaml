@@ -1,0 +1,4 @@
+apiVersion: v2
+name: logging-lokistack
+description: Loki LokiStack and ClusterLogForwarder instances
+version: 0.1.0

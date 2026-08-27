@@ -1,0 +1,26 @@
+{{- if .Values.securedCluster.include }}
+apiVersion: platform.stackrox.io/v1alpha1
+kind: SecuredCluster
+metadata:
+  name: {{ .Values.securedCluster.name }}
+  namespace: {{ .Values.securedCluster.namespace }}
+spec:
+  clusterName: {{ .Values.securedCluster.clusterName | default .Values.securedCluster.name }}
+  {{- if .Values.securedCluster.centralEndpoint }}
+  centralEndpoint: {{ .Values.securedCluster.centralEndpoint }}
+  {{- end }}
+  auditLogs:
+    collection: Auto
+  admissionControl:
+    listenOnCreates: true
+    listenOnUpdates: true
+    listenOnEvents: true
+  perNode:
+    collector:
+      collection: CORE_BPF
+      forwardDeployedImageAnalysis: Inactive
+    taintToleration: TolerateTaints
+  monitoring:
+    openshift:
+      enabled: true
+{{- end }}

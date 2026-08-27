@@ -1,0 +1,8 @@
+tridentOrchestrator:
+  include: false
+  name: trident
+  namespace: trident
+  debug: true
+snapshotClass:
+  include: false
+  name: trident-csi-snapclass

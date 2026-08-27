@@ -1,0 +1,4 @@
+apiVersion: v2
+name: openshift-image-registry
+description: OpenShift Image Registry configuration
+version: 0.1.0

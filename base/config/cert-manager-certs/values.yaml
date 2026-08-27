@@ -1,0 +1,21 @@
+selfSignedIssuer:
+  include: false
+  name: selfsigned
+caIssuer:
+  include: false
+  name: cluster-ca
+  secretName: cluster-ca-key-pair
+  duration: 17520h
+  renewBefore: 2160h
+apiCert:
+  include: false
+  namespace: openshift-config
+  duration: 8760h
+  renewBefore: 720h
+  issuerName: cluster-ca
+ingressCert:
+  include: false
+  namespace: openshift-ingress
+  duration: 8760h
+  renewBefore: 720h
+  issuerName: cluster-ca

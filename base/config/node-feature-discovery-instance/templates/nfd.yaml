@@ -1,0 +1,57 @@
+{{- if .Values.nodeFeatureDiscovery.include }}
+apiVersion: nfd.openshift.io/v1
+kind: NodeFeatureDiscovery
+metadata:
+  name: {{ .Values.nodeFeatureDiscovery.name }}
+  namespace: {{ .Values.nodeFeatureDiscovery.namespace }}
+spec:
+  operand:
+    image: registry.redhat.io/openshift4/ose-node-feature-discovery-rhel9:v4.22
+    servicePort: 12000
+  workerConfig:
+    configData: |
+      core:
+        sleepInterval: 60s
+      sources:
+        cpu:
+          cpuid:
+            attributeBlacklist:
+              - BMI1
+              - BMI2
+              - CLMUL
+              - CMOV
+              - CX16
+              - ERMS
+              - F16C
+              - HTT
+              - LZCNT
+              - MMX
+              - MMXEXT
+              - NX
+              - POPCNT
+              - RDRAND
+              - RDSEED
+              - RDTSCP
+              - SGX
+              - SSE
+              - SSE2
+              - SSE3
+              - SSE4
+              - SSE42
+              - SSSE3
+        kernel:
+          kconfigFile: "/path/to/kconfig"
+          configOpts:
+            - NO_HZ
+            - NO_HZ_IDLE
+            - NO_HZ_FULL
+            - X86
+        pci:
+          deviceClassWhitelist:
+            - "0200"
+            - "03"
+            - "12"
+          deviceLabelFields:
+            - class
+            - vendor
+{{- end }}

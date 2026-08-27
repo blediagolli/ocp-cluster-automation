@@ -1,0 +1,9 @@
+{{- if .Values.ztunnel.include }}
+apiVersion: sailoperator.io/v1alpha1
+kind: ZTunnel
+metadata:
+  name: {{ .Values.ztunnel.name }}
+spec:
+  profile: {{ .Values.ztunnel.profile }}
+  namespace: {{ .Values.ztunnel.namespace }}
+{{- end }}

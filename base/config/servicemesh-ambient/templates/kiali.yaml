@@ -1,0 +1,17 @@
+{{- if .Values.kiali.include }}
+apiVersion: kiali.io/v1alpha1
+kind: Kiali
+metadata:
+  name: {{ .Values.kiali.name }}
+  namespace: {{ .Values.kiali.namespace }}
+spec:
+  istio_namespace: {{ .Values.istio.namespace }}
+  auth:
+    strategy: {{ .Values.kiali.authStrategy }}
+  deployment:
+    cluster_wide_access: true
+  external_services:
+    prometheus:
+      thanos_proxy:
+        enabled: true
+{{- end }}

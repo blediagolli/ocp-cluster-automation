@@ -1,0 +1,4 @@
+apiVersion: v2
+name: compliance-scans
+description: Compliance Operator scan settings and bindings
+version: 0.1.0

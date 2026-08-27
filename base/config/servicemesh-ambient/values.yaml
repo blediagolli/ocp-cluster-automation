@@ -1,0 +1,24 @@
+istioCNI:
+  include: false
+  name: default
+  namespace: istio-cni
+  version: v1.28-latest
+  profile: ambient
+istio:
+  include: false
+  name: default
+  namespace: istio-system
+  version: v1.28-latest
+  profile: ambient
+ztunnel:
+  include: false
+  name: default
+  namespace: ztunnel
+  profile: ambient
+kiali:
+  include: false
+  name: kiali
+  namespace: istio-system
+  authStrategy: openshift
+namespaces:
+  include: false

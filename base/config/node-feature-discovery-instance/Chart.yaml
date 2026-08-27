@@ -1,0 +1,4 @@
+apiVersion: v2
+name: node-feature-discovery-instance
+description: Node Feature Discovery instance
+version: 0.1.0

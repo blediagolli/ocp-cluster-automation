@@ -1,0 +1,4 @@
+apiVersion: v2
+name: metallb-config
+description: MetalLB instance and address pools
+version: 0.1.0

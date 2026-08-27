@@ -1,0 +1,8 @@
+{{- if .Values.observabilityNamespace.include }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.multiClusterObservability.namespace }}
+  labels:
+    openshift.io/cluster-monitoring: "true"
+{{- end }}

@@ -1,0 +1,17 @@
+{{- if .Values.bgpPeers.include }}
+{{- range .Values.bgpPeers.peers }}
+apiVersion: metallb.io/v1beta2
+kind: BGPPeer
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.metallb.namespace }}
+spec:
+  myASN: {{ .myASN }}
+  peerASN: {{ .peerASN }}
+  peerAddress: {{ .peerAddress }}
+  {{- if .peerPort }}
+  peerPort: {{ .peerPort }}
+  {{- end }}
+---
+{{- end }}
+{{- end }}

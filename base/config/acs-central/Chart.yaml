@@ -1,0 +1,4 @@
+apiVersion: v2
+name: acs-central
+description: ACS Central instance
+version: 0.1.0

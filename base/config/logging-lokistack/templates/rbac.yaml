@@ -1,0 +1,33 @@
+{{- if .Values.clusterLogForwarder.include }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: collector
+  namespace: {{ .Values.clusterLogForwarder.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: collect-application-logs
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: collect-application-logs
+subjects:
+  - kind: ServiceAccount
+    name: collector
+    namespace: {{ .Values.clusterLogForwarder.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: collect-infrastructure-logs
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: collect-infrastructure-logs
+subjects:
+  - kind: ServiceAccount
+    name: collector
+    namespace: {{ .Values.clusterLogForwarder.namespace }}
+{{- end }}

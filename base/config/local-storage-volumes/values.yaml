@@ -1,0 +1,12 @@
+localVolumeSet:
+  include: false
+  name: nvme-localvolumeset
+  namespace: openshift-local-storage
+  storageClassName: nvme-storageclass
+  deviceTypes:
+    - disk
+  minSize: 200Gi
+  volumeMode: Block
+  nodeSelector:
+    key: cluster.ocs.openshift.io/openshift-storage
+    value: ""

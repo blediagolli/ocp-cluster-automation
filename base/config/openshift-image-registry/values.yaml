@@ -1,0 +1,9 @@
+imageRegistry:
+  include: false
+  replicas: 1
+  managementState: Managed
+  rolloutStrategy: RollingUpdate
+  storage:
+    type: pvc
+    pvc:
+      claim: image-registry-storage

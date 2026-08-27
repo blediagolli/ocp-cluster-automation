@@ -1,0 +1,4 @@
+apiVersion: v2
+name: acm-multiclusterhub
+description: ACM MultiClusterHub instance
+version: 0.1.0

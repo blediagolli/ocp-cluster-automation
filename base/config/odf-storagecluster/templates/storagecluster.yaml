@@ -1,0 +1,31 @@
+{{- if .Values.storageCluster.include }}
+apiVersion: ocs.openshift.io/v1
+kind: StorageCluster
+metadata:
+  name: {{ .Values.storageCluster.name }}
+  namespace: {{ .Values.storageCluster.namespace }}
+spec:
+  storageDeviceSets:
+    - name: ocs-deviceset
+      count: {{ .Values.storageCluster.deviceSets.count }}
+      replica: {{ .Values.storageCluster.deviceSets.replicas }}
+      dataPVCTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: {{ .Values.storageCluster.deviceSets.storageSize }}
+          storageClassName: {{ .Values.storageCluster.deviceSets.storageClassName }}
+          volumeMode: Block
+      portable: true
+  encryption:
+    clusterWide: {{ .Values.storageCluster.encryption.clusterWide }}
+    enable: true
+    kms: {}
+    keyRotation:
+      schedule: weekly
+  resourceProfile: {{ .Values.storageCluster.resourceProfile }}
+  multiCloudGateway:
+    reconcileStrategy: manage
+{{- end }}

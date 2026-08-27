@@ -1,0 +1,4 @@
+apiVersion: v2
+name: nmstate-config
+description: NMState instance
+version: 0.1.0

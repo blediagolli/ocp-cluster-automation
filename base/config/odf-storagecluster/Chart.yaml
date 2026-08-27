@@ -1,0 +1,4 @@
+apiVersion: v2
+name: odf-storagecluster
+description: ODF StorageCluster instance
+version: 0.1.0

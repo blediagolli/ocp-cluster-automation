@@ -1,0 +1,14 @@
+aap:
+  include: false
+  name: aap
+  namespace: ansible-automation-platform
+  controller:
+    enabled: true
+  hub:
+    enabled: false
+  eda:
+    enabled: false
+  lightspeed:
+    enabled: false
+  redis:
+    mode: standalone

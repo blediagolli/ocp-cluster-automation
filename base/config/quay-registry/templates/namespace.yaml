@@ -1,0 +1,8 @@
+{{- if .Values.quayNamespace.include }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.quayNamespace.name }}
+  labels:
+    openshift.io/cluster-monitoring: "true"
+{{- end }}

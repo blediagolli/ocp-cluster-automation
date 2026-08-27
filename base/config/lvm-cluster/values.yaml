@@ -1,0 +1,11 @@
+lvmCluster:
+  include: false
+  name: lvmcluster
+  namespace: openshift-storage
+  deviceClassName: vg1
+  default: true
+  fsType: xfs
+  thinPool:
+    name: thin-pool-1
+    sizePercent: 90
+    overprovisionRatio: 10

@@ -1,0 +1,32 @@
+{{- if .Values.hyperConverged.include }}
+apiVersion: hco.kubevirt.io/v1beta1
+kind: HyperConverged
+metadata:
+  name: {{ .Values.hyperConverged.name }}
+  namespace: {{ .Values.hyperConverged.namespace }}
+spec:
+  virtualMachineOptions:
+    disableFreePageReporting: false
+    disableSerialConsoleLog: true
+  liveMigrationConfig:
+    completionTimeoutPerGiB: 800
+    parallelMigrationsPerCluster: {{ .Values.hyperConverged.liveMigration.parallelMigrationsPerCluster }}
+    parallelOutboundMigrationsPerNode: {{ .Values.hyperConverged.liveMigration.parallelOutboundMigrationsPerNode }}
+    progressTimeout: 150
+  certConfig:
+    ca:
+      duration: 48h0m0s
+      renewBefore: 24h0m0s
+    server:
+      duration: 24h0m0s
+      renewBefore: 12h0m0s
+  featureGates:
+    enableCommonBootImageImport: true
+  workloadUpdateStrategy:
+    batchEvictionInterval: 1m0s
+    batchEvictionSize: 10
+    workloadUpdateMethods:
+      - LiveMigrate
+  uninstallStrategy: BlockUninstallIfWorkloadsExist
+  vmiCPUAllocationRatio: {{ .Values.hyperConverged.vmiCPUAllocationRatio }}
+{{- end }}

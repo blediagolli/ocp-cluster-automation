@@ -1,0 +1,8 @@
+hyperConverged:
+  include: false
+  name: kubevirt-hyperconverged
+  namespace: openshift-cnv
+  liveMigration:
+    parallelMigrationsPerCluster: 5
+    parallelOutboundMigrationsPerNode: 2
+  vmiCPUAllocationRatio: 10

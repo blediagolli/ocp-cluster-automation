@@ -1,0 +1,26 @@
+{{- if .Values.localVolumeSet.include }}
+apiVersion: local.storage.openshift.io/v1alpha1
+kind: LocalVolumeSet
+metadata:
+  name: {{ .Values.localVolumeSet.name }}
+  namespace: {{ .Values.localVolumeSet.namespace }}
+spec:
+  storageClassName: {{ .Values.localVolumeSet.storageClassName }}
+  volumeMode: {{ .Values.localVolumeSet.volumeMode }}
+  deviceInclusionSpec:
+    deviceTypes:
+    {{- range .Values.localVolumeSet.deviceTypes }}
+      - {{ . }}
+    {{- end }}
+    minSize: {{ .Values.localVolumeSet.minSize }}
+  nodeSelector:
+    nodeSelectorTerms:
+      - matchExpressions:
+          - key: {{ .Values.localVolumeSet.nodeSelector.key }}
+            operator: Exists
+  tolerations:
+    - key: node.ocs.openshift.io/storage
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+{{- end }}

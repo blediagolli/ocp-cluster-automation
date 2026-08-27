@@ -1,0 +1,12 @@
+central:
+  include: false
+  name: stackrox-central-services
+  namespace: stackrox
+  persistence:
+    size: 100Gi
+  scanner:
+    autoScaling:
+      minReplicas: 2
+      maxReplicas: 5
+centralNamespace:
+  include: false

@@ -1,0 +1,17 @@
+{{- if .Values.scanSettingBinding.include }}
+apiVersion: compliance.openshift.io/v1alpha1
+kind: ScanSettingBinding
+metadata:
+  name: {{ .Values.scanSettingBinding.name }}
+  namespace: {{ .Values.scanSettingBinding.namespace }}
+profiles:
+  {{- range .Values.scanSettingBinding.profiles }}
+  - name: {{ .name }}
+    kind: {{ .kind }}
+    apiGroup: {{ .apiGroup }}
+  {{- end }}
+settingsRef:
+  name: {{ .Values.scanSetting.name }}
+  kind: ScanSetting
+  apiGroup: compliance.openshift.io/v1alpha1
+{{- end }}

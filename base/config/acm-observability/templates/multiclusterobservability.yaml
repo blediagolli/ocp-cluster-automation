@@ -1,0 +1,14 @@
+{{- if .Values.multiClusterObservability.include }}
+apiVersion: observability.open-cluster-management.io/v1beta2
+kind: MultiClusterObservability
+metadata:
+  name: {{ .Values.multiClusterObservability.name }}
+spec:
+  observabilityAddonSpec: {}
+  storageConfig:
+    metricObjectStorage:
+      name: thanos-object-storage
+      key: thanos.yaml
+    storageClass: {{ .Values.multiClusterObservability.storageClass }}
+    statefulSetSize: 10Gi
+{{- end }}

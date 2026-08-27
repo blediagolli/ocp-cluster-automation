@@ -1,0 +1,18 @@
+{{- if .Values.aap.include }}
+apiVersion: aap.ansible.com/v1alpha1
+kind: AnsibleAutomationPlatform
+metadata:
+  name: {{ .Values.aap.name }}
+  namespace: {{ .Values.aap.namespace }}
+spec:
+  controller:
+    disabled: {{ not .Values.aap.controller.enabled }}
+  hub:
+    disabled: {{ not .Values.aap.hub.enabled }}
+  eda:
+    disabled: {{ not .Values.aap.eda.enabled }}
+  lightspeed:
+    disabled: {{ not .Values.aap.lightspeed.enabled }}
+  redis:
+    mode: {{ .Values.aap.redis.mode }}
+{{- end }}

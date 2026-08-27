@@ -1,0 +1,4 @@
+nodeFeatureDiscovery:
+  include: false
+  name: nfd-instance
+  namespace: openshift-nfd

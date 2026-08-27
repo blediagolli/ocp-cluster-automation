@@ -1,0 +1,8 @@
+{{- if .Values.metallb.include }}
+apiVersion: metallb.io/v1beta1
+kind: MetalLB
+metadata:
+  name: {{ .Values.metallb.name }}
+  namespace: {{ .Values.metallb.namespace }}
+spec: {}
+{{- end }}

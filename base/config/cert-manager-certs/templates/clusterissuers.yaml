@@ -1,0 +1,37 @@
+{{- if .Values.selfSignedIssuer.include }}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ .Values.selfSignedIssuer.name }}
+spec:
+  selfSigned: {}
+---
+{{- end }}
+{{- if .Values.caIssuer.include }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.caIssuer.name }}
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: {{ .Values.caIssuer.name }}
+  secretName: {{ .Values.caIssuer.secretName }}
+  privateKey:
+    algorithm: ECDSA
+    size: 384
+  duration: {{ .Values.caIssuer.duration }}
+  renewBefore: {{ .Values.caIssuer.renewBefore }}
+  issuerRef:
+    name: {{ .Values.selfSignedIssuer.name }}
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ .Values.caIssuer.name }}
+spec:
+  ca:
+    secretName: {{ .Values.caIssuer.secretName }}
+{{- end }}

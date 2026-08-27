@@ -1,0 +1,41 @@
+{{- if .Values.central.include }}
+apiVersion: platform.stackrox.io/v1alpha1
+kind: Central
+metadata:
+  name: {{ .Values.central.name }}
+  namespace: {{ .Values.central.namespace }}
+spec:
+  central:
+    exposure:
+      loadBalancer:
+        enabled: false
+        port: 443
+      nodePort:
+        enabled: false
+      route:
+        enabled: true
+    monitoring:
+      openshift:
+        enabled: true
+    db:
+      isEnabled: Default
+      persistence:
+        persistentVolumeClaim:
+          claimName: stackrox-db
+    persistence:
+      persistentVolumeClaim:
+        claimName: stackrox-db
+  egress:
+    connectivityPolicy: Online
+  scanner:
+    analyzer:
+      scaling:
+        autoScaling: Enabled
+        maxReplicas: {{ .Values.central.scanner.autoScaling.maxReplicas }}
+        minReplicas: {{ .Values.central.scanner.autoScaling.minReplicas }}
+        replicas: {{ .Values.central.scanner.autoScaling.minReplicas }}
+    monitoring:
+      openshift:
+        enabled: true
+    scannerComponent: Enabled
+{{- end }}

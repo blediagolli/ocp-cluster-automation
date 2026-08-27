@@ -1,0 +1,7 @@
+quayNamespace:
+  include: false
+  name: quay-enterprise
+quayRegistry:
+  include: false
+  name: registry
+  namespace: quay-enterprise
