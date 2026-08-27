@@ -3,4 +3,7 @@ kind: Namespace
 metadata:
   name: open-cluster-management
   annotations:
+    openshift.io/node-selector: ""
     argocd.argoproj.io/sync-wave: "0"
+  labels:
+    openshift.io/cluster-monitoring: "true"

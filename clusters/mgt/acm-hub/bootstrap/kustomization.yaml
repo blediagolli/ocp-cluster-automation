@@ -10,4 +10,5 @@ resources:
   - acm-namespace.yaml
   - acm-operatorgroup.yaml
   - acm-subscription.yaml
+  - acm-crd-wait.yaml
   - acm-multiclusterhub.yaml
