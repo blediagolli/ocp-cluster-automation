@@ -1,6 +1,0 @@
-apiVersion: v2
-name: operator
-description: Helper chart to install a single OpenShift operator
-type: application
-version: 1.0.0
-appVersion: "1.0"
