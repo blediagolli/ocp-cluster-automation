@@ -2,3 +2,6 @@ cluster:
   name: acm-hub
   environment: mgt
   address: "https://kubernetes.default.svc"
+operators:
+  external-secrets-operator:
+    include: true
