@@ -3,7 +3,7 @@ kind: Kustomization
 resources:
   - operator
   - instance
-  - provisioning
-  - agent-service-config
   - hive
+  - assisted-service
   - gitops-cluster
+  - console-plugins

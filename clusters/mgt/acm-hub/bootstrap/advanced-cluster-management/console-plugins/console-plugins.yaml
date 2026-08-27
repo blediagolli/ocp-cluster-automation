@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: acm-console-plugins
+  namespace: open-cluster-management
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: acm-console-plugins
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+rules:
+  - apiGroups:
+      - operator.openshift.io
+    resources:
+      - consoles
+    verbs:
+      - get
+      - patch
+  - apiGroups:
+      - console.openshift.io
+    resources:
+      - consoleplugins
+    verbs:
+      - get
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: acm-console-plugins-binding
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: acm-console-plugins
+subjects:
+  - kind: ServiceAccount
+    name: acm-console-plugins
+    namespace: open-cluster-management
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: acm-console-plugins
+  namespace: open-cluster-management
+  annotations:
+    argocd.argoproj.io/sync-wave: "8"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  template:
+    spec:
+      serviceAccountName: acm-console-plugins
+      restartPolicy: OnFailure
+      containers:
+        - name: enable-plugins
+          image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              PLUGINS="acm mce"
+              for plugin in $PLUGINS; do
+                echo "Waiting for ConsolePlugin ${plugin}..."
+                until oc get consoleplugin "${plugin}" &>/dev/null; do
+                  echo "ConsolePlugin ${plugin} not yet available, retrying in 10s..."
+                  sleep 10
+                done
+                echo "ConsolePlugin ${plugin} is available."
+              done
+
+              echo "Enabling console plugins: ${PLUGINS}"
+              for plugin in $PLUGINS; do
+                oc patch console.operator.openshift.io cluster \
+                  --type=json \
+                  -p "[{\"op\": \"add\", \"path\": \"/spec/plugins/-\", \"value\": \"${plugin}\"}]" 2>/dev/null || true
+              done
+
+              CURRENT=$(oc get console.operator.openshift.io cluster -o jsonpath='{.spec.plugins}')
+              echo "Current console plugins: ${CURRENT}"
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+      terminationGracePeriodSeconds: 0
