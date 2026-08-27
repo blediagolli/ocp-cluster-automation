@@ -2,6 +2,13 @@ cluster:
   name: dev
   environment: dev
   address: "https://kubernetes.default.svc"
+managedCluster:
+  include: true
+  name: dev
+  environment: dev
+  autoImport:
+    include: true
+    kubeconfigSecret: dev-kubeconfig
 operators:
   openshift-gitops:
     include: false

@@ -3,5 +3,6 @@ kind: Kustomization
 resources:
 - cluster-config.yaml
 - cluster-config-overlays.yaml
-- cluster-provisioning.yaml
+- cluster-import.yaml
 - cluster-operators-appset.yaml
+- cluster-provisioning.yaml

@@ -2,6 +2,13 @@ cluster:
   name: prod
   environment: prod
   address: "https://kubernetes.default.svc"
+managedCluster:
+  include: true
+  name: prod
+  environment: prod
+  autoImport:
+    include: true
+    kubeconfigSecret: prod-kubeconfig
 operators:
   openshift-gitops:
     include: false

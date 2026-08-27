@@ -1,0 +1,17 @@
+{{- if .Values.managedCluster.include }}
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: {{ .Values.managedCluster.name }}
+  labels:
+    name: {{ .Values.managedCluster.name }}
+    environment: {{ .Values.managedCluster.environment }}
+    vendor: {{ .Values.managedCluster.vendor }}
+    cloud: {{ .Values.managedCluster.cloudProvider | default "auto-detect" }}
+    cluster.open-cluster-management.io/clusterset: {{ .Values.managedCluster.clusterSet }}
+    {{- range $key, $value := .Values.managedCluster.labels }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+spec:
+  hubAcceptsClient: true
+{{- end }}

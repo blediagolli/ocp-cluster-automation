@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: cluster-import
+  namespace: openshift-gitops
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - git:
+        repoURL: git@github.com:blediagolli/gitops-for-organizations.git
+        revision: main
+        files:
+          - path: "clusters/**/conf.yaml"
+  template:
+    metadata:
+      name: 'import-{{.cluster.environment}}-{{.cluster.name}}'
+      labels:
+        environment: '{{.cluster.environment}}'
+        cluster: '{{.cluster.name}}'
+    spec:
+      project: platform
+      source:
+        repoURL: git@github.com:blediagolli/gitops-for-organizations.git
+        targetRevision: main
+        path: base/config/acm-managed-cluster
+        helm:
+          valueFiles:
+            - '/{{.path.path}}/conf.yaml'
+      destination:
+        server: 'https://kubernetes.default.svc'
+      syncPolicy: {}

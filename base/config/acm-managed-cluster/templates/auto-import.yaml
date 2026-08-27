@@ -1,0 +1,97 @@
+{{- if and .Values.managedCluster.include .Values.managedCluster.autoImport.include }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.managedCluster.name }}-import
+  namespace: {{ .Values.managedCluster.name }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.managedCluster.name }}-import
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Values.managedCluster.name }}-import-binding
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Values.managedCluster.name }}-import
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.managedCluster.name }}-import
+    namespace: {{ .Values.managedCluster.name }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.managedCluster.name }}-import
+  namespace: {{ .Values.managedCluster.name }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  template:
+    spec:
+      serviceAccountName: {{ .Values.managedCluster.name }}-import
+      restartPolicy: OnFailure
+      containers:
+        - name: import
+          image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+          env:
+            - name: CLUSTER_NAME
+              value: {{ .Values.managedCluster.name }}
+          command:
+            - /bin/bash
+            - -c
+            - |
+              echo "Waiting for import secret ${CLUSTER_NAME}-import..."
+              until oc get secret "${CLUSTER_NAME}-import" -n "${CLUSTER_NAME}" &>/dev/null; do
+                echo "Import secret not yet available, retrying in 10s..."
+                sleep 10
+              done
+              echo "Import secret found."
+
+              echo "Extracting import manifests..."
+              CRDS=$(oc get secret "${CLUSTER_NAME}-import" -n "${CLUSTER_NAME}" -o jsonpath='{.data.crds\.yaml}' | base64 -d)
+              IMPORT=$(oc get secret "${CLUSTER_NAME}-import" -n "${CLUSTER_NAME}" -o jsonpath='{.data.import\.yaml}' | base64 -d)
+
+              echo "Applying CRDs to target cluster..."
+              echo "${CRDS}" | oc apply --kubeconfig=/target/kubeconfig -f - || true
+
+              echo "Applying import manifests to target cluster..."
+              echo "${IMPORT}" | oc apply --kubeconfig=/target/kubeconfig -f -
+
+              echo "Import complete for cluster ${CLUSTER_NAME}."
+          volumeMounts:
+            - name: target-kubeconfig
+              mountPath: /target
+              readOnly: true
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+      volumes:
+        - name: target-kubeconfig
+          secret:
+            secretName: {{ .Values.managedCluster.autoImport.kubeconfigSecret }}
+      terminationGracePeriodSeconds: 0
+{{- end }}

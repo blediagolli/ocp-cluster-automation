@@ -1,0 +1,17 @@
+managedCluster:
+  include: false
+  name: ""
+  environment: ""
+  vendor: OpenShift
+  cloudProvider: ""
+  clusterSet: default
+  labels: {}
+  autoImport:
+    include: false
+    kubeconfigSecret: ""
+  addons:
+    applicationManager: true
+    certPolicyController: true
+    iamPolicyController: true
+    policyController: true
+    searchCollector: true

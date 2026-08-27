@@ -1,0 +1,20 @@
+{{- if .Values.managedCluster.include }}
+apiVersion: agent.open-cluster-management.io/v1
+kind: KlusterletAddonConfig
+metadata:
+  name: {{ .Values.managedCluster.name }}
+  namespace: {{ .Values.managedCluster.name }}
+spec:
+  clusterName: {{ .Values.managedCluster.name }}
+  clusterNamespace: {{ .Values.managedCluster.name }}
+  applicationManager:
+    enabled: {{ .Values.managedCluster.addons.applicationManager }}
+  certPolicyController:
+    enabled: {{ .Values.managedCluster.addons.certPolicyController }}
+  iamPolicyController:
+    enabled: {{ .Values.managedCluster.addons.iamPolicyController }}
+  policyController:
+    enabled: {{ .Values.managedCluster.addons.policyController }}
+  searchCollector:
+    enabled: {{ .Values.managedCluster.addons.searchCollector }}
+{{- end }}
