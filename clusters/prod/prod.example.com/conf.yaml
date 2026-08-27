@@ -2,9 +2,72 @@ cluster:
   name: prod
   environment: prod
   address: "https://kubernetes.default.svc"
-
 operators:
   openshift-gitops:
     include: false
+    channel: gitops-1.21
+  advanced-cluster-management:
+    channel: release-2.17
+  advanced-cluster-security:
+    channel: stable
+  ansible-automation-platform:
+    channel: stable-2.6
+  cert-manager:
+    channel: stable-v1
+  cloudnative-pg:
+    channel: stable-v1
+  cluster-observability:
+    channel: stable
+  compliance-operator:
+    channel: stable
+  dev-spaces:
+    channel: stable
+  developer-hub:
+    channel: fast-1.9
   external-secrets-operator:
     include: false
+    channel: stable-v1
+  gitlab:
+    channel: stable
+  gitlab-runner:
+    channel: stable
+  jfrog:
+    channel: alpha
+  kiali:
+    channel: stable
+  openshift-local-storage:
+    channel: stable
+  openshift-logging:
+    channel: stable-6.6
+  loki:
+    channel: stable-6.5
+  lvm:
+    channel: stable-4.22
+  metallb:
+    channel: stable
+  mtv:
+    channel: release-v2.10
+  nmstate:
+    channel: stable
+  node-feature-discovery:
+    channel: stable
+  node-maintenance:
+    channel: stable
+  odf-operator:
+    channel: stable-4.22
+  openshift-pipelines:
+    channel: pipelines-1.21
+  openshift-virtualization:
+    channel: stable
+  opentelemetry:
+    channel: stable
+  quay:
+    channel: stable-3.17
+  servicemesh3:
+    channel: stable
+  tempo:
+    channel: stable
+  trident:
+    channel: stable
+  trusted-artifact-signer:
+    channel: stable
