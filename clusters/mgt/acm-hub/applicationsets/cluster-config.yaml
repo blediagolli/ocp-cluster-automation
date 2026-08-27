@@ -8,6 +8,7 @@ spec:
   goTemplateOptions:
     - missingkey=error
   generators:
+    # Shared config charts — all clusters
     - matrix:
         generators:
           - git:
@@ -23,20 +24,30 @@ spec:
                 # - template: openshift-dns
                 # - template: openshift-image-registry
                 # - template: user-workload-monitoring
-                # - template: acm-multiclusterhub
-                # - template: acm-observability
+                # - template: compliance-scans
+                # - template: logging-lokistack
+                # - template: nmstate-config
+                # - template: node-feature-discovery-instance
+    # Hub-only config charts — management clusters only
+    - matrix:
+        generators:
+          - git:
+              repoURL: git@github.com:blediagolli/gitops-for-organizations.git
+              revision: main
+              files:
+                - path: "clusters/mgt/**/conf.yaml"
+          - list:
+              elements:
                 - template: acs-central
                 - template: acs-secured-cluster
+                # - template: acm-multiclusterhub
+                # - template: acm-observability
                 # - template: aap-instance
                 # - template: cert-manager-certs
-                # - template: compliance-scans
                 # - template: local-storage-volumes
-                # - template: logging-lokistack
                 # - template: lvm-cluster
                 # - template: metallb-config
                 # - template: mtv-controller
-                # - template: nmstate-config
-                # - template: node-feature-discovery-instance
                 # - template: odf-storagecluster
                 # - template: openshift-virtualization-instance
                 # - template: quay-registry
