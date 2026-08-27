@@ -1,5 +1,5 @@
 {{- range $name, $operator := .Values.operators }}
-{{- if $operator.include }}
+{{- if and $operator.include (not $operator.skipOperatorGroup) }}
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
@@ -7,7 +7,7 @@ metadata:
   namespace: {{ $operator.namespace }}
   labels:
     operator: {{ $name }}
-{{- if eq $name "openshift-gitops" }}
+{{- if $operator.clusterScoped }}
 spec: {}
 {{- else }}
 spec:

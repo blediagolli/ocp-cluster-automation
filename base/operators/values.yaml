@@ -1,12 +1,13 @@
 operators:
   openshift-gitops:
     include: false
-    namespace: openshift-gitops
+    namespace: openshift-gitops-operator
     operatorGroup: openshift-gitops-operator
     package: openshift-gitops-operator
     channel: gitops-1.21
     source: redhat-operators
     sourceNamespace: openshift-marketplace
+    clusterScoped: true
   advanced-cluster-management:
     include: false
     namespace: open-cluster-management
@@ -15,11 +16,183 @@ operators:
     channel: release-2.17
     source: redhat-operators
     sourceNamespace: openshift-marketplace
+  advanced-cluster-security:
+    include: false
+    namespace: rhacs-operator
+    operatorGroup: rhacs-operator
+    package: rhacs-operator
+    channel: stable
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  ansible-automation-platform:
+    include: false
+    namespace: ansible-automation-platform
+    operatorGroup: ansible-automation-platform
+    package: ansible-automation-platform-operator
+    channel: stable-2.6
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  cert-manager:
+    include: false
+    namespace: cert-manager-operator
+    operatorGroup: cert-manager-operator
+    package: openshift-cert-manager-operator
+    channel: stable-v1
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  cloudnative-pg:
+    include: false
+    namespace: openshift-operators
+    package: cloudnative-pg
+    channel: stable-v1
+    source: certified-operators
+    sourceNamespace: openshift-marketplace
+    skipNamespace: true
+    skipOperatorGroup: true
+  cluster-observability:
+    include: false
+    namespace: openshift-cluster-observability-operator
+    operatorGroup: openshift-cluster-observability-operator
+    package: cluster-observability-operator
+    channel: stable
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  compliance-operator:
+    include: false
+    namespace: openshift-compliance
+    operatorGroup: openshift-compliance
+    package: compliance-operator
+    channel: stable
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  dev-spaces:
+    include: false
+    namespace: openshift-operators-redhat
+    package: devspaces
+    channel: stable
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+    skipNamespace: true
+    skipOperatorGroup: true
+  developer-hub:
+    include: false
+    namespace: rhdh-operator
+    operatorGroup: rhdh-operator
+    package: rhdh
+    channel: fast-1.9
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  external-secrets-operator:
+    include: false
+    namespace: external-secrets-operator
+    operatorGroup: external-secrets-operator
+    package: openshift-external-secrets-operator
+    channel: stable-v1
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  gitlab:
+    include: false
+    namespace: gitlab-system
+    operatorGroup: gitlab-system
+    package: gitlab-operator-kubernetes
+    channel: stable
+    source: certified-operators
+    sourceNamespace: openshift-marketplace
+  gitlab-runner:
+    include: false
+    namespace: gitlab-runner-system
+    operatorGroup: gitlab-runner-system
+    package: gitlab-runner-operator
+    channel: stable
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  jfrog:
+    include: false
+    namespace: jfrog-system
+    operatorGroup: jfrog-system
+    package: openshiftartifactoryha-operator
+    channel: alpha
+    source: certified-operators
+    sourceNamespace: openshift-marketplace
+  kiali:
+    include: false
+    namespace: openshift-operators
+    package: kiali-ossm
+    channel: stable
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+    skipNamespace: true
+    skipOperatorGroup: true
   openshift-local-storage:
     include: false
     namespace: openshift-local-storage
     operatorGroup: openshift-local-storage
     package: local-storage-operator
+    channel: stable
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  openshift-logging:
+    include: false
+    namespace: openshift-logging
+    operatorGroup: openshift-logging
+    package: cluster-logging
+    channel: stable-6.6
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  loki:
+    include: false
+    namespace: openshift-operators-redhat
+    package: loki-operator
+    channel: stable-6.5
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+    skipNamespace: true
+    skipOperatorGroup: true
+  lvm:
+    include: false
+    namespace: openshift-storage
+    operatorGroup: openshift-storage-lvm
+    package: lvms-operator
+    channel: stable-4.22
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  metallb:
+    include: false
+    namespace: metallb-system
+    operatorGroup: metallb-system
+    package: metallb-operator
+    channel: stable
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  mtv:
+    include: false
+    namespace: openshift-mtv
+    operatorGroup: openshift-mtv
+    package: mtv-operator
+    channel: release-v2.10
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  nmstate:
+    include: false
+    namespace: openshift-nmstate
+    operatorGroup: openshift-nmstate
+    package: kubernetes-nmstate-operator
+    channel: stable
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  node-feature-discovery:
+    include: false
+    namespace: openshift-nfd
+    operatorGroup: openshift-nfd
+    package: nfd
+    channel: stable
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  node-maintenance:
+    include: false
+    namespace: openshift-workload-availability
+    operatorGroup: openshift-workload-availability
+    package: node-maintenance-operator
     channel: stable
     source: redhat-operators
     sourceNamespace: openshift-marketplace
@@ -31,19 +204,71 @@ operators:
     channel: stable-4.22
     source: redhat-operators
     sourceNamespace: openshift-marketplace
-  external-secrets-operator:
+  openshift-pipelines:
     include: false
-    namespace: external-secrets-operator
-    operatorGroup: external-secrets-operator
-    package: external-secrets-operator
-    channel: stable
-    source: community-operators
-    sourceNamespace: openshift-marketplace
-  openshift-logging:
-    include: false
-    namespace: openshift-logging
-    operatorGroup: openshift-logging
-    package: cluster-logging
-    channel: stable-6.6
+    namespace: openshift-operators
+    package: openshift-pipelines-operator-rh
+    channel: pipelines-1.21
     source: redhat-operators
     sourceNamespace: openshift-marketplace
+    skipNamespace: true
+    skipOperatorGroup: true
+  openshift-virtualization:
+    include: false
+    namespace: openshift-cnv
+    operatorGroup: openshift-cnv
+    package: kubevirt-hyperconverged
+    channel: stable
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  opentelemetry:
+    include: false
+    namespace: openshift-opentelemetry-operator
+    operatorGroup: openshift-opentelemetry-operator
+    package: opentelemetry-product
+    channel: stable
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  quay:
+    include: false
+    namespace: quay-operator
+    operatorGroup: quay-operator
+    package: quay-operator
+    channel: stable-3.17
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  servicemesh3:
+    include: false
+    namespace: openshift-operators
+    package: servicemeshoperator3
+    channel: stable
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+    skipNamespace: true
+    skipOperatorGroup: true
+  tempo:
+    include: false
+    namespace: openshift-operators
+    package: tempo-product
+    channel: stable
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+    skipNamespace: true
+    skipOperatorGroup: true
+  trident:
+    include: false
+    namespace: trident
+    operatorGroup: trident-operator
+    package: trident-operator
+    channel: stable
+    source: certified-operators
+    sourceNamespace: openshift-marketplace
+  trusted-artifact-signer:
+    include: false
+    namespace: openshift-operators
+    package: rhtas-operator
+    channel: stable
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+    skipNamespace: true
+    skipOperatorGroup: true
