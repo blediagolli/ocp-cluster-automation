@@ -1,0 +1,10 @@
+{{- $op := index .Values.operators .Values.operatorName }}
+{{- if and $op.include (not $op.skipNamespace) }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $op.namespace }}
+  labels:
+    app.kubernetes.io/managed-by: multi-cluster-config
+    operator: {{ .Values.operatorName }}
+{{- end }}

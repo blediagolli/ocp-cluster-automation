@@ -1,32 +1,73 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: cluster-operators
+  name: cluster-operators-v2
   namespace: openshift-gitops
 spec:
   goTemplate: true
   goTemplateOptions:
     - missingkey=error
   generators:
-    - git:
-        repoURL: git@github.com:blediagolli/gitops-for-organizations.git
-        revision: main
-        files:
-          - path: "clusters/**/conf.yaml"
+    - matrix:
+        generators:
+          - git:
+              repoURL: git@github.com:blediagolli/gitops-for-organizations.git
+              revision: operator-appset
+              files:
+                - path: "clusters/**/conf.yaml"
+          - list:
+              elements:
+                - operatorName: openshift-gitops
+                - operatorName: advanced-cluster-management
+                - operatorName: advanced-cluster-security
+                - operatorName: ansible-automation-platform
+                - operatorName: cert-manager
+                - operatorName: cloudnative-pg
+                - operatorName: cluster-observability
+                - operatorName: compliance-operator
+                - operatorName: dev-spaces
+                - operatorName: developer-hub
+                - operatorName: external-secrets-operator
+                - operatorName: gitlab
+                - operatorName: gitlab-runner
+                - operatorName: jfrog
+                - operatorName: kiali
+                - operatorName: openshift-local-storage
+                - operatorName: openshift-logging
+                - operatorName: loki
+                - operatorName: lvm
+                - operatorName: metallb
+                - operatorName: mtv
+                - operatorName: nmstate
+                - operatorName: node-feature-discovery
+                - operatorName: node-maintenance
+                - operatorName: odf-operator
+                - operatorName: openshift-pipelines
+                - operatorName: openshift-virtualization
+                - operatorName: opentelemetry
+                - operatorName: quay
+                - operatorName: servicemesh3
+                - operatorName: tempo
+                - operatorName: trident
+                - operatorName: trusted-artifact-signer
   template:
     metadata:
-      name: '{{.cluster.name}}-operators'
+      name: 'op-{{.cluster.environment}}-{{.cluster.name}}-{{.operatorName}}'
       labels:
         environment: '{{.cluster.environment}}'
         cluster: '{{.cluster.name}}'
+        operator: '{{.operatorName}}'
     spec:
       project: platform
       source:
         repoURL: git@github.com:blediagolli/gitops-for-organizations.git
-        targetRevision: main
-        path: base/operators
+        targetRevision: operator-appset
+        path: base/operator
         helm:
+          values: |
+            operatorName: {{.operatorName}}
           valueFiles:
+            - '/base/operators/values.yaml'
             - '/conf/{{.cluster.environment}}/conf.yaml'
             - '/{{.path.path}}/conf.yaml'
       destination:
