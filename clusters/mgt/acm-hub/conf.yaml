@@ -6,4 +6,4 @@ operators:
   external-secrets-operator:
     include: true
   openshift-logging:
-    include: false
+    include: true
