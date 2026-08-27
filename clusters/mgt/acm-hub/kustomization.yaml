@@ -4,5 +4,4 @@ resources:
 - applications
 - applicationsets
 - bootstrap
-- gitops-cluster
 - policies
