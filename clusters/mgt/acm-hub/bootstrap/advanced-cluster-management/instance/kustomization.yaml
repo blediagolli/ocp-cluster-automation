@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - acm-crd-wait.yaml
   - acm-multiclusterhub.yaml
+  - acm-mch-wait.yaml
