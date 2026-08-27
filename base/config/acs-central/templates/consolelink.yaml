@@ -1,0 +1,12 @@
+{{- if .Values.central.consoleLink.include }}
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: acs-console-link
+spec:
+  applicationMenu:
+    section: Security
+  href: {{ .Values.central.consoleLink.centralUrl | quote }}
+  location: ApplicationMenu
+  text: Advanced Cluster Security
+{{- end }}

@@ -12,14 +12,16 @@ spec:
   auditLogs:
     collection: Auto
   admissionControl:
-    listenOnCreates: true
-    listenOnUpdates: true
-    listenOnEvents: true
+    listenOnCreates: {{ .Values.securedCluster.admissionControl.listenOnCreates }}
+    listenOnUpdates: {{ .Values.securedCluster.admissionControl.listenOnUpdates }}
+    listenOnEvents: {{ .Values.securedCluster.admissionControl.listenOnEvents }}
+    contactImageScanners: {{ .Values.securedCluster.admissionControl.contactImageScanners }}
   perNode:
     collector:
-      collection: CORE_BPF
+      collection: {{ .Values.securedCluster.collector.collection }}
+      imageFlavor: {{ .Values.securedCluster.collector.imageFlavor }}
       forwardDeployedImageAnalysis: Inactive
-    taintToleration: TolerateTaints
+    taintToleration: {{ .Values.securedCluster.taintToleration }}
   monitoring:
     openshift:
       enabled: true

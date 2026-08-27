@@ -4,5 +4,14 @@ securedCluster:
   namespace: stackrox
   clusterName: ""
   centralEndpoint: ""
+  admissionControl:
+    listenOnCreates: true
+    listenOnUpdates: true
+    listenOnEvents: true
+    contactImageScanners: ScanIfMissing
+  collector:
+    collection: CORE_BPF
+    imageFlavor: Regular
+  taintToleration: TolerateTaints
 securedClusterNamespace:
   include: false

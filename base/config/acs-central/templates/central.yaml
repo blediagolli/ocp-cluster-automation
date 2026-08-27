@@ -14,17 +14,26 @@ spec:
         enabled: false
       route:
         enabled: true
-    monitoring:
-      openshift:
-        enabled: true
     db:
       isEnabled: Default
       persistence:
         persistentVolumeClaim:
-          claimName: stackrox-db
+          claimName: {{ .Values.central.persistence.claimName }}
+      resources:
+        requests:
+          cpu: {{ .Values.central.db.resources.requests.cpu }}
+          memory: {{ .Values.central.db.resources.requests.memory }}
+        limits:
+          cpu: {{ .Values.central.db.resources.limits.cpu }}
+          memory: {{ .Values.central.db.resources.limits.memory }}
     persistence:
       persistentVolumeClaim:
-        claimName: stackrox-db
+        claimName: {{ .Values.central.persistence.claimName }}
+    telemetry:
+      enabled: true
+  monitoring:
+    openshift:
+      enabled: true
   egress:
     connectivityPolicy: Online
   scanner:
@@ -35,7 +44,24 @@ spec:
         minReplicas: {{ .Values.central.scanner.autoScaling.minReplicas }}
         replicas: {{ .Values.central.scanner.autoScaling.minReplicas }}
     monitoring:
-      openshift:
-        enabled: true
+      exposeEndpoint: Enabled
     scannerComponent: Enabled
+  scannerV4:
+    scannerComponent: Default
+    db:
+      persistence:
+        persistentVolumeClaim:
+          claimName: {{ .Values.central.scannerV4.db.claimName }}
+    indexer:
+      scaling:
+        autoScaling: Enabled
+        maxReplicas: {{ .Values.central.scannerV4.indexer.maxReplicas }}
+        minReplicas: {{ .Values.central.scannerV4.indexer.minReplicas }}
+        replicas: {{ .Values.central.scannerV4.indexer.minReplicas }}
+    matcher:
+      scaling:
+        autoScaling: Enabled
+        maxReplicas: {{ .Values.central.scannerV4.matcher.maxReplicas }}
+        minReplicas: {{ .Values.central.scannerV4.matcher.minReplicas }}
+        replicas: {{ .Values.central.scannerV4.matcher.minReplicas }}
 {{- end }}
