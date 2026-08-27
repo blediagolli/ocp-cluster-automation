@@ -90,6 +90,7 @@ operators:
     channel: stable-v1
     source: redhat-operators
     sourceNamespace: openshift-marketplace
+    clusterScoped: true
   gitlab:
     include: false
     namespace: gitlab-system
