@@ -6,3 +6,4 @@ resources:
   - provisioning
   - agent-service-config
   - hive
+  - gitops-cluster
