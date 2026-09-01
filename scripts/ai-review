@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/ai-common.sh"
+
+ensure_request_file
+require_command claude
+
+cd "$ROOT_DIR"
+
+claude -p "$(cat <<PROMPT
+You are the independent review agent for this repository.
+
+Review the current working tree diff against the request and plan.
+Do not edit files.
+
+Focus on:
+- OpenShift/GitOps safety
+- Helm/Kustomize render risks
+- ACM and Argo CD lifecycle ordering
+- ApplicationSet targeting
+- RBAC and secret exposure
+- Documentation drift
+- Missing validation
+
+Only report actionable findings. Each finding must include severity, exact location, failure scenario, why validation misses it, and smallest credible fix.
+If there are no actionable findings, say so and list residual validation gaps.
+
+Request:
+
+$(cat "$REQUEST_FILE")
+
+Plan:
+
+$(cat "$PLAN_FILE" 2>/dev/null || true)
+
+Implementation report:
+
+$(cat "$IMPLEMENTATION_FILE" 2>/dev/null || true)
+PROMPT
+)" \
+  --permission-mode dontAsk \
+  --disallowedTools "Edit,Write" \
+  > "$REVIEW_FILE"
+
+print_next_file "Claude review" "$REVIEW_FILE"

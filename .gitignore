@@ -1,1 +1,9 @@
 .DS_Store
+
+# Local AI handoff state
+.ai-work/request.md
+.ai-work/research.md
+.ai-work/plan.md
+.ai-work/implementation.md
+.ai-work/review.md
+.ai-work/fix.md

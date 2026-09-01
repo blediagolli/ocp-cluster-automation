@@ -1,0 +1,28 @@
+default_agents = ["claude", "codex"]
+nested = false
+
+[gitignore]
+enabled = false
+local = false
+
+[backup]
+enabled = true
+
+[skills]
+enabled = true
+
+[agents]
+enabled = true
+include_in_rules = false
+cleanup_orphaned = false
+
+[mcp]
+enabled = false
+
+[agents.claude]
+enabled = true
+output_path = "CLAUDE.md"
+
+[agents.codex]
+enabled = true
+output_path_instructions = "AGENTS.md"

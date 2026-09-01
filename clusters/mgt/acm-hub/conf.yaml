@@ -17,6 +17,7 @@ operators:
   cloudnative-pg:
     channel: stable-v1
   cluster-observability:
+    include: true
     channel: stable
   compliance-operator:
     channel: stable

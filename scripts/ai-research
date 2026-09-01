@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/ai-common.sh"
+
+ensure_request_file
+require_command claude
+
+cd "$ROOT_DIR"
+
+claude -p "$(cat <<PROMPT
+You are the research agent for this repository.
+
+Read .ai-work/request.md and inspect the repository.
+Do not edit implementation files.
+Do not implement the change.
+
+Write concise Markdown research for Codex with:
+- Request summary
+- Relevant existing behavior
+- Affected files and ownership boundaries
+- Kubernetes/OpenShift resources involved
+- Risks, assumptions, and unknowns
+- Suggested validation commands
+
+Use this request:
+
+$(cat "$REQUEST_FILE")
+PROMPT
+)" \
+  --permission-mode dontAsk \
+  --disallowedTools "Edit,Write" \
+  > "$RESEARCH_FILE"
+
+print_next_file "Claude research" "$RESEARCH_FILE"

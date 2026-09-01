@@ -62,6 +62,14 @@ The legacy 4.11 policy bundle is no longer active. Operator channels and instanc
 managed by the versioned targets under `operators/targets/`; cluster lifecycle policies
 should be reintroduced only with a tested OpenShift-version profile.
 
+## AI development setup
+
+This repository includes a lean Ruler setup under `.ruler/` for generating shared
+Claude and Codex project guidance, skills, and read-only specialist agents. See
+[docs/ai-dev/README.md](docs/ai-dev/README.md) for bootstrap instructions and the
+OpenShift/GitOps validation workflow. The default handoff flow is Claude for
+research/planning and review, with Codex owning implementation.
+
 ## Secrets and credentials
 
 Provisioning values under `conf/` are examples and must not contain real credentials.
@@ -82,7 +90,5 @@ ACM is used for provisioning Openshift clusters and also for applying policies t
 
 #### Openshift GitOps (ArgoCD)
 Openshift GitOps (ArgoCD) is used as a Continuous Delivery tool for applying all the configuration to all out Openshift clusters.
-
-
 
 
