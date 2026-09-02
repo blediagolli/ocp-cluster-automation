@@ -4,14 +4,41 @@ securedCluster:
   namespace: stackrox
   clusterName: ""
   centralEndpoint: ""
+  # "job" = secrets are created by the init bundle job on acs-central (same cluster)
+  # "preExisting" = secrets are pre-created with cert data from values below (or external-secrets/sealed-secrets)
+  secretMode: "preExisting"
+  secrets:
+    admissionControl:
+      name: admission-control-tls
+      ca: ""
+      cert: ""
+      key: ""
+    sensor:
+      name: sensor-tls
+      ca: ""
+      cert: ""
+      key: ""
+      acsHost: ""
+    collector:
+      name: collector-tls
+      ca: ""
+      cert: ""
+      key: ""
+  auditLogs:
+    collection: Auto
   admissionControl:
-    listenOnCreates: true
-    listenOnUpdates: true
+    listenOnCreates: false
+    listenOnUpdates: false
     listenOnEvents: true
     contactImageScanners: ScanIfMissing
-  collector:
-    collection: CORE_BPF
-    imageFlavor: Regular
-  taintToleration: TolerateTaints
+  perNode:
+    collector:
+      collection: CORE_BPF
+      imageFlavor: Regular
+      forwardDeployedImageAnalysis: Inactive
+    taintToleration: TolerateTaints
+  monitoring:
+    openshift:
+      enabled: true
 securedClusterNamespace:
   include: false

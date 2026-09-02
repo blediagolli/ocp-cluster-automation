@@ -10,7 +10,7 @@ spec:
   centralEndpoint: {{ .Values.securedCluster.centralEndpoint }}
   {{- end }}
   auditLogs:
-    collection: Auto
+    collection: {{ .Values.securedCluster.auditLogs.collection }}
   admissionControl:
     listenOnCreates: {{ .Values.securedCluster.admissionControl.listenOnCreates }}
     listenOnUpdates: {{ .Values.securedCluster.admissionControl.listenOnUpdates }}
@@ -18,11 +18,11 @@ spec:
     contactImageScanners: {{ .Values.securedCluster.admissionControl.contactImageScanners }}
   perNode:
     collector:
-      collection: {{ .Values.securedCluster.collector.collection }}
-      imageFlavor: {{ .Values.securedCluster.collector.imageFlavor }}
-      forwardDeployedImageAnalysis: Inactive
-    taintToleration: {{ .Values.securedCluster.taintToleration }}
+      collection: {{ .Values.securedCluster.perNode.collector.collection }}
+      imageFlavor: {{ .Values.securedCluster.perNode.collector.imageFlavor }}
+      forwardDeployedImageAnalysis: {{ .Values.securedCluster.perNode.collector.forwardDeployedImageAnalysis }}
+    taintToleration: {{ .Values.securedCluster.perNode.taintToleration }}
   monitoring:
     openshift:
-      enabled: true
+      enabled: {{ .Values.securedCluster.monitoring.openshift.enabled }}
 {{- end }}

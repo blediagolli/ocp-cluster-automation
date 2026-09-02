@@ -3,5 +3,41 @@ multiClusterObservability:
   name: observability
   namespace: open-cluster-management-observability
   storageClass: gp3-csi
+  compactStorageSize: 50Gi
+  receiveStorageSize: 50Gi
+  ruleStorageSize: 50Gi
+  storeStorageSize: 50Gi
+  capabilities: {}
+  observabilityAddonSpec: {}
+pullSecret:
+  include: true
+  secretName: multiclusterhub-operator-pull-secret
+  sourceNamespace: openshift-config
+  sourceSecretName: pull-secret
+objectStorage:
+  include: true
+  secretName: thanos-object-storage
+  key: thanos.yaml
+  bucket: observability
+  endpoint: s3.openshift-storage.svc
+  insecure: false
+  accessKey: ""
+  secretKey: ""
+  httpConfig:
+    tlsConfig:
+      caFile: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+  objectBucketClaim:
+    include: false
+    name: observability-obc
+    namespace: open-cluster-management-observability
+    bucketName: observability
+    storageClassName: openshift-storage.noobaa.io
 observabilityNamespace:
+  include: true
+consoleLink:
   include: false
+  name: observability
+  location: ApplicationMenu
+  section: Red Hat applications
+  text: Red Hat Advanced Cluster Management Observability
+  imageURL: https://upload.wikimedia.org/wikipedia/commons/3/3a/OpenShift-LogoType.svg

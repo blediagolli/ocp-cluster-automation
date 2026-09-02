@@ -1,0 +1,10 @@
+{{- if and .Values.objectStorage.include .Values.objectStorage.objectBucketClaim.include .Values.multiClusterObservability.include }}
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: {{ .Values.objectStorage.objectBucketClaim.name }}
+  namespace: {{ .Values.objectStorage.objectBucketClaim.namespace }}
+spec:
+  bucketName: {{ .Values.objectStorage.objectBucketClaim.bucketName }}
+  storageClassName: {{ .Values.objectStorage.objectBucketClaim.storageClassName }}
+{{- end }}

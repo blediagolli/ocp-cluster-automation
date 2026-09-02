@@ -2,10 +2,19 @@ central:
   include: false
   name: stackrox-central-services
   namespace: stackrox
+  exposure:
+    route:
+      enabled: true
+    loadBalancer:
+      enabled: false
+      port: 443
+    nodePort:
+      enabled: false
   persistence:
-    claimName: central-db
+    claimName: stackrox-db
     size: 100Gi
   db:
+    isEnabled: Default
     resources:
       requests:
         cpu: 500m
@@ -13,21 +22,47 @@ central:
       limits:
         cpu: 2
         memory: 6Gi
+  telemetry:
+    enabled: true
+  monitoring:
+    openshift:
+      enabled: true
+  egress:
+    connectivityPolicy: Online
   scanner:
-    autoScaling:
-      minReplicas: 2
-      maxReplicas: 5
+    scannerComponent: Enabled
+    analyzer:
+      scaling:
+        autoScaling: Enabled
+        minReplicas: 2
+        maxReplicas: 5
+        replicas: 2
+    monitoring:
+      exposeEndpoint: Enabled
   scannerV4:
+    scannerComponent: Default
     indexer:
-      minReplicas: 1
-      maxReplicas: 2
+      scaling:
+        autoScaling: Enabled
+        minReplicas: 2
+        maxReplicas: 5
+        replicas: 3
     matcher:
-      minReplicas: 1
-      maxReplicas: 2
+      scaling:
+        autoScaling: Enabled
+        minReplicas: 2
+        maxReplicas: 5
+        replicas: 3
     db:
       claimName: scanner-v4-db
+      persistence:
+        size: 50Gi
   initBundle:
     include: false
+    # "job" = PostSync job calls Central API to generate init bundle secrets
+    # Set to "job" when Central and SecuredCluster are on the same cluster
+    mode: "job"
+    password: ""
   consoleLink:
     include: false
     centralUrl: ""

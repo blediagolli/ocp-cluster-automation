@@ -3,12 +3,21 @@ apiVersion: observability.open-cluster-management.io/v1beta2
 kind: MultiClusterObservability
 metadata:
   name: {{ .Values.multiClusterObservability.name }}
+  namespace: {{ .Values.multiClusterObservability.namespace }}
 spec:
-  observabilityAddonSpec: {}
+  {{- if .Values.multiClusterObservability.capabilities }}
+  capabilities:
+    {{- toYaml .Values.multiClusterObservability.capabilities | nindent 4 }}
+  {{- end }}
+  observabilityAddonSpec:
+    {{- toYaml .Values.multiClusterObservability.observabilityAddonSpec | nindent 4 }}
   storageConfig:
     metricObjectStorage:
-      name: thanos-object-storage
-      key: thanos.yaml
+      name: {{ .Values.objectStorage.secretName }}
+      key: {{ .Values.objectStorage.key }}
     storageClass: {{ .Values.multiClusterObservability.storageClass }}
-    statefulSetSize: 10Gi
+    compactStorageSize: {{ .Values.multiClusterObservability.compactStorageSize }}
+    receiveStorageSize: {{ .Values.multiClusterObservability.receiveStorageSize }}
+    ruleStorageSize: {{ .Values.multiClusterObservability.ruleStorageSize }}
+    storeStorageSize: {{ .Values.multiClusterObservability.storeStorageSize }}
 {{- end }}

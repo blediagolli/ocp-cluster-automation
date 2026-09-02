@@ -7,15 +7,18 @@ metadata:
 spec:
   central:
     exposure:
-      loadBalancer:
-        enabled: false
-        port: 443
-      nodePort:
-        enabled: false
       route:
-        enabled: true
+        enabled: {{ .Values.central.exposure.route.enabled }}
+      loadBalancer:
+        enabled: {{ .Values.central.exposure.loadBalancer.enabled }}
+        port: {{ .Values.central.exposure.loadBalancer.port }}
+      nodePort:
+        enabled: {{ .Values.central.exposure.nodePort.enabled }}
+    persistence:
+      persistentVolumeClaim:
+        claimName: {{ .Values.central.persistence.claimName }}
     db:
-      isEnabled: Default
+      isEnabled: {{ .Values.central.db.isEnabled }}
       persistence:
         persistentVolumeClaim:
           claimName: {{ .Values.central.persistence.claimName }}
@@ -26,42 +29,39 @@ spec:
         limits:
           cpu: {{ .Values.central.db.resources.limits.cpu }}
           memory: {{ .Values.central.db.resources.limits.memory }}
-    persistence:
-      persistentVolumeClaim:
-        claimName: {{ .Values.central.persistence.claimName }}
     telemetry:
-      enabled: true
+      enabled: {{ .Values.central.telemetry.enabled }}
   monitoring:
     openshift:
-      enabled: true
+      enabled: {{ .Values.central.monitoring.openshift.enabled }}
   egress:
-    connectivityPolicy: Online
+    connectivityPolicy: {{ .Values.central.egress.connectivityPolicy }}
   scanner:
+    scannerComponent: {{ .Values.central.scanner.scannerComponent }}
     analyzer:
       scaling:
-        autoScaling: Enabled
-        maxReplicas: {{ .Values.central.scanner.autoScaling.maxReplicas }}
-        minReplicas: {{ .Values.central.scanner.autoScaling.minReplicas }}
-        replicas: {{ .Values.central.scanner.autoScaling.minReplicas }}
+        autoScaling: {{ .Values.central.scanner.analyzer.scaling.autoScaling }}
+        minReplicas: {{ .Values.central.scanner.analyzer.scaling.minReplicas }}
+        maxReplicas: {{ .Values.central.scanner.analyzer.scaling.maxReplicas }}
+        replicas: {{ .Values.central.scanner.analyzer.scaling.replicas }}
     monitoring:
-      exposeEndpoint: Enabled
-    scannerComponent: Enabled
+      exposeEndpoint: {{ .Values.central.scanner.monitoring.exposeEndpoint }}
   scannerV4:
-    scannerComponent: Default
+    scannerComponent: {{ .Values.central.scannerV4.scannerComponent }}
     db:
       persistence:
         persistentVolumeClaim:
           claimName: {{ .Values.central.scannerV4.db.claimName }}
     indexer:
       scaling:
-        autoScaling: Enabled
-        maxReplicas: {{ .Values.central.scannerV4.indexer.maxReplicas }}
-        minReplicas: {{ .Values.central.scannerV4.indexer.minReplicas }}
-        replicas: {{ .Values.central.scannerV4.indexer.minReplicas }}
+        autoScaling: {{ .Values.central.scannerV4.indexer.scaling.autoScaling }}
+        minReplicas: {{ .Values.central.scannerV4.indexer.scaling.minReplicas }}
+        maxReplicas: {{ .Values.central.scannerV4.indexer.scaling.maxReplicas }}
+        replicas: {{ .Values.central.scannerV4.indexer.scaling.replicas }}
     matcher:
       scaling:
-        autoScaling: Enabled
-        maxReplicas: {{ .Values.central.scannerV4.matcher.maxReplicas }}
-        minReplicas: {{ .Values.central.scannerV4.matcher.minReplicas }}
-        replicas: {{ .Values.central.scannerV4.matcher.minReplicas }}
+        autoScaling: {{ .Values.central.scannerV4.matcher.scaling.autoScaling }}
+        minReplicas: {{ .Values.central.scannerV4.matcher.scaling.minReplicas }}
+        maxReplicas: {{ .Values.central.scannerV4.matcher.scaling.maxReplicas }}
+        replicas: {{ .Values.central.scannerV4.matcher.scaling.replicas }}
 {{- end }}
