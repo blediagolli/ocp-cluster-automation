@@ -1,0 +1,85 @@
+template:
+  include: true
+  name: project-request
+  namespace: openshift-config
+
+projectConfig:
+  include: false
+  projectRequestMessage: ""
+
+selfProvisioners:
+  include: false
+
+namespace:
+  labels: {}
+  annotations: {}
+  podSecurity:
+    enforce: restricted
+    audit: restricted
+    warn: restricted
+
+networkPolicy:
+  include: false
+  defaultDenyIngress: true
+  allowSameNamespace: true
+  allowFromOpenShiftIngress: true
+  allowFromOpenShiftMonitoring: true
+  allowFromKubeApiserver: true
+
+resourceQuota:
+  include: false
+  name: default
+  hard:
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
+    pods: "20"
+    persistentvolumeclaims: "10"
+    requests.storage: 50Gi
+
+limitRange:
+  include: false
+  name: default
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 256Mi
+      max:
+        cpu: "4"
+        memory: 8Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+
+roleBindings:
+  include: false
+  adminForRequestingUser: true
+  additional: []
+  # - name: ops-admin
+  #   roleRef:
+  #     apiGroup: rbac.authorization.k8s.io
+  #     kind: ClusterRole
+  #     name: admin
+  #   subjects:
+  #     - apiGroup: rbac.authorization.k8s.io
+  #       kind: Group
+  #       name: ops-team
+
+serviceAccount:
+  include: false
+  name: default
+  annotations: {}
+  imagePullSecrets: []
+  # - name: my-registry-secret
+
+egressFirewall:
+  include: false
+  rules: []
+  # - type: Allow
+  #   to:
+  #     cidrSelector: 0.0.0.0/0

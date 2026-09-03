@@ -88,3 +88,24 @@ securedCluster:
   centralEndpoint: "central-stackrox.apps.cluster-5cbhf.dyn.redhatworkshops.io:443"
 securedClusterNamespace:
   include: false
+projectConfig:
+  include: true
+  projectRequestMessage: "Contact platform-team to request a project."
+selfProvisioners:
+  include: true
+networkPolicy:
+  include: true
+resourceQuota:
+  include: true
+limitRange:
+  include: true
+roleBindings:
+  include: true
+serviceAccount:
+  include: true
+egressFirewall:
+  include: true
+  rules:
+    - type: Allow
+      to:
+        cidrSelector: 0.0.0.0/0
