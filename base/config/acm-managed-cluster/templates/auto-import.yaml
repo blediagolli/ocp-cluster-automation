@@ -1,49 +1,9 @@
 {{- if and .Values.managedCluster.include .Values.managedCluster.autoImport.include }}
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: {{ .Values.managedCluster.name }}-import
-  namespace: {{ .Values.managedCluster.name }}
-  annotations:
-    argocd.argoproj.io/hook: PostSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: {{ .Values.managedCluster.name }}-import
-  annotations:
-    argocd.argoproj.io/hook: PostSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
-rules:
-  - apiGroups:
-      - ""
-    resources:
-      - secrets
-    verbs:
-      - get
-      - list
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: {{ .Values.managedCluster.name }}-import-binding
-  annotations:
-    argocd.argoproj.io/hook: PostSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: {{ .Values.managedCluster.name }}-import
-subjects:
-  - kind: ServiceAccount
-    name: {{ .Values.managedCluster.name }}-import
-    namespace: {{ .Values.managedCluster.name }}
----
+{{- if eq .Values.managedCluster.autoImport.mode "kubeconfig" }}
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .Values.managedCluster.name }}-import
+  name: {{ .Values.managedCluster.name }}-auto-import
   namespace: {{ .Values.managedCluster.name }}
   annotations:
     argocd.argoproj.io/hook: PostSync
@@ -51,47 +11,86 @@ metadata:
 spec:
   template:
     spec:
-      serviceAccountName: {{ .Values.managedCluster.name }}-import
       restartPolicy: OnFailure
+      serviceAccountName: {{ .Values.managedCluster.name }}-auto-import
       containers:
-        - name: import
+        - name: auto-import
           image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
           env:
             - name: CLUSTER_NAME
               value: {{ .Values.managedCluster.name }}
+            - name: SECRET_NAME
+              value: {{ .Values.managedCluster.autoImport.kubeconfig.secretName }}
           command:
             - /bin/bash
             - -c
             - |
-              echo "Waiting for import secret ${CLUSTER_NAME}-import..."
-              until oc get secret "${CLUSTER_NAME}-import" -n "${CLUSTER_NAME}" &>/dev/null; do
-                echo "Import secret not yet available, retrying in 10s..."
-                sleep 10
-              done
-              echo "Import secret found."
-
-              echo "Extracting import manifests..."
-              CRDS=$(oc get secret "${CLUSTER_NAME}-import" -n "${CLUSTER_NAME}" -o jsonpath='{.data.crds\.yaml}' | base64 -d)
-              IMPORT=$(oc get secret "${CLUSTER_NAME}-import" -n "${CLUSTER_NAME}" -o jsonpath='{.data.import\.yaml}' | base64 -d)
-
-              echo "Applying CRDs to target cluster..."
-              echo "${CRDS}" | oc apply --kubeconfig=/target/kubeconfig -f - || true
-
-              echo "Applying import manifests to target cluster..."
-              echo "${IMPORT}" | oc apply --kubeconfig=/target/kubeconfig -f -
-
-              echo "Import complete for cluster ${CLUSTER_NAME}."
-          volumeMounts:
-            - name: target-kubeconfig
-              mountPath: /target
-              readOnly: true
+              KUBECONFIG_DATA=$(oc get secret "${SECRET_NAME}" -n "${CLUSTER_NAME}" -o jsonpath='{.data.kubeconfig}')
+              oc create secret generic auto-import-secret \
+                -n "${CLUSTER_NAME}" \
+                --from-literal=kubeconfig="$(echo "${KUBECONFIG_DATA}" | base64 -d)" \
+                --dry-run=client -o yaml | \
+              oc annotate -f - --local \
+                managedcluster-import-controller.open-cluster-management.io/autoImportRetry=5 \
+                -o yaml | \
+              oc apply -f -
           securityContext:
             runAsNonRoot: true
             seccompProfile:
               type: RuntimeDefault
-      volumes:
-        - name: target-kubeconfig
-          secret:
-            secretName: {{ .Values.managedCluster.autoImport.kubeconfigSecret }}
       terminationGracePeriodSeconds: 0
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.managedCluster.name }}-auto-import
+  namespace: {{ .Values.managedCluster.name }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Values.managedCluster.name }}-auto-import
+  namespace: {{ .Values.managedCluster.name }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Values.managedCluster.name }}-auto-import
+  namespace: {{ .Values.managedCluster.name }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Values.managedCluster.name }}-auto-import
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.managedCluster.name }}-auto-import
+    namespace: {{ .Values.managedCluster.name }}
+{{- end }}
+{{- if eq .Values.managedCluster.autoImport.mode "token" }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: auto-import-secret
+  namespace: {{ .Values.managedCluster.name }}
+  annotations:
+    managedcluster-import-controller.open-cluster-management.io/autoImportRetry: "5"
+    argocd.argoproj.io/sync-wave: "1"
+stringData:
+  token: {{ .Values.managedCluster.autoImport.token.value | quote }}
+  server: {{ .Values.managedCluster.autoImport.token.server | quote }}
+type: Opaque
+{{- end }}
 {{- end }}

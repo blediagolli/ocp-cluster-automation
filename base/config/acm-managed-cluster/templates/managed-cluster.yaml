@@ -13,5 +13,5 @@ metadata:
     {{ $key }}: {{ $value | quote }}
     {{- end }}
 spec:
-  hubAcceptsClient: true
+  hubAcceptsClient: {{ .Values.managedCluster.hubAcceptsClient }}
 {{- end }}

@@ -1,4 +1,4 @@
 apiVersion: v2
 name: acm-managed-cluster
-description: ACM ManagedCluster and KlusterletAddonConfig for cluster import
+description: ACM managed cluster import with addons and auto-import
 version: 1.0.0

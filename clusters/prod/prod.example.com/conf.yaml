@@ -8,7 +8,11 @@ managedCluster:
   environment: prod
   autoImport:
     include: true
-    kubeconfigSecret: prod-kubeconfig
+    mode: kubeconfig
+    kubeconfig:
+      secretName: prod-kubeconfig
+  addons:
+    include: true
 operators:
   openshift-gitops:
     include: false

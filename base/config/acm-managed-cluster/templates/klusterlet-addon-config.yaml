@@ -1,4 +1,4 @@
-{{- if .Values.managedCluster.include }}
+{{- if and .Values.managedCluster.include .Values.managedCluster.klusterletAddonConfig.include }}
 apiVersion: agent.open-cluster-management.io/v1
 kind: KlusterletAddonConfig
 metadata:
@@ -8,13 +8,11 @@ spec:
   clusterName: {{ .Values.managedCluster.name }}
   clusterNamespace: {{ .Values.managedCluster.name }}
   applicationManager:
-    enabled: {{ .Values.managedCluster.addons.applicationManager }}
+    enabled: {{ .Values.managedCluster.klusterletAddonConfig.applicationManager }}
   certPolicyController:
-    enabled: {{ .Values.managedCluster.addons.certPolicyController }}
-  iamPolicyController:
-    enabled: {{ .Values.managedCluster.addons.iamPolicyController }}
+    enabled: {{ .Values.managedCluster.klusterletAddonConfig.certPolicyController }}
   policyController:
-    enabled: {{ .Values.managedCluster.addons.policyController }}
+    enabled: {{ .Values.managedCluster.klusterletAddonConfig.policyController }}
   searchCollector:
-    enabled: {{ .Values.managedCluster.addons.searchCollector }}
+    enabled: {{ .Values.managedCluster.klusterletAddonConfig.searchCollector }}
 {{- end }}

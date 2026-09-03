@@ -3,15 +3,34 @@ managedCluster:
   name: ""
   environment: ""
   vendor: OpenShift
-  cloudProvider: ""
+  cloudProvider: auto-detect
   clusterSet: default
   labels: {}
+  hubAcceptsClient: true
+
   autoImport:
     include: false
-    kubeconfigSecret: ""
-  addons:
+    mode: kubeconfig
+    kubeconfig:
+      secretName: ""
+    token:
+      server: ""
+      value: ""
+
+  klusterletAddonConfig:
+    include: true
     applicationManager: true
     certPolicyController: true
-    iamPolicyController: true
     policyController: true
     searchCollector: true
+
+  addons:
+    include: false
+    configPolicyController: true
+    governancePolicyFramework: true
+    workManager: true
+    clusterProxy: false
+    managedServiceAccount: false
+    applicationManager: false
+    certPolicyController: false
+    searchCollector: false
