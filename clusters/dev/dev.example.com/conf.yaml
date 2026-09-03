@@ -1,7 +1,7 @@
 cluster:
   name: dev
   environment: dev
-  address: "https://kubernetes.default.svc"
+  address: "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/dev"
 managedCluster:
   include: true
   name: dev
@@ -81,3 +81,5 @@ operators:
     channel: stable
   trusted-artifact-signer:
     channel: stable
+securedCluster:
+  clusterName: dev

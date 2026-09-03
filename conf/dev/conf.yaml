@@ -32,6 +32,15 @@ machineConfig:
   include: false
 
 # Operators
+securedCluster:
+  include: true
+  secretMode: "preExisting"
+  centralEndpoint: "central-stackrox.apps.cluster-5cbhf.dyn.redhatworkshops.io:443"
+securedClusterNamespace:
+  include: true
+
 operators:
   openshift-gitops:
-    include: false
+    include: true
+  advanced-cluster-security:
+    include: true
