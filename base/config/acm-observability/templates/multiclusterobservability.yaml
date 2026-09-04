@@ -3,6 +3,8 @@ apiVersion: observability.open-cluster-management.io/v1beta2
 kind: MultiClusterObservability
 metadata:
   name: {{ .Values.multiClusterObservability.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   {{- if .Values.multiClusterObservability.capabilities }}
   capabilities:

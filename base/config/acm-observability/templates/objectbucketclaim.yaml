@@ -4,6 +4,8 @@ kind: ObjectBucketClaim
 metadata:
   name: {{ .Values.objectStorage.objectBucketClaim.name }}
   namespace: {{ .Values.objectStorage.objectBucketClaim.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   bucketName: {{ .Values.objectStorage.objectBucketClaim.bucketName }}
   storageClassName: {{ .Values.objectStorage.objectBucketClaim.storageClassName }}
