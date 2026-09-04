@@ -6,21 +6,14 @@ etcdDefrag:
   # Defrag only runs on members where fragmentation exceeds this value.
   # Set to 0 to always defrag regardless of fragmentation level.
   fragmentationThreshold: 50
-  # Use the same etcd image running on the cluster:
-  # oc get pods -n openshift-etcd -l app=etcd -o jsonpath='{.items[0].spec.containers[0].image}'
-  image: quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:59812f77ca88f24946b6c5c89d838c78b0ac13df9f5eba665904ef29276f5af7
+  # CLI image used for the CronJob pod. The pod uses `oc exec` into the
+  # running etcd pods (which already have etcdctl and certs configured),
+  # so only `oc` is needed — no etcd-specific image required.
+  # Compatible across OCP 4.19-4.22.
+  image: registry.redhat.io/openshift4/ose-cli:latest
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
-  # Timeout in seconds for the entire defrag job
   activeDeadlineSeconds: 600
-  tolerations:
-    - key: node-role.kubernetes.io/master
-      operator: Exists
-      effect: NoSchedule
-    - key: node-role.kubernetes.io/control-plane
-      operator: Exists
-      effect: NoSchedule
   alert:
     include: true
-    # Alert if the CronJob has not succeeded in this many hours
     noSuccessThresholdHours: 168
