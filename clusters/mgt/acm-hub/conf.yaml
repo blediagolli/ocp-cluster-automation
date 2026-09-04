@@ -117,3 +117,8 @@ etcdBackup:
   include: true
   schedule: "0 */6 * * *"
   retentionCount: 7
+  storage:
+    type: obc
+    obc:
+      name: etcd-backup-bucket
+      storageClass: openshift-storage.noobaa.io
