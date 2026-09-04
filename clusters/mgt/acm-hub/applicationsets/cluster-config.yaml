@@ -41,6 +41,7 @@ spec:
               elements:
                 - template: acs-central
                 - template: project-request-template
+                - template: etcd-defrag
                 # - template: acm-multiclusterhub
                 # - template: acm-observability
                 # - template: aap-instance

@@ -109,3 +109,7 @@ egressFirewall:
     - type: Allow
       to:
         cidrSelector: 0.0.0.0/0
+etcdDefrag:
+  include: true
+  schedule: "0 3 * * 0"
+  fragmentationThreshold: 50
