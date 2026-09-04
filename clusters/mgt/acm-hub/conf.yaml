@@ -112,6 +112,9 @@ egressFirewall:
 multiClusterObservability:
   include: true
   storageClass: ocs-external-storagecluster-ceph-rbd
+consoleLink:
+  include: true
+  href: "https://grafana-open-cluster-management-observability.apps.cluster-c8444.dyn.redhatworkshops.io"
 userWorkloadMonitoring:
   include: true
   prometheus:
