@@ -4,7 +4,6 @@ userWorkloadMonitoring:
   # Prometheus configuration for user workload monitoring
   prometheus:
     retention: 24h
-    replicas: 2
     # Set storageClass to enable persistent storage for Prometheus
     # Leave empty to use ephemeral storage
     storageClass: ""

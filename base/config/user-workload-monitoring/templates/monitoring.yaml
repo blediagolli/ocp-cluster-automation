@@ -17,7 +17,6 @@ data:
   config.yaml: |
     prometheus:
       retention: {{ .Values.userWorkloadMonitoring.prometheus.retention }}
-      replicas: {{ .Values.userWorkloadMonitoring.prometheus.replicas }}
       {{- if .Values.userWorkloadMonitoring.prometheus.storageClass }}
       volumeClaimTemplate:
         spec:
