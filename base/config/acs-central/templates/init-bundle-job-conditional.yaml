@@ -76,7 +76,7 @@ spec:
               {{- if .Values.central.initBundle.password }}
               PASSWORD="{{ .Values.central.initBundle.password }}"
               {{- else }}
-              PASSWORD=$(oc get secret central-htpasswd -n "${NAMESPACE}" -o go-template='{{`{{index .Data "password" | base64decode}}`}}')
+              PASSWORD=$(oc get secret central-htpasswd -n "${NAMESPACE}" -o jsonpath='{.data.password}' | base64 -d)
               {{- end }}
 
               echo "Generating init bundle..."
