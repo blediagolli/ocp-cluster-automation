@@ -113,3 +113,7 @@ etcdDefrag:
   include: true
   schedule: "0 3 * * 0"
   fragmentationThreshold: 50
+etcdBackup:
+  include: true
+  schedule: "0 */6 * * *"
+  retentionCount: 7

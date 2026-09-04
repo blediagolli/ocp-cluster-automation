@@ -3,18 +3,15 @@ etcdBackup:
   namespace: openshift-etcd
   schedule: "0 */6 * * *"
   retentionCount: 7
-  image: registry.redhat.io/openshift4/ose-cli:v4.22
+  # CLI image — only needs `oc` for exec/cp into etcd pods.
+  # Compatible across OCP 4.19-4.22.
+  image: registry.redhat.io/openshift4/ose-cli:latest
   storage:
     type: pvc
     pvc:
       name: etcd-backup-pvc
       storageClass: ""
       size: 50Gi
-    # s3:
-    #   bucket: ""
-    #   region: us-east-1
-    #   endpoint: ""
-    #   credentialSecretName: etcd-backup-s3-creds
   tolerations:
     - key: node-role.kubernetes.io/master
       operator: Exists

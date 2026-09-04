@@ -1,4 +1,5 @@
 {{- if .Values.etcdBackup.include }}
+{{- if eq .Values.etcdBackup.storage.type "pvc" }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -14,6 +15,7 @@ spec:
   resources:
     requests:
       storage: {{ .Values.etcdBackup.storage.pvc.size }}
+{{- end }}
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -22,17 +24,120 @@ metadata:
   namespace: {{ .Values.etcdBackup.namespace }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: etcd-backup
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: etcd-backup
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: cluster-admin
+  name: etcd-backup
 subjects:
   - kind: ServiceAccount
     name: etcd-backup
     namespace: {{ .Values.etcdBackup.namespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: etcd-backup-script
+  namespace: {{ .Values.etcdBackup.namespace }}
+data:
+  backup.sh: |
+    #!/bin/bash
+    set -euo pipefail
+
+    NAMESPACE="openshift-etcd"
+    BACKUP_DIR=/backup/$(date +%Y%m%d-%H%M%S)
+    RETENTION={{ .Values.etcdBackup.retentionCount }}
+
+    echo "=== etcd backup starting ==="
+    echo "Backup directory: ${BACKUP_DIR}"
+    echo ""
+
+    # --- Find an etcd pod to exec into ---
+    ETCD_POD=$(oc get pods -n ${NAMESPACE} -l app=etcd \
+      --field-selector=status.phase=Running \
+      -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+
+    if [ -z "${ETCD_POD}" ]; then
+      echo "ERROR: No running etcd pod found in ${NAMESPACE}"
+      exit 1
+    fi
+    echo "Using etcd pod: ${ETCD_POD}"
+
+    ETCD_EP=$(oc exec -n ${NAMESPACE} ${ETCD_POD} -c etcd -- \
+      printenv ETCDCTL_ENDPOINTS 2>/dev/null || echo "https://localhost:2379")
+
+    # Helper: run etcdctl with ETCDCTL_ENDPOINTS unset (etcd 3.6 compat)
+    run_etcdctl() {
+      oc exec -n ${NAMESPACE} ${ETCD_POD} -c etcd -- \
+        env -u ETCDCTL_ENDPOINTS etcdctl "$@"
+    }
+
+    # --- Pre-backup health check ---
+    echo "--- Cluster health ---"
+    if ! run_etcdctl --endpoints="${ETCD_EP}" endpoint health --cluster; then
+      echo "ERROR: Cluster is not healthy. Aborting backup."
+      exit 1
+    fi
+    echo ""
+
+    # --- Take snapshot ---
+    SNAPSHOT_PATH="/tmp/etcd-snapshot-$(date +%s).db"
+    echo "Taking snapshot to ${SNAPSHOT_PATH} inside ${ETCD_POD}..."
+    run_etcdctl --endpoints="${ETCD_EP}" snapshot save "${SNAPSHOT_PATH}"
+    echo ""
+
+    # --- Copy snapshot out of etcd pod ---
+    mkdir -p "${BACKUP_DIR}"
+    echo "Copying snapshot to ${BACKUP_DIR}/snapshot.db..."
+    oc cp "${NAMESPACE}/${ETCD_POD}:${SNAPSHOT_PATH}" "${BACKUP_DIR}/snapshot.db" -c etcd
+
+    # --- Verify snapshot ---
+    SNAPSHOT_SIZE=$(stat -c %s "${BACKUP_DIR}/snapshot.db" 2>/dev/null || stat -f %z "${BACKUP_DIR}/snapshot.db" 2>/dev/null || echo "0")
+    if [ "${SNAPSHOT_SIZE}" -eq 0 ]; then
+      echo "ERROR: Snapshot file is empty"
+      rm -rf "${BACKUP_DIR}"
+      exit 1
+    fi
+    echo "Snapshot size: $(( SNAPSHOT_SIZE / 1024 / 1024 ))MB"
+
+    # --- Save metadata ---
+    cat > "${BACKUP_DIR}/metadata.txt" <<METAEOF
+    timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+    etcd_pod: ${ETCD_POD}
+    snapshot_size_bytes: ${SNAPSHOT_SIZE}
+    etcd_version: $(run_etcdctl --endpoints="${ETCD_EP}" version 2>/dev/null | head -1 || echo "unknown")
+    cluster_members: $(run_etcdctl --endpoints="${ETCD_EP}" member list -w simple 2>/dev/null | wc -l | tr -d ' ')
+    METAEOF
+
+    # --- Clean up remote snapshot ---
+    oc exec -n ${NAMESPACE} ${ETCD_POD} -c etcd -- rm -f "${SNAPSHOT_PATH}" 2>/dev/null || true
+
+    # --- Retention: remove old backups ---
+    BACKUP_COUNT=$(ls -dt /backup/*/ 2>/dev/null | wc -l | tr -d ' ')
+    if [ "${BACKUP_COUNT}" -gt "${RETENTION}" ]; then
+      REMOVE_COUNT=$((BACKUP_COUNT - RETENTION))
+      echo "Removing ${REMOVE_COUNT} old backup(s) (retention: ${RETENTION})..."
+      ls -dt /backup/*/ | tail -n +$((RETENTION + 1)) | xargs rm -rf || true
+    fi
+
+    echo ""
+    echo "=== etcd backup complete ==="
+    echo "Backup: ${BACKUP_DIR}"
+    echo "Backups on disk: $(ls -dt /backup/*/ 2>/dev/null | wc -l | tr -d ' ')/${RETENTION}"
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -42,41 +147,37 @@ metadata:
 spec:
   schedule: {{ .Values.etcdBackup.schedule | quote }}
   concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: {{ .Values.etcdBackup.retentionCount }}
+  successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
+      activeDeadlineSeconds: 600
       template:
         spec:
           serviceAccountName: etcd-backup
           restartPolicy: OnFailure
+          hostNetwork: true
           tolerations:
             {{- toYaml .Values.etcdBackup.tolerations | nindent 12 }}
           nodeSelector:
-            node-role.kubernetes.io/master: ""
+            node-role.kubernetes.io/control-plane: ""
           containers:
             - name: etcd-backup
               image: {{ .Values.etcdBackup.image }}
               command:
                 - /bin/bash
-                - -c
-                - |
-                  set -euo pipefail
-                  BACKUP_DIR=/backup/$(date +%Y%m%d-%H%M%S)
-                  mkdir -p ${BACKUP_DIR}
-
-                  # Take etcd snapshot via debug pod
-                  oc debug node/$(oc get nodes -l node-role.kubernetes.io/master -o jsonpath='{.items[0].metadata.name}') \
-                    -- chroot /host /usr/local/bin/cluster-backup.sh ${BACKUP_DIR}
-
-                  # Cleanup old backups beyond retention
-                  ls -dt /backup/*/ | tail -n +{{ add .Values.etcdBackup.retentionCount 1 }} | xargs rm -rf || true
-
-                  echo "Backup complete: ${BACKUP_DIR}"
+                - /scripts/backup.sh
               volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                  readOnly: true
                 - name: backup-storage
                   mountPath: /backup
           volumes:
+            - name: scripts
+              configMap:
+                name: etcd-backup-script
+                defaultMode: 0755
             - name: backup-storage
               persistentVolumeClaim:
                 claimName: {{ .Values.etcdBackup.storage.pvc.name }}
