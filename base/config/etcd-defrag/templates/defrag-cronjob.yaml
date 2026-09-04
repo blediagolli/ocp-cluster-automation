@@ -44,14 +44,27 @@ data:
     #!/bin/bash
     set -euo pipefail
 
-    ETCDCTL="etcdctl \
-      --cacert /etc/kubernetes/static-pod-certs/configmaps/etcd-serving-ca/ca-bundle.crt \
-      --cert /etc/kubernetes/static-pod-certs/secrets/etcd-all-certs/etcd-peer-$(hostname).crt \
-      --key /etc/kubernetes/static-pod-certs/secrets/etcd-all-certs/etcd-peer-$(hostname).key"
+    CERT_DIR="/etc/kubernetes/static-pod-certs"
+    CA="${CERT_DIR}/configmaps/etcd-all-bundles/server-ca-bundle.crt"
+    NODE=$(hostname)
+
+    # Find the peer cert/key for this node
+    CERT=$(find ${CERT_DIR}/secrets/etcd-all-certs -name "etcd-peer-${NODE}.crt" 2>/dev/null | head -1)
+    KEY=$(find ${CERT_DIR}/secrets/etcd-all-certs -name "etcd-peer-${NODE}.key" 2>/dev/null | head -1)
+
+    if [ -z "${CERT}" ] || [ -z "${KEY}" ]; then
+      echo "ERROR: Could not find etcd peer cert/key for node ${NODE}"
+      echo "Available certs:"
+      ls ${CERT_DIR}/secrets/etcd-all-certs/ 2>/dev/null
+      exit 1
+    fi
+
+    ETCDCTL="etcdctl --cacert ${CA} --cert ${CERT} --key ${KEY}"
 
     THRESHOLD={{ .Values.etcdDefrag.fragmentationThreshold }}
 
     echo "=== etcd defragmentation starting ==="
+    echo "Node: ${NODE}"
     echo "Fragmentation threshold: ${THRESHOLD}%"
     echo ""
 
