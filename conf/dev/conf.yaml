@@ -35,7 +35,7 @@ machineConfig:
 securedCluster:
   include: true
   secretMode: "external"
-  centralEndpoint: "central-stackrox.apps.cluster-5cbhf.dyn.redhatworkshops.io:443"
+  centralEndpoint: "central-stackrox.apps.cluster-c8444.dyn.redhatworkshops.io:443"
 securedClusterNamespace:
   include: true
 
