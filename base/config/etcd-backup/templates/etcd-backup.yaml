@@ -226,7 +226,7 @@ data:
       local auth="AWS4-HMAC-SHA256 Credential=${AWS_ACCESS_KEY_ID}/${scope}, SignedHeaders=${signed_headers}, Signature=${signature}"
 
       local curl_args=(
-        -s -S --fail-with-body
+        -s -S -f
         -X "${method}"
         -H "Host: ${host}"
         -H "x-amz-date: ${date_iso}"
