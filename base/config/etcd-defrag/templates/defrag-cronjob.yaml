@@ -1,0 +1,200 @@
+{{- if .Values.etcdDefrag.include }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: etcd-defrag
+  namespace: {{ .Values.etcdDefrag.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: etcd-defrag
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: etcd-defrag
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: etcd-defrag
+subjects:
+  - kind: ServiceAccount
+    name: etcd-defrag
+    namespace: {{ .Values.etcdDefrag.namespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: etcd-defrag-script
+  namespace: {{ .Values.etcdDefrag.namespace }}
+data:
+  defrag.sh: |
+    #!/bin/bash
+    set -euo pipefail
+
+    ETCDCTL="etcdctl \
+      --cacert /etc/kubernetes/static-pod-certs/configmaps/etcd-serving-ca/ca-bundle.crt \
+      --cert /etc/kubernetes/static-pod-certs/secrets/etcd-all-certs/etcd-peer-$(hostname).crt \
+      --key /etc/kubernetes/static-pod-certs/secrets/etcd-all-certs/etcd-peer-$(hostname).key"
+
+    THRESHOLD={{ .Values.etcdDefrag.fragmentationThreshold }}
+
+    echo "=== etcd defragmentation starting ==="
+    echo "Fragmentation threshold: ${THRESHOLD}%"
+    echo ""
+
+    # Verify cluster health before starting
+    echo "--- Pre-defrag cluster health ---"
+    if ! ${ETCDCTL} endpoint health --cluster; then
+      echo "ERROR: Cluster is not healthy. Aborting defrag."
+      exit 1
+    fi
+    echo ""
+
+    # Get all member endpoints and identify the leader
+    MEMBERS=$(${ETCDCTL} member list -w json)
+    LEADER_ID=$(${ETCDCTL} endpoint status -w json --cluster | \
+      python3 -c "import sys,json; data=json.load(sys.stdin); print([m['Status']['leader'] for m in data][0])")
+
+    ENDPOINTS=$(echo "${MEMBERS}" | \
+      python3 -c "import sys,json; data=json.load(sys.stdin); [print(m['clientURLs'][0], m['ID'], 'LEADER' if m['ID']==${LEADER_ID} else 'FOLLOWER') for m in data['members']]")
+
+    LEADER_EP=""
+    FOLLOWER_EPS=()
+
+    while IFS=' ' read -r ep id role; do
+      if [ "${role}" = "LEADER" ]; then
+        LEADER_EP="${ep}"
+      else
+        FOLLOWER_EPS+=("${ep}")
+      fi
+    done <<< "${ENDPOINTS}"
+
+    echo "Leader: ${LEADER_EP}"
+    echo "Followers: ${FOLLOWER_EPS[*]}"
+    echo ""
+
+    defrag_member() {
+      local ep=$1
+      local role=$2
+
+      # Check fragmentation level
+      STATUS=$(${ETCDCTL} endpoint status --endpoints="${ep}" -w json)
+      DB_SIZE=$(echo "${STATUS}" | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['Status']['dbSize'])")
+      DB_IN_USE=$(echo "${STATUS}" | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['Status']['dbSizeInUse'])")
+
+      if [ "${DB_SIZE}" -eq 0 ]; then
+        echo "[${role}] ${ep}: DB size is 0, skipping"
+        return 0
+      fi
+
+      FRAG_BYTES=$((DB_SIZE - DB_IN_USE))
+      FRAG_PCT=$((FRAG_BYTES * 100 / DB_SIZE))
+
+      echo "[${role}] ${ep}: dbSize=$(( DB_SIZE / 1024 / 1024 ))MB, inUse=$(( DB_IN_USE / 1024 / 1024 ))MB, fragmentation=${FRAG_PCT}%"
+
+      if [ "${THRESHOLD}" -gt 0 ] && [ "${FRAG_PCT}" -lt "${THRESHOLD}" ]; then
+        echo "[${role}] ${ep}: Fragmentation ${FRAG_PCT}% is below threshold ${THRESHOLD}%, skipping"
+        return 0
+      fi
+
+      echo "[${role}] ${ep}: Defragmenting..."
+      if ${ETCDCTL} defrag --endpoints="${ep}"; then
+        echo "[${role}] ${ep}: Defrag complete"
+      else
+        echo "ERROR: Defrag failed on ${ep}"
+        return 1
+      fi
+
+      # Brief pause to let the member stabilize
+      sleep 5
+
+      # Verify member is healthy after defrag
+      if ! ${ETCDCTL} endpoint health --endpoints="${ep}"; then
+        echo "ERROR: Member ${ep} is not healthy after defrag"
+        return 1
+      fi
+
+      # Show post-defrag size
+      POST_STATUS=$(${ETCDCTL} endpoint status --endpoints="${ep}" -w json)
+      POST_DB=$(echo "${POST_STATUS}" | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['Status']['dbSize'])")
+      echo "[${role}] ${ep}: Post-defrag dbSize=$(( POST_DB / 1024 / 1024 ))MB (reclaimed $(( (DB_SIZE - POST_DB) / 1024 / 1024 ))MB)"
+      echo ""
+    }
+
+    # Defrag followers first
+    for ep in "${FOLLOWER_EPS[@]}"; do
+      defrag_member "${ep}" "FOLLOWER"
+    done
+
+    # Defrag leader last
+    if [ -n "${LEADER_EP}" ]; then
+      defrag_member "${LEADER_EP}" "LEADER"
+    fi
+
+    # Final health check
+    echo "--- Post-defrag cluster health ---"
+    ${ETCDCTL} endpoint health --cluster
+    echo ""
+    echo "=== etcd defragmentation complete ==="
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etcd-defrag
+  namespace: {{ .Values.etcdDefrag.namespace }}
+spec:
+  schedule: {{ .Values.etcdDefrag.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ .Values.etcdDefrag.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.etcdDefrag.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: {{ .Values.etcdDefrag.activeDeadlineSeconds }}
+      template:
+        spec:
+          serviceAccountName: etcd-defrag
+          restartPolicy: OnFailure
+          hostNetwork: true
+          nodeSelector:
+            node-role.kubernetes.io/master: ""
+          tolerations:
+            {{- toYaml .Values.etcdDefrag.tolerations | nindent 12 }}
+          containers:
+            - name: etcd-defrag
+              image: {{ .Values.etcdDefrag.image }}
+              command:
+                - /bin/bash
+                - /scripts/defrag.sh
+              securityContext:
+                privileged: true
+                runAsUser: 0
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                  readOnly: true
+                - name: etcd-certs
+                  mountPath: /etc/kubernetes/static-pod-certs
+                  readOnly: true
+          volumes:
+            - name: scripts
+              configMap:
+                name: etcd-defrag-script
+                defaultMode: 0755
+            - name: etcd-certs
+              hostPath:
+                path: /etc/kubernetes/static-pod-resources/etcd-certs
+                type: Directory
+{{- end }}

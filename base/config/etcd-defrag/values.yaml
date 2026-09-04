@@ -1,0 +1,24 @@
+etcdDefrag:
+  include: false
+  namespace: openshift-etcd
+  schedule: "0 3 * * 0"
+  # Fragmentation threshold as a percentage (0-100).
+  # Defrag only runs on members where fragmentation exceeds this value.
+  # Set to 0 to always defrag regardless of fragmentation level.
+  fragmentationThreshold: 50
+  image: registry.redhat.io/openshift4/ose-etcd:v4.22
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  # Timeout in seconds for the entire defrag job
+  activeDeadlineSeconds: 600
+  tolerations:
+    - key: node-role.kubernetes.io/master
+      operator: Exists
+      effect: NoSchedule
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+  alert:
+    include: true
+    # Alert if the CronJob has not succeeded in this many hours
+    noSuccessThresholdHours: 168
