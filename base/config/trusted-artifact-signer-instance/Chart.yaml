@@ -1,0 +1,4 @@
+apiVersion: v2
+name: trusted-artifact-signer-instance
+description: Trusted Artifact Signer instance
+version: 0.1.0

@@ -1,0 +1,22 @@
+{{- if .Values.tempo.include }}
+apiVersion: tempo.grafana.com/v1alpha1
+kind: TempoStack
+metadata:
+  name: {{ .Values.tempo.name }}
+  namespace: {{ .Values.tempo.namespace }}
+spec:
+  storage:
+    secret:
+      name: {{ .Values.tempo.storage.secret.name }}
+      type: {{ .Values.tempo.storage.secret.type }}
+    tls:
+      enabled: {{ .Values.tempo.storage.tls.enabled }}
+      caName: {{ .Values.tempo.storage.tls.caName }}
+  storageSize: {{ .Values.tempo.storageSize }}
+  template:
+    queryFrontend:
+      jaegerQuery:
+        enabled: {{ .Values.tempo.template.queryFrontend.jaegerQuery.enabled }}
+        ingress:
+          type: {{ .Values.tempo.template.queryFrontend.jaegerQuery.ingress.type }}
+{{- end }}

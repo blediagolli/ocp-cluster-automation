@@ -1,0 +1,4 @@
+apiVersion: v2
+name: servicemesh3-instance
+description: OpenShift Service Mesh 3 instance
+version: 0.1.0

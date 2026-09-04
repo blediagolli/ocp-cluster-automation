@@ -4,7 +4,7 @@ operators:
     namespace: openshift-gitops-operator
     operatorGroup: openshift-gitops-operator
     package: openshift-gitops-operator
-    channel: change-me
+    channel: latest
     source: redhat-operators
     sourceNamespace: openshift-marketplace
     clusterScoped: true
@@ -13,7 +13,7 @@ operators:
     namespace: open-cluster-management
     operatorGroup: open-cluster-management
     package: advanced-cluster-management
-    channel: change-me
+    channel: release-2.8
     source: redhat-operators
     sourceNamespace: openshift-marketplace
   advanced-cluster-security:
@@ -21,7 +21,7 @@ operators:
     namespace: rhacs-operator
     operatorGroup: rhacs-operator
     package: rhacs-operator
-    channel: change-me
+    channel: stable
     source: redhat-operators
     sourceNamespace: openshift-marketplace
     clusterScoped: true
@@ -30,7 +30,7 @@ operators:
     namespace: ansible-automation-platform
     operatorGroup: ansible-automation-platform
     package: ansible-automation-platform-operator
-    channel: change-me
+    channel: stable-2.4
     source: redhat-operators
     sourceNamespace: openshift-marketplace
   cert-manager:
@@ -65,7 +65,7 @@ operators:
     namespace: openshift-compliance
     operatorGroup: openshift-compliance
     package: compliance-operator
-    channel: change-me
+    channel: release-0.1
     source: redhat-operators
     sourceNamespace: openshift-marketplace
   dev-spaces:
@@ -133,7 +133,7 @@ operators:
     namespace: openshift-local-storage
     operatorGroup: openshift-local-storage
     package: local-storage-operator
-    channel: change-me
+    channel: stable
     source: redhat-operators
     sourceNamespace: openshift-marketplace
   openshift-logging:
@@ -146,19 +146,18 @@ operators:
     sourceNamespace: openshift-marketplace
   loki:
     include: false
-    namespace: openshift-operators-redhat
+    namespace: openshift-logging
+    operatorGroup: loki-operator
     package: loki-operator
-    channel: change-me
+    channel: stable
     source: redhat-operators
     sourceNamespace: openshift-marketplace
-    skipNamespace: true
-    skipOperatorGroup: true
   lvm:
     include: false
     namespace: openshift-storage
     operatorGroup: openshift-storage-lvm
     package: lvms-operator
-    channel: change-me
+    channel: stable
     source: redhat-operators
     sourceNamespace: openshift-marketplace
   metallb:
@@ -166,7 +165,7 @@ operators:
     namespace: metallb-system
     operatorGroup: metallb-system
     package: metallb-operator
-    channel: change-me
+    channel: stable
     source: redhat-operators
     sourceNamespace: openshift-marketplace
     clusterScoped: true
@@ -175,7 +174,7 @@ operators:
     namespace: openshift-mtv
     operatorGroup: openshift-mtv
     package: mtv-operator
-    channel: change-me
+    channel: release-v2.6
     source: redhat-operators
     sourceNamespace: openshift-marketplace
   nmstate:
@@ -183,7 +182,7 @@ operators:
     namespace: openshift-nmstate
     operatorGroup: openshift-nmstate
     package: kubernetes-nmstate-operator
-    channel: change-me
+    channel: stable
     source: redhat-operators
     sourceNamespace: openshift-marketplace
   node-feature-discovery:
@@ -191,7 +190,7 @@ operators:
     namespace: openshift-nfd
     operatorGroup: openshift-nfd
     package: nfd
-    channel: change-me
+    channel: stable
     source: redhat-operators
     sourceNamespace: openshift-marketplace
   node-maintenance:
@@ -208,7 +207,7 @@ operators:
     namespace: openshift-storage
     operatorGroup: openshift-storage-operator
     package: odf-operator
-    channel: change-me
+    channel: stable
     source: redhat-operators
     sourceNamespace: openshift-marketplace
   openshift-pipelines:
@@ -225,7 +224,7 @@ operators:
     namespace: openshift-cnv
     operatorGroup: openshift-cnv
     package: kubevirt-hyperconverged
-    channel: change-me
+    channel: stable
     source: redhat-operators
     sourceNamespace: openshift-marketplace
   opentelemetry:
@@ -239,10 +238,10 @@ operators:
     clusterScoped: true
   quay:
     include: false
-    namespace: quay-operator
+    namespace: quay-enterprise
     operatorGroup: quay-operator
     package: quay-operator
-    channel: change-me
+    channel: stable-3.11
     source: redhat-operators
     sourceNamespace: openshift-marketplace
   servicemesh3:
@@ -277,6 +276,24 @@ operators:
     namespace: openshift-operators
     package: rhtas-operator
     channel: change-me
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+    skipNamespace: true
+    skipOperatorGroup: true
+  kyverno:
+    include: false
+    namespace: openshift-operators
+    package: enterprise-kyverno
+    channel: alpha
+    source: certified-operators
+    sourceNamespace: openshift-marketplace
+    skipNamespace: true
+    skipOperatorGroup: true
+  gatekeeper:
+    include: false
+    namespace: openshift-operators
+    package: gatekeeper-operator-product
+    channel: stable
     source: redhat-operators
     sourceNamespace: openshift-marketplace
     skipNamespace: true

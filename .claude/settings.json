@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p *)",
+      "Bash(make validate *)",
+      "Bash(make validate)",
+      "Bash(helm lint *)",
+      "Bash(helm template *)"
+    ]
+  }
+}

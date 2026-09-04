@@ -1,0 +1,50 @@
+{{- if .Values.mesh.include }}
+apiVersion: maistra.io/v2
+kind: ServiceMeshControlPlane
+metadata:
+  name: {{ .Values.mesh.name }}
+  namespace: {{ .Values.mesh.namespace }}
+spec:
+  version: {{ .Values.mesh.version }}
+  addons:
+    grafana:
+      enabled: {{ .Values.mesh.addons.grafana.enabled }}
+    jaeger:
+      name: {{ .Values.mesh.addons.jaeger.name }}
+      install:
+        storage:
+          type: {{ .Values.mesh.addons.jaeger.install.storage.type }}
+          memory:
+            maxTraces: {{ .Values.mesh.addons.jaeger.install.storage.memory.maxTraces }}
+        ingress:
+          enabled: {{ .Values.mesh.addons.jaeger.install.ingress.enabled }}
+    kiali:
+      enabled: {{ .Values.mesh.addons.kiali.enabled }}
+      name: {{ .Values.mesh.addons.kiali.name }}
+    prometheus:
+      enabled: {{ .Values.mesh.addons.prometheus.enabled }}
+  gateways:
+    egress:
+      enabled: {{ .Values.mesh.gateways.egress.enabled }}
+    ingress:
+      enabled: {{ .Values.mesh.gateways.ingress.enabled }}
+      namespace: {{ .Values.mesh.gateways.ingress.namespace }}
+      service:
+        type: {{ .Values.mesh.gateways.ingress.type }}
+  general:
+    logging:
+      componentLevels:
+        default: {{ .Values.mesh.general.logging.componentLevels.default }}
+    validationMessages: {{ .Values.mesh.general.validationMessages }}
+  proxy:
+    logging:
+      level: {{ .Values.mesh.proxy.logging.level }}
+    networking:
+      trafficControl:
+        inbound: {}
+        outbound:
+          policy: {{ .Values.mesh.proxy.networking.trafficControl.outbound.policy }}
+  techPreview:
+    meshConfig:
+      mode: {{ .Values.mesh.mode }}
+{{- end }}

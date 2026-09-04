@@ -1,0 +1,18 @@
+{{- if .Values.gatekeeper.include }}
+apiVersion: operator.gatekeeper.sh/v1alpha1
+kind: Gatekeeper
+metadata:
+  name: {{ .Values.gatekeeper.name }}
+  namespace: {{ .Values.gatekeeper.namespace }}
+spec:
+  audit:
+    auditChunkSize: {{ .Values.gatekeeper.audit.auditChunkSize }}
+    logLevel: {{ .Values.gatekeeper.audit.logLevel }}
+    replicas: {{ .Values.gatekeeper.audit.replicas }}
+  validatingWebhook: {{ .Values.gatekeeper.validatingWebhook }}
+  mutatingWebhook: {{ .Values.gatekeeper.mutatingWebhook }}
+  webhook:
+    emitAdmissionEvents: {{ .Values.gatekeeper.webhook.emitAdmissionEvents }}
+    logLevel: {{ .Values.gatekeeper.webhook.logLevel }}
+    replicas: {{ .Values.gatekeeper.webhook.replicas }}
+{{- end }}

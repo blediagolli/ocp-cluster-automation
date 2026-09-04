@@ -1,0 +1,16 @@
+{{- if .Values.csiTolerations.include }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rook-ceph-operator-config
+  namespace: {{ .Values.storageCluster.namespace }}
+data:
+  CSI_RBD_PLUGIN_TOLERATIONS: |-
+{{ .Values.csiTolerations.tolerations | toYaml | indent 4 }}
+  CSI_RBD_PROVISIONER_TOLERATIONS: |-
+{{ .Values.csiTolerations.tolerations | toYaml | indent 4 }}
+  CSI_CEPHFS_PLUGIN_TOLERATIONS: |-
+{{ .Values.csiTolerations.tolerations | toYaml | indent 4 }}
+  CSI_CEPHFS_PROVISIONER_TOLERATIONS: |-
+{{ .Values.csiTolerations.tolerations | toYaml | indent 4 }}
+{{- end }}

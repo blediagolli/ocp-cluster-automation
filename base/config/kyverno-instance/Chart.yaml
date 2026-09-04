@@ -1,0 +1,4 @@
+apiVersion: v2
+name: kyverno-instance
+description: Kyverno admission controller instance
+version: 0.1.0

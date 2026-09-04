@@ -1,0 +1,7 @@
+tas:
+  include: false
+  name: tas-instance
+  namespace: openshift-rhtas-operator
+  fulcioEnabled: true
+  rekoEnabled: true
+  tufEnabled: true

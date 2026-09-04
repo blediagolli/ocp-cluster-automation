@@ -1,0 +1,4 @@
+apiVersion: v2
+name: gatekeeper-instance
+description: Gatekeeper constraint framework instance
+version: 0.1.0

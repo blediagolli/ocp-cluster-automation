@@ -1,0 +1,31 @@
+{{- if .Values.otel.include }}
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: {{ .Values.otel.name }}
+  namespace: {{ .Values.otel.namespace }}
+spec:
+  mode: {{ .Values.otel.mode }}
+  observability:
+    metrics: {}
+  deploymentUpdateStrategy: {}
+  config: |
+    exporters:
+      otlp:
+        endpoint: {{ .Values.otel.config.exporters.otlp.endpoint }}
+        tls:
+          insecure: true
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: {{ .Values.otel.config.receivers.otlp.protocols.grpc.endpoint | quote }}
+          http: {}
+    service:
+      pipelines:
+        traces:
+          exporters:
+            - otlp
+          receivers:
+            - otlp
+{{- end }}

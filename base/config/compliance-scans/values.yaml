@@ -3,7 +3,30 @@ scanSetting:
   name: default
   namespace: openshift-compliance
   rawResultStorage:
-    enabled: true
+    pvAccessModes:
+      - ReadWriteOnce
+    rotation: 3
+    size: 1Gi
+    tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+        operator: Exists
+      - effect: NoExecute
+        key: node.kubernetes.io/not-ready
+        operator: Exists
+        tolerationSeconds: 300
+      - effect: NoExecute
+        key: node.kubernetes.io/unreachable
+        operator: Exists
+        tolerationSeconds: 300
+  roles:
+    - master
+    - worker
+  scanTolerations:
+    - operator: Exists
+  schedule: "0 1 * * *"
+  showNotApplicable: false
+  strictNodeScan: true
 scanSettingBinding:
   include: false
   name: stig

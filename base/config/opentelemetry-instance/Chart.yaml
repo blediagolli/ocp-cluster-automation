@@ -1,0 +1,4 @@
+apiVersion: v2
+name: opentelemetry-instance
+description: OpenTelemetry Collector instance
+version: 0.1.0

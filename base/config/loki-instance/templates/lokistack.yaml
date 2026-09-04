@@ -1,0 +1,20 @@
+{{- if .Values.lokistack.include }}
+apiVersion: loki.grafana.com/v1
+kind: LokiStack
+metadata:
+  name: {{ .Values.lokistack.name }}
+  namespace: {{ .Values.lokistack.namespace }}
+spec:
+  size: {{ .Values.lokistack.size }}
+  storage:
+    schemas:
+      - version: v12
+        index:
+          prefix: loki_index_
+          period: 24h
+    secret:
+      name: logging-loki-s3
+      type: s3
+  tenants:
+    mode: openshift-logging
+{{- end }}

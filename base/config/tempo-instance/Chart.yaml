@@ -1,0 +1,4 @@
+apiVersion: v2
+name: tempo-instance
+description: Tempo distributed tracing instance
+version: 0.1.0

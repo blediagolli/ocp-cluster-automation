@@ -1,0 +1,75 @@
+kyverno:
+  include: false
+  name: enterprisekyverno
+  namespace: openshift-operators
+  antiAffinity:
+    enable: true
+  config:
+    annotations: {}
+    existingConfig: ""
+    generateSuccessEvents: false
+    metricsConfig:
+      annotations: {}
+      namespaces:
+        exclude: []
+        include: []
+    resourceFilters:
+      - '[Event,*,*]'
+      - '[*,kube-system,*]'
+      - '[*,kube-public,*]'
+      - '[*,kube-node-lease,*]'
+      - '[Node,*,*]'
+      - '[APIService,*,*]'
+      - '[TokenReview,*,*]'
+      - '[SubjectAccessReview,*,*]'
+      - '[SelfSubjectAccessReview,*,*]'
+      - '[Binding,*,*]'
+      - '[ReplicaSet,*,*]'
+      - '[AdmissionReport,*,*]'
+      - '[ClusterAdmissionReport,*,*]'
+      - '[BackgroundScanReport,*,*]'
+      - '[ClusterBackgroundScanReport,*,*]'
+  createSelfSignedCert: false
+  dnsPolicy: ClusterFirst
+  envVars: {}
+  envVarsInit: {}
+  excludeKyvernoNamespace: true
+  extraArgs:
+    - '--autogenInternals=true'
+    - '--loggingFormat=text'
+  hostNetwork: false
+  image:
+    pullPolicy: IfNotPresent
+    repository: ghcr.io/nirmata/kyverno
+    tag: v1.8.1-n4kbuild.1
+    pullSecrets:
+      create: false
+      name: image-pull-secret
+      registry: ghcr.io
+  installCRDs: true
+  kyvernoOperatorImage: ghcr.io/nirmata/nirmata-kyverno-monitor
+  kyvernoOperatorImageTag: 0.1.0
+  livenessProbe:
+    failureThreshold: 2
+    httpGet:
+      path: /health/liveness
+      port: 9443
+      scheme: HTTPS
+    initialDelaySeconds: 15
+    periodSeconds: 30
+    successThreshold: 1
+    timeoutSeconds: 5
+  metricsService:
+    create: true
+    port: 8000
+    type: ClusterIP
+  networkPolicy:
+    enabled: false
+    ingressFrom: []
+  nodeSelector: {}
+  podAffinity: {}
+  podAnnotations: {}
+  podAntiAffinity: {}
+  serviceMonitor:
+    namespace: ""
+  webhookNamespace: ""

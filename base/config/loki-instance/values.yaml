@@ -1,0 +1,28 @@
+lokistack:
+  include: false
+  name: logging-lokistack
+  namespace: openshift-logging
+  managementState: Managed
+  size: 1x.extra-small
+  storageClassName: gp3-csi
+  hashRing:
+    type: memberlist
+  limits:
+    global:
+      ingestion:
+        ingestionBurstSize: 16
+        ingestionRate: 8
+      queries:
+        queryTimeout: 3m
+  storage:
+    schemas:
+      - effectiveDate: "2024-09-22"
+        version: v13
+    tls:
+      caName: openshift-service-ca.crt
+      caKey: service-ca.crt
+    secret:
+      name: logging-loki-odf
+      type: s3
+  tenants:
+    mode: openshift-logging

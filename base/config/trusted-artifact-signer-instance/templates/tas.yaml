@@ -1,0 +1,14 @@
+{{- if .Values.tas.include }}
+apiVersion: rhtas.redhat.com/v1beta1
+kind: RHTAS
+metadata:
+  name: {{ .Values.tas.name }}
+  namespace: {{ .Values.tas.namespace }}
+spec:
+  fulcio:
+    enabled: {{ .Values.tas.fulcioEnabled }}
+  rekorServer:
+    enabled: {{ .Values.tas.rekoEnabled }}
+  tuf:
+    enabled: {{ .Values.tas.tufEnabled }}
+{{- end }}

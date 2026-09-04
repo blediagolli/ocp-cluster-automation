@@ -4,6 +4,20 @@ kind: MultiClusterHub
 metadata:
   name: {{ .Values.multiClusterHub.name }}
   namespace: {{ .Values.multiClusterHub.namespace }}
+  {{- with .Values.multiClusterHub.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   availabilityConfig: {{ .Values.multiClusterHub.availabilityConfig }}
+  enableAnalytics: {{ .Values.multiClusterHub.enableAnalytics }}
+  {{- if .Values.multiClusterHub.disableHubSelfManagement }}
+  disableHubSelfManagement: true
+  {{- end }}
+  {{- if .Values.multiClusterHub.clusterInstall }}
+  overrides:
+    components:
+      - name: siteconfig
+        enabled: true
+  {{- end }}
 {{- end }}

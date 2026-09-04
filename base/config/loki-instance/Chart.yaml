@@ -1,0 +1,4 @@
+apiVersion: v2
+name: loki-instance
+description: Loki logging stack instance
+version: 0.1.0

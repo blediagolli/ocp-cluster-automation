@@ -7,27 +7,16 @@ metadata:
 spec:
   rawResultStorage:
     pvAccessModes:
-      - ReadWriteOnce
-    rotation: 3
-    size: 1Gi
+      {{- toYaml .Values.scanSetting.rawResultStorage.pvAccessModes | nindent 6 }}
+    rotation: {{ .Values.scanSetting.rawResultStorage.rotation }}
+    size: {{ .Values.scanSetting.rawResultStorage.size }}
     tolerations:
-      - effect: NoSchedule
-        key: node-role.kubernetes.io/master
-        operator: Exists
-      - effect: NoExecute
-        key: node.kubernetes.io/not-ready
-        operator: Exists
-        tolerationSeconds: 300
-      - effect: NoExecute
-        key: node.kubernetes.io/unreachable
-        operator: Exists
-        tolerationSeconds: 300
+      {{- toYaml .Values.scanSetting.rawResultStorage.tolerations | nindent 6 }}
   roles:
-    - master
-    - worker
+    {{- toYaml .Values.scanSetting.roles | nindent 4 }}
   scanTolerations:
-    - operator: Exists
-  schedule: 0 1 * * *
-  showNotApplicable: false
-  strictNodeScan: true
+    {{- toYaml .Values.scanSetting.scanTolerations | nindent 4 }}
+  schedule: {{ .Values.scanSetting.schedule | quote }}
+  showNotApplicable: {{ .Values.scanSetting.showNotApplicable }}
+  strictNodeScan: {{ .Values.scanSetting.strictNodeScan }}
 {{- end }}

@@ -3,3 +3,11 @@ multiClusterHub:
   name: multiclusterhub
   namespace: open-cluster-management
   availabilityConfig: High
+  enableAnalytics: true
+  disableHubSelfManagement: false
+  clusterInstall: false
+  annotations: {}
+  overrides:
+    components:
+      - name: siteconfig
+        enabled: true

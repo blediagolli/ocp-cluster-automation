@@ -1,0 +1,43 @@
+mesh:
+  include: false
+  name: basic
+  namespace: istio-system
+  version: "3.0"
+  mode: ambient
+  addons:
+    grafana:
+      enabled: true
+    jaeger:
+      name: jaeger
+      install:
+        storage:
+          type: Memory
+          memory:
+            maxTraces: 100000
+        ingress:
+          enabled: true
+    kiali:
+      enabled: true
+      name: kiali
+    prometheus:
+      enabled: true
+  gateways:
+    egress:
+      enabled: true
+    ingress:
+      enabled: true
+      namespace: istio-system
+      type: ClusterIP
+  general:
+    logging:
+      componentLevels:
+        default: info
+    validationMessages: true
+  proxy:
+    logging:
+      level: info
+    networking:
+      trafficControl:
+        inbound: {}
+        outbound:
+          policy: ALLOW_ANY

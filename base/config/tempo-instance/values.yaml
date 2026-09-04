@@ -1,0 +1,18 @@
+tempo:
+  include: false
+  name: tempo-servicemesh
+  namespace: tracing-system
+  storageSize: 10Gi
+  storage:
+    secret:
+      name: tempo-s3-secret
+      type: s3
+    tls:
+      enabled: true
+      caName: tempo-s3-ca-bundle
+  template:
+    queryFrontend:
+      jaegerQuery:
+        enabled: true
+        ingress:
+          type: route
