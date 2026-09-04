@@ -6,7 +6,9 @@ etcdDefrag:
   # Defrag only runs on members where fragmentation exceeds this value.
   # Set to 0 to always defrag regardless of fragmentation level.
   fragmentationThreshold: 50
-  image: registry.redhat.io/openshift4/ose-etcd:v4.22
+  # Use the same etcd image running on the cluster:
+  # oc get pods -n openshift-etcd -l app=etcd -o jsonpath='{.items[0].spec.containers[0].image}'
+  image: quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:59812f77ca88f24946b6c5c89d838c78b0ac13df9f5eba665904ef29276f5af7
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
   # Timeout in seconds for the entire defrag job
