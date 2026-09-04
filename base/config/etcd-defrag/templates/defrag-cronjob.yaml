@@ -64,41 +64,55 @@ data:
     fi
     echo "Using etcd pod: ${ETCD_POD}"
 
-    # Helper: run etcdctl inside the etcd pod
+    # Discover the pod's configured endpoint (needed for commands that
+    # don't use --cluster). Unset ETCDCTL_ENDPOINTS in all calls to
+    # avoid the etcd 3.6+ fatal conflict when --endpoints/--cluster
+    # flags are also present.
+    ETCD_EP=$(oc exec -n ${NAMESPACE} ${ETCD_POD} -c etcd -- printenv ETCDCTL_ENDPOINTS 2>/dev/null || echo "https://localhost:2379")
+    echo "Default endpoint: ${ETCD_EP}"
+
+    # Helper: run etcdctl inside the etcd pod with ETCDCTL_ENDPOINTS unset
     run_etcdctl() {
-      oc exec -n ${NAMESPACE} ${ETCD_POD} -c etcd -- etcdctl "$@"
+      oc exec -n ${NAMESPACE} ${ETCD_POD} -c etcd -- env -u ETCDCTL_ENDPOINTS etcdctl "$@"
     }
 
     # --- Version info ---
-    ETCD_VERSION=$(run_etcdctl version 2>/dev/null | head -1 || echo "unknown")
+    ETCD_VERSION=$(run_etcdctl --endpoints="${ETCD_EP}" version 2>/dev/null | head -1 || echo "unknown")
     echo "etcdctl: ${ETCD_VERSION}"
     echo ""
 
     # --- Pre-defrag health check ---
     echo "--- Pre-defrag cluster health ---"
-    if ! run_etcdctl endpoint health --cluster; then
+    if ! run_etcdctl --endpoints="${ETCD_EP}" endpoint health --cluster; then
       echo "ERROR: Cluster is not healthy. Aborting defrag."
       exit 1
     fi
     echo ""
 
     # --- Member discovery ---
-    MEMBERS=$(run_etcdctl member list -w json)
+    MEMBERS=$(run_etcdctl --endpoints="${ETCD_EP}" member list -w json)
     MEMBER_COUNT=$(echo "${MEMBERS}" | python3 -c "import sys,json; print(len(json.load(sys.stdin)['members']))")
     echo "Cluster has ${MEMBER_COUNT} members"
 
-    CLUSTER_STATUS=$(run_etcdctl endpoint status -w json --cluster)
+    CLUSTER_STATUS=$(run_etcdctl --endpoints="${ETCD_EP}" endpoint status -w json --cluster)
     LEADER_ID=$(echo "${CLUSTER_STATUS}" | \
-      python3 -c "import sys,json; data=json.load(sys.stdin); print(data[0]['Status']['leader'])")
+      python3 -c "
+    import sys,json
+    data = json.load(sys.stdin)
+    s = data[0].get('Status', data[0].get('status', {}))
+    print(s.get('leader', s.get('Leader', 0)))")
 
     ENDPOINTS=$(echo "${MEMBERS}" | \
       python3 -c "
     import sys,json
     data = json.load(sys.stdin)
+    members = data.get('members', data.get('Members', []))
     leader_id = ${LEADER_ID}
-    for m in data['members']:
-        role = 'LEADER' if m['ID'] == leader_id else 'FOLLOWER'
-        print(m['clientURLs'][0], m['ID'], role)
+    for m in members:
+        mid = m.get('ID', m.get('id', 0))
+        urls = m.get('clientURLs', m.get('client_urls', []))
+        role = 'LEADER' if mid == leader_id else 'FOLLOWER'
+        print(urls[0], mid, role)
     ")
 
     LEADER_EP=""
@@ -120,7 +134,8 @@ data:
     DB_QUOTA=$(echo "${CLUSTER_STATUS}" | python3 -c "
     import sys,json
     try:
-      q = json.load(sys.stdin)[0]['Status'].get('dbQuota', 0)
+      data = json.load(sys.stdin)
+      q = data[0].get('Status', data[0].get('status', {})).get('dbQuota', 0)
       print(q if q else 0)
     except: print(0)" 2>/dev/null || echo "0")
     if [ "${DB_QUOTA}" -gt 0 ] 2>/dev/null; then
@@ -136,9 +151,17 @@ data:
       local ep=$1
       local role=$2
 
-      STATUS=$(run_etcdctl endpoint status --endpoints="${ep}" -w json)
-      DB_SIZE=$(echo "${STATUS}" | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['Status']['dbSize'])")
-      DB_IN_USE=$(echo "${STATUS}" | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['Status']['dbSizeInUse'])")
+      STATUS=$(run_etcdctl --endpoints="${ep}" endpoint status -w json)
+      DB_SIZE=$(echo "${STATUS}" | python3 -c "
+    import sys,json
+    d = json.load(sys.stdin)[0]
+    s = d.get('Status', d.get('status', {}))
+    print(s.get('dbSize', s.get('db_size', 0)))")
+      DB_IN_USE=$(echo "${STATUS}" | python3 -c "
+    import sys,json
+    d = json.load(sys.stdin)[0]
+    s = d.get('Status', d.get('status', {}))
+    print(s.get('dbSizeInUse', s.get('db_size_in_use', 0)))")
 
       if [ "${DB_SIZE}" -eq 0 ]; then
         echo "[${role}] ${ep}: DB size is 0, skipping"
@@ -158,7 +181,7 @@ data:
       fi
 
       echo "[${role}] ${ep}: Defragmenting..."
-      if run_etcdctl defrag --endpoints="${ep}"; then
+      if run_etcdctl --endpoints="${ep}" defrag; then
         echo "[${role}] ${ep}: Defrag complete"
         DEFRAG_COUNT=$((DEFRAG_COUNT + 1))
       else
@@ -168,13 +191,17 @@ data:
 
       sleep 5
 
-      if ! run_etcdctl endpoint health --endpoints="${ep}"; then
+      if ! run_etcdctl --endpoints="${ep}" endpoint health; then
         echo "ERROR: Member ${ep} is not healthy after defrag"
         return 1
       fi
 
-      POST_STATUS=$(run_etcdctl endpoint status --endpoints="${ep}" -w json)
-      POST_DB=$(echo "${POST_STATUS}" | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['Status']['dbSize'])")
+      POST_STATUS=$(run_etcdctl --endpoints="${ep}" endpoint status -w json)
+      POST_DB=$(echo "${POST_STATUS}" | python3 -c "
+    import sys,json
+    d = json.load(sys.stdin)[0]
+    s = d.get('Status', d.get('status', {}))
+    print(s.get('dbSize', s.get('db_size', 0)))")
       echo "[${role}] ${ep}: Post-defrag dbSize=$(( POST_DB / 1024 / 1024 ))MB (reclaimed $(( (DB_SIZE - POST_DB) / 1024 / 1024 ))MB)"
       echo ""
     }
@@ -190,7 +217,7 @@ data:
 
     # --- Final health check ---
     echo "--- Post-defrag cluster health ---"
-    run_etcdctl endpoint health --cluster
+    run_etcdctl --endpoints="${ETCD_EP}" endpoint health --cluster
     echo ""
     echo "=== etcd defragmentation complete ==="
     echo "Members defragged: ${DEFRAG_COUNT}, skipped: ${SKIP_COUNT}"
