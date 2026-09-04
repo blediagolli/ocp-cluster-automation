@@ -23,7 +23,7 @@ spec:
                 - template: openshift-marketplace
                 # - template: openshift-dns
                 # - template: openshift-image-registry
-                # - template: user-workload-monitoring
+                - template: user-workload-monitoring
                 # - template: compliance-scans
                 # - template: logging-lokistack
                 # - template: nmstate-config

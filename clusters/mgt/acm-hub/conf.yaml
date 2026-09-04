@@ -109,6 +109,8 @@ egressFirewall:
     - type: Allow
       to:
         cidrSelector: 0.0.0.0/0
+userWorkloadMonitoring:
+  include: true
 etcdDefrag:
   include: true
   schedule: "0 3 * * 0"
