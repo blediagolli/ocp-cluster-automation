@@ -6,6 +6,7 @@ securedCluster:
   centralEndpoint: ""
   # "job" = secrets are created by the init bundle job on acs-central (same cluster)
   # "preExisting" = secrets are pre-created with cert data from values below (or external-secrets/sealed-secrets)
+  # "external" = secrets are managed out-of-band (init bundle applied directly), chart skips secret creation
   secretMode: "preExisting"
   secrets:
     admissionControl:

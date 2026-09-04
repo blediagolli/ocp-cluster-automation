@@ -34,7 +34,7 @@ machineConfig:
 # Operators
 securedCluster:
   include: true
-  secretMode: "preExisting"
+  secretMode: "external"
   centralEndpoint: "central-stackrox.apps.cluster-5cbhf.dyn.redhatworkshops.io:443"
 securedClusterNamespace:
   include: true
