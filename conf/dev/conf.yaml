@@ -44,3 +44,8 @@ operators:
     include: true
   advanced-cluster-security:
     include: true
+
+scanSetting:
+  include: true
+scanSettingBinding:
+  include: true
