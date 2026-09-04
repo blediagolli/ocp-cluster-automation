@@ -79,6 +79,8 @@ data:
 
     ETCD_EP=$(oc exec -n ${NAMESPACE} ${ETCD_POD} -c etcd -- \
       printenv ETCDCTL_ENDPOINTS 2>/dev/null || echo "https://localhost:2379")
+    # snapshot save requires a single endpoint
+    ETCD_EP_SINGLE=$(echo "${ETCD_EP}" | cut -d',' -f1)
 
     # Helper: run etcdctl with ETCDCTL_ENDPOINTS unset (etcd 3.6 compat)
     run_etcdctl() {
@@ -97,7 +99,7 @@ data:
     # --- Take snapshot ---
     SNAPSHOT_PATH="/tmp/etcd-snapshot-$(date +%s).db"
     echo "Taking snapshot to ${SNAPSHOT_PATH} inside ${ETCD_POD}..."
-    run_etcdctl --endpoints="${ETCD_EP}" snapshot save "${SNAPSHOT_PATH}"
+    run_etcdctl --endpoints="${ETCD_EP_SINGLE}" snapshot save "${SNAPSHOT_PATH}"
     echo ""
 
     # --- Copy snapshot out of etcd pod ---
@@ -119,8 +121,8 @@ data:
     timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)
     etcd_pod: ${ETCD_POD}
     snapshot_size_bytes: ${SNAPSHOT_SIZE}
-    etcd_version: $(run_etcdctl --endpoints="${ETCD_EP}" version 2>/dev/null | head -1 || echo "unknown")
-    cluster_members: $(run_etcdctl --endpoints="${ETCD_EP}" member list -w simple 2>/dev/null | wc -l | tr -d ' ')
+    etcd_version: $(run_etcdctl --endpoints="${ETCD_EP_SINGLE}" version 2>/dev/null | head -1 || echo "unknown")
+    cluster_members: $(run_etcdctl --endpoints="${ETCD_EP_SINGLE}" member list -w simple 2>/dev/null | wc -l | tr -d ' ')
     METAEOF
 
     # --- Clean up remote snapshot ---
