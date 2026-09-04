@@ -171,116 +171,119 @@ data:
     OBC_NAMESPACE="{{ .Values.etcdBackup.namespace }}"
 
     # OBC creates a Secret and ConfigMap with the same name as the OBC
-    AWS_ACCESS_KEY_ID=$(oc get secret "${OBC_NAME}" -n "${OBC_NAMESPACE}" -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 -d)
-    AWS_SECRET_ACCESS_KEY=$(oc get secret "${OBC_NAME}" -n "${OBC_NAMESPACE}" -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 -d)
-    BUCKET_NAME=$(oc get configmap "${OBC_NAME}" -n "${OBC_NAMESPACE}" -o jsonpath='{.data.BUCKET_NAME}')
-    BUCKET_HOST=$(oc get configmap "${OBC_NAME}" -n "${OBC_NAMESPACE}" -o jsonpath='{.data.BUCKET_HOST}')
-    BUCKET_PORT=$(oc get configmap "${OBC_NAME}" -n "${OBC_NAMESPACE}" -o jsonpath='{.data.BUCKET_PORT}')
+    export AWS_ACCESS_KEY_ID=$(oc get secret "${OBC_NAME}" -n "${OBC_NAMESPACE}" -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 -d)
+    export AWS_SECRET_ACCESS_KEY=$(oc get secret "${OBC_NAME}" -n "${OBC_NAMESPACE}" -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 -d)
+    export BUCKET_NAME=$(oc get configmap "${OBC_NAME}" -n "${OBC_NAMESPACE}" -o jsonpath='{.data.BUCKET_NAME}')
+    export BUCKET_HOST=$(oc get configmap "${OBC_NAME}" -n "${OBC_NAMESPACE}" -o jsonpath='{.data.BUCKET_HOST}')
+    export BUCKET_PORT=$(oc get configmap "${OBC_NAME}" -n "${OBC_NAMESPACE}" -o jsonpath='{.data.BUCKET_PORT}')
 
-    S3_ENDPOINT="https://${BUCKET_HOST}:${BUCKET_PORT}"
     echo "Bucket: ${BUCKET_NAME}"
-    echo "Endpoint: ${S3_ENDPOINT}"
+    echo "Endpoint: https://${BUCKET_HOST}:${BUCKET_PORT}"
     echo ""
 
-    # S3v4 signing helper using curl
-    s3_request() {
-      local method=$1
-      local path=$2
-      local file=${3:-}
-
-      local date_iso=$(date -u +%Y%m%dT%H%M%SZ)
-      local date_short=$(date -u +%Y%m%d)
-      local region="us-east-1"
-      local service="s3"
-      local host="${BUCKET_HOST}:${BUCKET_PORT}"
-
-      local content_hash="UNSIGNED-PAYLOAD"
-      local content_type=""
-      local content_length=""
-
-      if [ -n "${file}" ] && [ "${method}" = "PUT" ]; then
-        content_type="application/octet-stream"
-        content_length=$(stat -c %s "${file}" 2>/dev/null || stat -f %z "${file}" 2>/dev/null)
-      fi
-
-      # Canonical headers
-      local signed_headers="host;x-amz-content-sha256;x-amz-date"
-      local canonical_headers="host:${host}\nx-amz-content-sha256:${content_hash}\nx-amz-date:${date_iso}\n"
-
-      # Canonical request
-      local canonical_request="${method}\n/${BUCKET_NAME}${path}\n\n${canonical_headers}\n${signed_headers}\n${content_hash}"
-      local canonical_hash=$(printf "%s" "${canonical_request}" | openssl dgst -sha256 -hex 2>/dev/null | awk '{print $NF}')
-
-      # String to sign
-      local scope="${date_short}/${region}/${service}/aws4_request"
-      local string_to_sign="AWS4-HMAC-SHA256\n${date_iso}\n${scope}\n${canonical_hash}"
-
-      # Signing key
-      local k_date=$(printf "%s" "${date_short}" | openssl dgst -sha256 -hex -hmac "AWS4${AWS_SECRET_ACCESS_KEY}" 2>/dev/null | awk '{print $NF}')
-      local k_region=$(printf "%s" "${region}" | openssl dgst -sha256 -hex -mac HMAC -macopt hexkey:${k_date} 2>/dev/null | awk '{print $NF}')
-      local k_service=$(printf "%s" "${service}" | openssl dgst -sha256 -hex -mac HMAC -macopt hexkey:${k_region} 2>/dev/null | awk '{print $NF}')
-      local k_signing=$(printf "%s" "aws4_request" | openssl dgst -sha256 -hex -mac HMAC -macopt hexkey:${k_service} 2>/dev/null | awk '{print $NF}')
-
-      local signature=$(printf "%b" "${string_to_sign}" | openssl dgst -sha256 -hex -mac HMAC -macopt hexkey:${k_signing} 2>/dev/null | awk '{print $NF}')
-
-      local auth="AWS4-HMAC-SHA256 Credential=${AWS_ACCESS_KEY_ID}/${scope}, SignedHeaders=${signed_headers}, Signature=${signature}"
-
-      local curl_args=(
-        -s -S -f
-        -X "${method}"
-        -H "Host: ${host}"
-        -H "x-amz-date: ${date_iso}"
-        -H "x-amz-content-sha256: ${content_hash}"
-        -H "Authorization: ${auth}"
-        --cacert /run/secrets/kubernetes.io/serviceaccount/ca.crt
-        -k
-      )
-
-      if [ -n "${file}" ] && [ "${method}" = "PUT" ]; then
-        curl_args+=(-H "Content-Type: ${content_type}" -H "Content-Length: ${content_length}" --data-binary "@${file}")
-      fi
-
-      curl "${curl_args[@]}" "${S3_ENDPOINT}/${BUCKET_NAME}${path}"
-    }
-
     # Upload snapshot
-    S3_KEY="etcd-backup/${TIMESTAMP}/snapshot.db"
-    echo "Uploading snapshot to s3://${BUCKET_NAME}/${S3_KEY}..."
-    s3_request PUT "/${S3_KEY}" "${LOCAL_SNAPSHOT}"
+    echo "Uploading snapshot to s3://${BUCKET_NAME}/etcd-backup/${TIMESTAMP}/snapshot.db..."
+    python3 /scripts/s3upload.py "${LOCAL_SNAPSHOT}" "etcd-backup/${TIMESTAMP}/snapshot.db"
     echo "Upload complete"
 
     # Upload metadata
-    S3_META_KEY="etcd-backup/${TIMESTAMP}/metadata.txt"
-    echo "Uploading metadata to s3://${BUCKET_NAME}/${S3_META_KEY}..."
-    s3_request PUT "/${S3_META_KEY}" /tmp/metadata.txt
+    echo "Uploading metadata..."
+    python3 /scripts/s3upload.py /tmp/metadata.txt "etcd-backup/${TIMESTAMP}/metadata.txt"
     echo "Metadata uploaded"
 
-    # --- Retention: list and remove old backups ---
+    # --- Retention ---
     echo ""
-    echo "Checking retention..."
-    LISTING=$(s3_request GET "/?prefix=etcd-backup/&delimiter=/")
-
-    PREFIXES=$(echo "${LISTING}" | grep -oP '(?<=<Prefix>)etcd-backup/[^<]+' | sort -r)
-    BACKUP_COUNT=$(echo "${PREFIXES}" | grep -c . || true)
-    echo "Backups in bucket: ${BACKUP_COUNT}/${RETENTION}"
-
-    if [ "${BACKUP_COUNT}" -gt "${RETENTION}" ]; then
-      TO_DELETE=$(echo "${PREFIXES}" | tail -n +$((RETENTION + 1)))
-      for prefix in ${TO_DELETE}; do
-        echo "Deleting old backup: ${prefix}..."
-        OBJECTS=$(s3_request GET "/?prefix=${prefix}")
-        KEYS=$(echo "${OBJECTS}" | grep -oP '(?<=<Key>)[^<]+')
-        for key in ${KEYS}; do
-          s3_request DELETE "/${key}" || true
-        done
-      done
-    fi
+    echo "Applying retention (keep ${RETENTION})..."
+    python3 /scripts/s3upload.py --retention "${RETENTION}"
 
     echo ""
     echo "=== etcd backup complete ==="
     echo "Backup: s3://${BUCKET_NAME}/etcd-backup/${TIMESTAMP}/"
-    echo "Backups in bucket: $(echo "${PREFIXES}" | head -n ${RETENTION} | grep -c . || true)/${RETENTION}"
     {{- end }}
+{{- if eq .Values.etcdBackup.storage.type "obc" }}
+  s3upload.py: |
+    #!/usr/bin/env python3
+    import hashlib, hmac, os, sys, ssl, xml.etree.ElementTree as ET
+    from datetime import datetime, timezone
+    from urllib.request import Request, urlopen
+    from urllib.parse import quote
+
+    host = os.environ["BUCKET_HOST"]
+    port = os.environ["BUCKET_PORT"]
+    bucket = os.environ["BUCKET_NAME"]
+    access_key = os.environ["AWS_ACCESS_KEY_ID"]
+    secret_key = os.environ["AWS_SECRET_ACCESS_KEY"]
+    endpoint = f"https://{host}:{port}"
+    region = "us-east-1"
+
+    ctx = ssl.create_default_context()
+    ca = "/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    if os.path.exists(ca):
+        ctx.load_verify_locations(ca)
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    def sign(key, msg):
+        return hmac.new(key, msg.encode("utf-8"), hashlib.sha256).digest()
+
+    def get_signature_key(date_stamp):
+        k = sign(("AWS4" + secret_key).encode("utf-8"), date_stamp)
+        k = sign(k, region)
+        k = sign(k, "s3")
+        return sign(k, "aws4_request")
+
+    def s3_request(method, path, body=b"", query="", content_type=""):
+        now = datetime.now(timezone.utc)
+        amz_date = now.strftime("%Y%m%dT%H%M%SZ")
+        date_stamp = now.strftime("%Y%m%d")
+        payload_hash = hashlib.sha256(body).hexdigest() if method == "PUT" else "UNSIGNED-PAYLOAD"
+        h = f"{host}:{port}"
+        headers_to_sign = {"host": h, "x-amz-content-sha256": payload_hash, "x-amz-date": amz_date}
+        if content_type:
+            headers_to_sign["content-type"] = content_type
+        signed_headers = ";".join(sorted(headers_to_sign))
+        canonical_headers = "".join(f"{k}:{v}\n" for k, v in sorted(headers_to_sign.items()))
+        canonical_request = f"{method}\n/{bucket}{path}\n{query}\n{canonical_headers}\n{signed_headers}\n{payload_hash}"
+        scope = f"{date_stamp}/{region}/s3/aws4_request"
+        string_to_sign = f"AWS4-HMAC-SHA256\n{amz_date}\n{scope}\n{hashlib.sha256(canonical_request.encode()).hexdigest()}"
+        signing_key = get_signature_key(date_stamp)
+        signature = hmac.new(signing_key, string_to_sign.encode("utf-8"), hashlib.sha256).hexdigest()
+        auth = f"AWS4-HMAC-SHA256 Credential={access_key}/{scope}, SignedHeaders={signed_headers}, Signature={signature}"
+        url = f"{endpoint}/{bucket}{path}"
+        if query:
+            url += f"?{query}"
+        req = Request(url, data=body if method == "PUT" else None, method=method)
+        req.add_header("Authorization", auth)
+        req.add_header("x-amz-date", amz_date)
+        req.add_header("x-amz-content-sha256", payload_hash)
+        if content_type:
+            req.add_header("Content-Type", content_type)
+        resp = urlopen(req, context=ctx)
+        return resp.read()
+
+    if len(sys.argv) >= 2 and sys.argv[1] == "--retention":
+        retention = int(sys.argv[2])
+        data = s3_request("GET", "/", query="prefix=etcd-backup%2F&delimiter=%2F")
+        root = ET.fromstring(data)
+        ns = root.tag.split("}")[0] + "}" if "}" in root.tag else ""
+        prefixes = sorted([p.text for p in root.iter(f"{ns}Prefix") if p.text and p.text.startswith("etcd-backup/")], reverse=True)
+        print(f"Backups in bucket: {len(prefixes)}/{retention}")
+        if len(prefixes) > retention:
+            for prefix in prefixes[retention:]:
+                listing = s3_request("GET", "/", query=f"prefix={quote(prefix, safe='')}")
+                lroot = ET.fromstring(listing)
+                for key_el in lroot.iter(f"{ns}Key"):
+                    key = key_el.text
+                    print(f"  Deleting: {key}")
+                    s3_request("DELETE", f"/{key}")
+    else:
+        local_file = sys.argv[1]
+        s3_key = sys.argv[2]
+        with open(local_file, "rb") as f:
+            body = f.read()
+        ct = "application/octet-stream" if local_file.endswith(".db") else "text/plain"
+        s3_request("PUT", f"/{s3_key}", body=body, content_type=ct)
+{{- end }}
 ---
 apiVersion: batch/v1
 kind: CronJob
