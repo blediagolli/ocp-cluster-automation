@@ -1,4 +1,4 @@
-{{- if .Values.consoleLink.include }}
+{{- if and .Values.consoleLink.include .Values.consoleLink.href }}
 apiVersion: console.openshift.io/v1
 kind: ConsoleLink
 metadata:
@@ -7,7 +7,7 @@ spec:
   applicationMenu:
     section: {{ .Values.consoleLink.section }}
     imageURL: {{ .Values.consoleLink.imageURL | quote }}
-  href: https://{{ "{{" }} (lookup "route.openshift.io/v1" "Route" "{{ .Values.multiClusterObservability.namespace }}" "grafana").spec.host {{ "}}" }}
+  href: {{ .Values.consoleLink.href | quote }}
   location: {{ .Values.consoleLink.location }}
   text: {{ .Values.consoleLink.text | quote }}
 {{- end }}

@@ -109,6 +109,9 @@ egressFirewall:
     - type: Allow
       to:
         cidrSelector: 0.0.0.0/0
+multiClusterObservability:
+  include: true
+  storageClass: ocs-external-storagecluster-ceph-rbd
 userWorkloadMonitoring:
   include: true
   prometheus:

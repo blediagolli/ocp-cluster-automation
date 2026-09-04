@@ -2,13 +2,20 @@ multiClusterObservability:
   include: false
   name: observability
   namespace: open-cluster-management-observability
-  storageClass: gp3-csi
+  storageClass: ocs-external-storagecluster-ceph-rbd
   compactStorageSize: 50Gi
   receiveStorageSize: 50Gi
   ruleStorageSize: 50Gi
   storeStorageSize: 50Gi
+  retention:
+    raw: 14d
+    fiveMinute: 180d
+    oneHour: 365d
+    blockDuration: 2h
+    deleteDelay: 48h
   capabilities: {}
   observabilityAddonSpec: {}
+setupImage: registry.redhat.io/openshift4/ose-cli:latest
 pullSecret:
   include: true
   secretName: multiclusterhub-operator-pull-secret
@@ -27,7 +34,7 @@ objectStorage:
     tlsConfig:
       caFile: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
   objectBucketClaim:
-    include: false
+    include: true
     name: observability-obc
     namespace: open-cluster-management-observability
     bucketName: observability
@@ -37,6 +44,7 @@ observabilityNamespace:
 consoleLink:
   include: false
   name: observability
+  href: ""
   location: ApplicationMenu
   section: Red Hat applications
   text: Red Hat Advanced Cluster Management Observability

@@ -3,14 +3,22 @@ apiVersion: observability.open-cluster-management.io/v1beta2
 kind: MultiClusterObservability
 metadata:
   name: {{ .Values.multiClusterObservability.name }}
-  namespace: {{ .Values.multiClusterObservability.namespace }}
 spec:
   {{- if .Values.multiClusterObservability.capabilities }}
   capabilities:
     {{- toYaml .Values.multiClusterObservability.capabilities | nindent 4 }}
   {{- end }}
   observabilityAddonSpec:
-    {{- toYaml .Values.multiClusterObservability.observabilityAddonSpec | nindent 4 }}
+    enableMetrics: true
+    {{- with .Values.multiClusterObservability.observabilityAddonSpec }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  retentionConfig:
+    retentionResolutionRaw: {{ .Values.multiClusterObservability.retention.raw }}
+    retentionResolution5m: {{ .Values.multiClusterObservability.retention.fiveMinute }}
+    retentionResolution1h: {{ .Values.multiClusterObservability.retention.oneHour }}
+    blockDuration: {{ .Values.multiClusterObservability.retention.blockDuration }}
+    deleteDelay: {{ .Values.multiClusterObservability.retention.deleteDelay }}
   storageConfig:
     metricObjectStorage:
       name: {{ .Values.objectStorage.secretName }}

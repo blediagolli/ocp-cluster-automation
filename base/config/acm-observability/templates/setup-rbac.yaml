@@ -1,0 +1,35 @@
+{{- if .Values.multiClusterObservability.include }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: observability-setup
+  namespace: {{ .Values.multiClusterObservability.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: observability-setup
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get"]
+  - apiGroups: ["objectbucket.io"]
+    resources: ["objectbucketclaims"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: observability-setup
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: observability-setup
+subjects:
+  - kind: ServiceAccount
+    name: observability-setup
+    namespace: {{ .Values.multiClusterObservability.namespace }}
+{{- end }}

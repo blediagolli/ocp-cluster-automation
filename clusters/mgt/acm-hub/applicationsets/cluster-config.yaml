@@ -44,7 +44,7 @@ spec:
                 - template: etcd-defrag
                 - template: etcd-backup
                 # - template: acm-multiclusterhub
-                # - template: acm-observability
+                - template: acm-observability
                 # - template: aap-instance
                 # - template: cert-manager-certs
                 # - template: local-storage-volumes
