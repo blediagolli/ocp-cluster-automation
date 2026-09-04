@@ -212,6 +212,7 @@ spec:
         spec:
           serviceAccountName: etcd-defrag
           restartPolicy: OnFailure
+          hostNetwork: true
           containers:
             - name: etcd-defrag
               image: {{ .Values.etcdDefrag.image }}
