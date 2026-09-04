@@ -86,6 +86,7 @@ securedCluster:
   include: true
   clusterName: acm-hub
   centralEndpoint: "central-stackrox.apps.cluster-c8444.dyn.redhatworkshops.io:443"
+  secretMode: "job"
 securedClusterNamespace:
   include: false
 projectConfig:

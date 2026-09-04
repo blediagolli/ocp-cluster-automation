@@ -13,7 +13,7 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
-    verbs: ["get", "list", "create", "patch", "update"]
+    verbs: ["get", "list", "create", "patch", "update", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -56,9 +56,14 @@ spec:
               BUNDLE_NAME="local-cluster-$(date +%s)"
 
               echo "Checking if init bundle secrets already exist..."
-              if oc get secret sensor-tls -n "${NAMESPACE}" &>/dev/null; then
-                echo "Init bundle secrets already exist, skipping generation."
+              EXISTING_CA=$(oc get secret sensor-tls -n "${NAMESPACE}" -o jsonpath='{.data.ca\.pem}' 2>/dev/null || echo "")
+              if [ -n "${EXISTING_CA}" ]; then
+                echo "Init bundle secrets already exist with valid data, skipping generation."
                 exit 0
+              fi
+              if oc get secret sensor-tls -n "${NAMESPACE}" &>/dev/null; then
+                echo "sensor-tls exists but has empty data — deleting stale secrets..."
+                oc delete secret sensor-tls collector-tls admission-control-tls -n "${NAMESPACE}" --ignore-not-found
               fi
 
               echo "Waiting for Central to be ready..."
