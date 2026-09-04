@@ -1,0 +1,62 @@
+{{- if and .Values.policies.include .Values.policies.podSecurity.include }}
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: {{ .Values.policies.podSecurity.name }}
+  namespace: {{ .Values.policies.namespace }}
+  annotations:
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+spec:
+  remediationAction: {{ .Values.policies.podSecurity.remediationAction }}
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: {{ .Values.policies.podSecurity.name }}
+        spec:
+          remediationAction: {{ .Values.policies.podSecurity.remediationAction }}
+          severity: {{ .Values.policies.podSecurity.severity }}
+          namespaceSelector:
+            include:
+              {{- toYaml .Values.policies.podSecurity.namespaceSelector.include | nindent 14 }}
+            exclude:
+              {{- toYaml .Values.policies.podSecurity.namespaceSelector.exclude | nindent 14 }}
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Namespace
+                metadata:
+                  labels:
+                    pod-security.kubernetes.io/enforce: {{ .Values.policies.podSecurity.enforcementLevel }}
+                    pod-security.kubernetes.io/warn: {{ .Values.policies.podSecurity.enforcementLevel }}
+                    pod-security.kubernetes.io/audit: {{ .Values.policies.podSecurity.enforcementLevel }}
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  name: {{ .Values.policies.podSecurity.name }}-placement
+  namespace: {{ .Values.policies.namespace }}
+spec:
+  clusterSelector:
+    matchExpressions:
+      {{- toYaml .Values.policies.podSecurity.placement.clusterSelector.matchExpressions | nindent 6 }}
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: {{ .Values.policies.podSecurity.name }}-binding
+  namespace: {{ .Values.policies.namespace }}
+placementRef:
+  apiGroup: apps.open-cluster-management.io
+  kind: PlacementRule
+  name: {{ .Values.policies.podSecurity.name }}-placement
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: Policy
+    name: {{ .Values.policies.podSecurity.name }}
+{{- end }}

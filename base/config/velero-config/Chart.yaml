@@ -1,0 +1,4 @@
+apiVersion: v2
+name: velero-config
+description: Velero backup schedules and storage locations
+version: 0.1.0

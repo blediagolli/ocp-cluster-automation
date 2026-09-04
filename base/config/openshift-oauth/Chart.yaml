@@ -1,0 +1,4 @@
+apiVersion: v2
+name: openshift-oauth
+description: OpenShift OAuth and Identity Provider configuration
+version: 0.1.0

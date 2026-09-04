@@ -1,2 +1,42 @@
 userWorkloadMonitoring:
   include: false
+
+  # Prometheus configuration for user workload monitoring
+  prometheus:
+    retention: 24h
+    replicas: 2
+    # Set storageClass to enable persistent storage for Prometheus
+    # Leave empty to use ephemeral storage
+    storageClass: ""
+    pvcSize: 40Gi
+    resources:
+      requests:
+        cpu: 200m
+        memory: 1Gi
+      limits:
+        cpu: "1"
+        memory: 4Gi
+
+  # Thanos Ruler sidecar for evaluating recording and alerting rules
+  # against Thanos-compatible object storage
+  thanosRuler:
+    enabled: false
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+  # AlertManager for user-defined alerts
+  alertmanager:
+    enabled: false
+
+  # Remote write endpoints for sending metrics to external systems
+  # Example:
+  #   remoteWrite:
+  #     - url: https://remote-write-endpoint.example.com/api/v1/write
+  #       authorization:
+  #         type: Bearer
+  #         credentials:
+  #           name: remote-write-secret
+  #           key: token
+  remoteWrite: []

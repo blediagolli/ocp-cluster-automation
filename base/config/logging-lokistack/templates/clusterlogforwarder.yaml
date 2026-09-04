@@ -22,6 +22,9 @@ spec:
       inputRefs:
         - infrastructure
         - application
+        {{- if .Values.clusterLogForwarder.collectAuditLogs }}
+        - audit
+        {{- end }}
       outputRefs:
         - default-lokistack
 {{- end }}

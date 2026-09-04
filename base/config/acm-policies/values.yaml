@@ -1,0 +1,110 @@
+policies:
+  include: false
+  namespace: open-cluster-management
+
+  podSecurity:
+    include: false
+    name: policy-pod-security
+    remediationAction: inform
+    severity: high
+    enforcementLevel: restricted
+    namespaceSelector:
+      include:
+        - "*"
+      exclude:
+        - openshift-*
+        - kube-*
+        - default
+    placement:
+      clusterSelector:
+        matchExpressions:
+          - key: environment
+            operator: In
+            values:
+              - production
+              - staging
+
+  networkPolicy:
+    include: false
+    name: policy-network-isolation
+    remediationAction: enforce
+    severity: high
+    namespaceSelector:
+      include:
+        - "*"
+      exclude:
+        - openshift-*
+        - kube-*
+        - default
+    placement:
+      clusterSelector:
+        matchExpressions:
+          - key: vendor
+            operator: In
+            values:
+              - OpenShift
+
+  resourceQuotas:
+    include: false
+    name: policy-resource-quotas
+    remediationAction: inform
+    severity: medium
+    namespaceSelector:
+      include:
+        - "*"
+      exclude:
+        - openshift-*
+        - kube-*
+        - default
+    placement:
+      clusterSelector:
+        matchExpressions:
+          - key: environment
+            operator: In
+            values:
+              - production
+
+  complianceOperator:
+    include: false
+    name: policy-compliance-operator
+    remediationAction: enforce
+    severity: high
+    placement:
+      clusterSelector:
+        matchExpressions:
+          - key: environment
+            operator: In
+            values:
+              - production
+              - staging
+
+  imagePolicy:
+    include: false
+    name: policy-image-policy
+    remediationAction: inform
+    severity: high
+    allowedRegistries:
+      - registry.redhat.io
+      - quay.io
+      - registry.access.redhat.com
+      - image-registry.openshift-image-registry.svc:5000
+    placement:
+      clusterSelector:
+        matchExpressions:
+          - key: vendor
+            operator: In
+            values:
+              - OpenShift
+
+  etcdEncryption:
+    include: false
+    name: policy-etcd-encryption
+    remediationAction: inform
+    severity: critical
+    placement:
+      clusterSelector:
+        matchExpressions:
+          - key: vendor
+            operator: In
+            values:
+              - OpenShift

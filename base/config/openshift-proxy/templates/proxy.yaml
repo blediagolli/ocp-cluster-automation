@@ -1,0 +1,20 @@
+{{- if .Values.proxy.include }}
+apiVersion: config.openshift.io/v1
+kind: Proxy
+metadata:
+  name: cluster
+spec:
+  {{- if .Values.proxy.httpProxy }}
+  httpProxy: {{ .Values.proxy.httpProxy | quote }}
+  {{- end }}
+  {{- if .Values.proxy.httpsProxy }}
+  httpsProxy: {{ .Values.proxy.httpsProxy | quote }}
+  {{- end }}
+  {{- if .Values.proxy.noProxy }}
+  noProxy: {{ .Values.proxy.noProxy | quote }}
+  {{- end }}
+  {{- if .Values.proxy.trustedCA.name }}
+  trustedCA:
+    name: {{ .Values.proxy.trustedCA.name }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,107 @@
+{{- if .Values.groupSync.include }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.groupSync.serviceAccountName }}
+  namespace: {{ .Values.groupSync.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Values.groupSync.serviceAccountName }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.groupSync.serviceAccountName }}
+    namespace: {{ .Values.groupSync.namespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ldap-sync-config
+  namespace: {{ .Values.groupSync.namespace }}
+data:
+  ldap-sync-config.yaml: |
+    kind: LDAPSyncConfig
+    apiVersion: v1
+    url: {{ .Values.groupSync.ldap.url | quote }}
+    insecure: {{ .Values.groupSync.ldap.insecure }}
+    bindDN: {{ .Values.groupSync.ldap.bindDN | quote }}
+    bindPassword:
+      file: /etc/secrets/bindPassword
+    {{- if not .Values.groupSync.ldap.insecure }}
+    ca: /etc/ca/ca.crt
+    {{- end }}
+    activeDirectory: null
+    augmentedActiveDirectory: null
+    rfc2307:
+      groupsQuery:
+        baseDN: {{ .Values.groupSync.ldap.groupBaseDN | quote }}
+        scope: sub
+        derefAliases: never
+        filter: {{ .Values.groupSync.ldap.groupFilter | quote }}
+      groupUIDAttribute: dn
+      groupNameAttributes:
+        {{- toYaml .Values.groupSync.ldap.groupNameAttributes | nindent 8 }}
+      groupMembershipAttributes:
+        {{- toYaml .Values.groupSync.ldap.groupMembershipAttributes | nindent 8 }}
+      usersQuery:
+        baseDN: {{ .Values.groupSync.ldap.userBaseDN | quote }}
+        scope: sub
+        derefAliases: never
+      userUIDAttribute: dn
+      userNameAttributes:
+        {{- toYaml .Values.groupSync.ldap.userNameAttributes | nindent 8 }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ldap-group-sync
+  namespace: {{ .Values.groupSync.namespace }}
+spec:
+  schedule: {{ .Values.groupSync.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: {{ .Values.groupSync.serviceAccountName }}
+          restartPolicy: OnFailure
+          containers:
+            - name: ldap-group-sync
+              image: {{ .Values.groupSync.image }}
+              command:
+                - /bin/bash
+                - -c
+                - oc adm groups sync --sync-config=/etc/config/ldap-sync-config.yaml --confirm
+              volumeMounts:
+                - name: config
+                  mountPath: /etc/config
+                  readOnly: true
+                - name: bind-password
+                  mountPath: /etc/secrets
+                  readOnly: true
+                {{- if not .Values.groupSync.ldap.insecure }}
+                - name: ldap-ca
+                  mountPath: /etc/ca
+                  readOnly: true
+                {{- end }}
+          volumes:
+            - name: config
+              configMap:
+                name: ldap-sync-config
+            - name: bind-password
+              secret:
+                secretName: {{ .Values.groupSync.ldap.bindPasswordSecretName }}
+            {{- if not .Values.groupSync.ldap.insecure }}
+            - name: ldap-ca
+              configMap:
+                name: {{ .Values.groupSync.ldap.caConfigMapName }}
+            {{- end }}
+{{- end }}

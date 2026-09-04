@@ -1,18 +1,18 @@
-{{- if .Values.catalogSource.include }}
+{{- if .Values.catalogSource.certifiedOperators.include }}
 
 ---
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
-  name: local-certified-operators
-  namespace: openshift-marketplace
+  name: {{ .Values.catalogSource.certifiedOperators.name }}
+  namespace: {{ .Values.catalogSource.certifiedOperators.namespace }}
 spec:
-  displayName: Local Certified Operator Catalog
-  image: {{ .Values.cluster.registry }}/redhat/certified-operator:{{ .Values.catalogSource.rh_catalog_version }}
-  publisher: grpc
-  sourceType: grpc
+  displayName: {{ .Values.catalogSource.certifiedOperators.displayName }}
+  image: {{ .Values.cluster.registry }}/{{ .Values.catalogSource.certifiedOperators.imageRepository }}:{{ .Values.catalogSource.certifiedOperators.imageTag }}
+  publisher: {{ .Values.catalogSource.certifiedOperators.publisher }}
+  sourceType: {{ .Values.catalogSource.certifiedOperators.sourceType }}
   updateStrategy:
     registryPoll:
-      interval: 1440m
+      interval: {{ .Values.catalogSource.certifiedOperators.registryPollInterval }}
 
-{{ end }}
+{{- end }}

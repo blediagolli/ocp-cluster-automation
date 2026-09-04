@@ -1,0 +1,4 @@
+apiVersion: v2
+name: oadp-config
+description: OADP DataProtectionApplication configuration for Velero
+version: 0.1.0

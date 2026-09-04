@@ -1,0 +1,26 @@
+{{- if .Values.imagePruner.include }}
+apiVersion: imageregistry.operator.openshift.io/v1
+kind: ImagePruner
+metadata:
+  name: cluster
+spec:
+  schedule: {{ .Values.imagePruner.schedule | quote }}
+  suspend: {{ .Values.imagePruner.suspend }}
+  keepTagRevisions: {{ .Values.imagePruner.keepTagRevisions }}
+  {{- if .Values.imagePruner.keepYoungerThanDuration }}
+  keepYoungerThanDuration: {{ .Values.imagePruner.keepYoungerThanDuration | quote }}
+  {{- else }}
+  keepYoungerThan: {{ .Values.imagePruner.keepYoungerThan }}
+  {{- end }}
+  successfulJobsHistoryLimit: {{ .Values.imagePruner.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.imagePruner.failedJobsHistoryLimit }}
+  resources:
+    {{- if .Values.imagePruner.resources.requests }}
+    requests:
+      {{- toYaml .Values.imagePruner.resources.requests | nindent 6 }}
+    {{- end }}
+    {{- if .Values.imagePruner.resources.limits }}
+    limits:
+      {{- toYaml .Values.imagePruner.resources.limits | nindent 6 }}
+    {{- end }}
+{{- end }}

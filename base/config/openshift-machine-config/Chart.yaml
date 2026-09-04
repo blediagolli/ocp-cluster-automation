@@ -1,4 +1,4 @@
-apiVersion: v1
+apiVersion: v2
 name: openshift-machine-config
-version: "1"
-description: OpenShift MachineConfig configuration
+description: OpenShift MachineConfig, KubeletConfig, ContainerRuntimeConfig, and MachineConfigPool resources
+version: 0.1.0

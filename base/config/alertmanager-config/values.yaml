@@ -1,0 +1,65 @@
+alertmanager:
+  include: false
+  namespace: openshift-monitoring
+  receivers:
+    - name: default
+      # Slack
+      slack: {}
+      # slackConfigs:
+      # - apiURL:
+      #     name: alertmanager-slack
+      #     key: url
+      #   channel: "#alerts"
+      #   sendResolved: true
+      #   title: '{{ "{{" }} .CommonAnnotations.summary {{ "}}" }}'
+      #   text: '{{ "{{" }} .CommonAnnotations.description {{ "}}" }}'
+
+      # PagerDuty
+      pagerduty: {}
+      # pagerDutyConfigs:
+      # - serviceKey:
+      #     name: alertmanager-pagerduty
+      #     key: service-key
+      #   severity: '{{ "{{" }} .CommonLabels.severity {{ "}}" }}'
+
+      # Email
+      email: {}
+      # emailConfigs:
+      # - to: ops-team@example.com
+      #   from: alertmanager@example.com
+      #   smarthost: smtp.example.com:587
+      #   authUsername: alertmanager
+      #   authPassword:
+      #     name: alertmanager-smtp
+      #     key: password
+      #   requireTLS: true
+
+      # Webhook
+      webhook: {}
+      # webhookConfigs:
+      # - url: https://hooks.example.com/alerts
+      #   sendResolved: true
+  route:
+    groupBy:
+      - alertname
+      - namespace
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 4h
+    receiver: default
+    routes: []
+    # - matchers:
+    #     - name: severity
+    #       value: critical
+    #   receiver: pagerduty
+    #   repeatInterval: 1h
+  inhibitRules: []
+  # - sourceMatch:
+  #     - name: severity
+  #       value: critical
+  #   targetMatch:
+  #     - name: severity
+  #       value: warning
+  #   equal:
+  #     - alertname
+  #     - namespace

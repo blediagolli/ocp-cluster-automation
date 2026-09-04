@@ -1,0 +1,26 @@
+groupSync:
+  include: false
+  namespace: openshift-authentication
+  schedule: "*/30 * * * *"
+  image: registry.redhat.io/openshift4/ose-cli:v4.22
+  serviceAccountName: ldap-group-syncer
+  ldap:
+    url: "ldaps://ldap.example.com:636"
+    insecure: false
+    bindDN: "cn=admin,dc=example,dc=com"
+    bindPasswordSecretName: ldap-bind-password
+    caConfigMapName: ldap-ca
+    groupBaseDN: "ou=groups,dc=example,dc=com"
+    userBaseDN: "ou=users,dc=example,dc=com"
+    groupFilter: "(objectClass=groupOfNames)"
+    groupNameAttributes:
+      - cn
+    groupMembershipAttributes:
+      - member
+    userNameAttributes:
+      - uid
+  groupMappings: []
+  # - ldapGroup: "cn=admins,ou=groups,dc=example,dc=com"
+  #   openshiftGroup: cluster-admins
+  # - ldapGroup: "cn=developers,ou=groups,dc=example,dc=com"
+  #   openshiftGroup: developers

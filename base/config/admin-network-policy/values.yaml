@@ -1,0 +1,56 @@
+adminNetworkPolicies:
+  # ---------------------------------------------------------------------------
+  # Allow monitoring — permits Prometheus scraping across all namespaces
+  # ---------------------------------------------------------------------------
+  - name: allow-monitoring
+    include: false
+    priority: 10
+    subject:
+      namespaceSelector:
+        matchLabels: {}
+        # Empty selector = all namespaces
+    ingress:
+      - name: allow-prometheus
+        action: Allow
+        from:
+          - namespaces:
+              namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: openshift-monitoring
+        ports:
+          - portNumber:
+              port: 9090
+              protocol: TCP
+          - portNumber:
+              port: 9091
+              protocol: TCP
+          - portNumber:
+              port: 8443
+              protocol: TCP
+    egress: []
+
+  # ---------------------------------------------------------------------------
+  # Allow ingress controller — permits traffic from router pods
+  # ---------------------------------------------------------------------------
+  - name: allow-ingress-controller
+    include: false
+    priority: 20
+    subject:
+      namespaceSelector:
+        matchLabels: {}
+    ingress:
+      - name: allow-router
+        action: Allow
+        from:
+          - namespaces:
+              namespaceSelector:
+                matchLabels:
+                  policy-group.network.openshift.io/ingress: ""
+        ports:
+          - portNumber:
+              port: 8080
+              protocol: TCP
+          - portNumber:
+              port: 8443
+              protocol: TCP
+    egress: []

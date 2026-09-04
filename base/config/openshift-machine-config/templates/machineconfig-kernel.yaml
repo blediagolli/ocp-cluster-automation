@@ -1,0 +1,33 @@
+{{- if .Values.machineConfigKernel.include }}
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  labels:
+    machineconfiguration.openshift.io/role: {{ .Values.machineConfigKernel.role }}
+  name: {{ .Values.machineConfigKernel.name }}
+spec:
+  config:
+    ignition:
+      version: 3.2.0
+    {{- if .Values.machineConfigKernel.sysctls }}
+    storage:
+      files:
+        - contents:
+            source: data:text/plain;charset=utf-8;base64,{{ include "sysctl.conf" . | b64enc }}
+          mode: 0644
+          overwrite: true
+          path: /etc/sysctl.d/99-custom.conf
+    {{- end }}
+  {{- if .Values.machineConfigKernel.kernelArguments }}
+  kernelArguments:
+    {{- range .Values.machineConfigKernel.kernelArguments }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+
+{{- define "sysctl.conf" -}}
+{{- range $key, $val := .Values.machineConfigKernel.sysctls }}
+{{ $key }} = {{ $val }}
+{{- end }}
+{{- end -}}

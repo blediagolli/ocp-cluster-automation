@@ -1,0 +1,59 @@
+cluster:
+  name: ""
+  domain: ""
+
+ingress:
+  controller:
+    include: false
+    default:
+      placement: node-role.kubernetes.io/infra
+      replicas: 2
+      endpointPublishingStrategy: NodePortService
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+    logging:
+      enabled: true
+      destination:
+        type: Syslog
+        syslog:
+          address: ""
+          port: 10514
+    tlsSecurityProfile:
+      enabled: false
+      type: Custom
+      custom:
+        ciphers:
+          - TLS_AES_128_GCM_SHA256
+          - TLS_AES_256_GCM_SHA384
+          - ECDHE-ECDSA-AES128-GCM-SHA256
+          - ECDHE-RSA-AES128-GCM-SHA256
+          - ECDHE-ECDSA-AES256-GCM-SHA384
+          - ECDHE-RSA-AES256-GCM-SHA384
+        minTLSVersion: VersionTLS12
+    http2:
+      enabled: false
+    hsts:
+      enabled: false
+      value: "max-age=31536000; includeSubDomains; preload"
+    defaultCertificate:
+      enabled: false
+      name: custom-default-cert
+    domains: []
+    # Example domain entry:
+    # - name: custom
+    #   placement: node-role.kubernetes.io/infra
+    #   replicas: 2
+    #   endpointPublishingStrategy: NodePortService
+    #   http_port: 30080
+    #   https_port: 30443
+    #   tolerations:
+    #     - effect: NoSchedule
+    #       operator: Exists
+    #   defaultCertificateName: custom-cert
+  service:
+    include: false
+    type: NodePort
+    externalTrafficPolicy: Local
+    httpPort: 80
+    httpsPort: 443

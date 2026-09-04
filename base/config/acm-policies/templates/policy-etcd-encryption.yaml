@@ -1,0 +1,57 @@
+{{- if and .Values.policies.include .Values.policies.etcdEncryption.include }}
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: {{ .Values.policies.etcdEncryption.name }}
+  namespace: {{ .Values.policies.namespace }}
+  annotations:
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    policy.open-cluster-management.io/categories: SC System and Communications Protection
+    policy.open-cluster-management.io/controls: SC-28 Protection of Information at Rest
+spec:
+  remediationAction: {{ .Values.policies.etcdEncryption.remediationAction }}
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: {{ .Values.policies.etcdEncryption.name }}
+        spec:
+          remediationAction: {{ .Values.policies.etcdEncryption.remediationAction }}
+          severity: {{ .Values.policies.etcdEncryption.severity }}
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: config.openshift.io/v1
+                kind: APIServer
+                metadata:
+                  name: cluster
+                spec:
+                  encryption:
+                    type: aescbc
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  name: {{ .Values.policies.etcdEncryption.name }}-placement
+  namespace: {{ .Values.policies.namespace }}
+spec:
+  clusterSelector:
+    matchExpressions:
+      {{- toYaml .Values.policies.etcdEncryption.placement.clusterSelector.matchExpressions | nindent 6 }}
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: {{ .Values.policies.etcdEncryption.name }}-binding
+  namespace: {{ .Values.policies.namespace }}
+placementRef:
+  apiGroup: apps.open-cluster-management.io
+  kind: PlacementRule
+  name: {{ .Values.policies.etcdEncryption.name }}-placement
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: Policy
+    name: {{ .Values.policies.etcdEncryption.name }}
+{{- end }}

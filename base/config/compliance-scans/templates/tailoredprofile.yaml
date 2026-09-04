@@ -1,0 +1,25 @@
+{{- if .Values.tailoredProfile.include }}
+apiVersion: compliance.openshift.io/v1alpha1
+kind: TailoredProfile
+metadata:
+  name: {{ .Values.tailoredProfile.name }}
+  namespace: {{ .Values.tailoredProfile.namespace }}
+spec:
+  title: {{ .Values.tailoredProfile.title }}
+  description: {{ .Values.tailoredProfile.description }}
+  extends: {{ .Values.tailoredProfile.extends }}
+  {{- if .Values.tailoredProfile.enableRules }}
+  enableRules:
+    {{- range .Values.tailoredProfile.enableRules }}
+    - name: {{ .name }}
+      rationale: {{ .rationale }}
+    {{- end }}
+  {{- end }}
+  {{- if .Values.tailoredProfile.disableRules }}
+  disableRules:
+    {{- range .Values.tailoredProfile.disableRules }}
+    - name: {{ .name }}
+      rationale: {{ .rationale }}
+    {{- end }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,59 @@
+{{- if and .Values.policies.include .Values.policies.resourceQuotas.include }}
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: {{ .Values.policies.resourceQuotas.name }}
+  namespace: {{ .Values.policies.namespace }}
+  annotations:
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    policy.open-cluster-management.io/categories: SC System and Communications Protection
+    policy.open-cluster-management.io/controls: SC-6 Resource Availability
+spec:
+  remediationAction: {{ .Values.policies.resourceQuotas.remediationAction }}
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: {{ .Values.policies.resourceQuotas.name }}
+        spec:
+          remediationAction: {{ .Values.policies.resourceQuotas.remediationAction }}
+          severity: {{ .Values.policies.resourceQuotas.severity }}
+          namespaceSelector:
+            include:
+              {{- toYaml .Values.policies.resourceQuotas.namespaceSelector.include | nindent 14 }}
+            exclude:
+              {{- toYaml .Values.policies.resourceQuotas.namespaceSelector.exclude | nindent 14 }}
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: ResourceQuota
+                metadata:
+                  name: default-quota
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  name: {{ .Values.policies.resourceQuotas.name }}-placement
+  namespace: {{ .Values.policies.namespace }}
+spec:
+  clusterSelector:
+    matchExpressions:
+      {{- toYaml .Values.policies.resourceQuotas.placement.clusterSelector.matchExpressions | nindent 6 }}
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: {{ .Values.policies.resourceQuotas.name }}-binding
+  namespace: {{ .Values.policies.namespace }}
+placementRef:
+  apiGroup: apps.open-cluster-management.io
+  kind: PlacementRule
+  name: {{ .Values.policies.resourceQuotas.name }}-placement
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: Policy
+    name: {{ .Values.policies.resourceQuotas.name }}
+{{- end }}

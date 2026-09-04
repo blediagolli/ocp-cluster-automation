@@ -1,0 +1,4 @@
+apiVersion: v2
+name: openshift-apiserver-audit
+description: OpenShift API server configuration
+version: 0.1.0

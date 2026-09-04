@@ -1,0 +1,25 @@
+apiServer:
+  include: false
+  audit:
+    profile: Default
+    # Profiles: Default, WriteRequestBodies, AllRequestBodies, None
+    customRules: []
+    # - group: ""
+    #   resources:
+    #     - secrets
+    #   level: Metadata
+    # - group: ""
+    #   resources:
+    #     - configmaps
+    #   level: None
+  servingCerts:
+    namedCertificates: []
+    # - names:
+    #     - api.cluster.example.com
+    #   servingCertificate:
+    #     name: api-cert-secret
+  tlsSecurityProfile:
+    type: Intermediate
+  encryption:
+    type: aescbc
+  additionalCORSAllowedOrigins: []

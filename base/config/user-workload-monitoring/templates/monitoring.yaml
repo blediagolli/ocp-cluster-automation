@@ -7,4 +7,38 @@ metadata:
 data:
   config.yaml: |
     enableUserWorkload: true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-workload-monitoring-config
+  namespace: openshift-user-workload-monitoring
+data:
+  config.yaml: |
+    prometheus:
+      retention: {{ .Values.userWorkloadMonitoring.prometheus.retention }}
+      replicas: {{ .Values.userWorkloadMonitoring.prometheus.replicas }}
+      {{- if .Values.userWorkloadMonitoring.prometheus.storageClass }}
+      volumeClaimTemplate:
+        spec:
+          storageClassName: {{ .Values.userWorkloadMonitoring.prometheus.storageClass }}
+          resources:
+            requests:
+              storage: {{ .Values.userWorkloadMonitoring.prometheus.pvcSize }}
+      {{- end }}
+      resources:
+        {{- .Values.userWorkloadMonitoring.prometheus.resources | toYaml | nindent 8 }}
+      {{- if .Values.userWorkloadMonitoring.remoteWrite }}
+      remoteWrite:
+        {{- .Values.userWorkloadMonitoring.remoteWrite | toYaml | nindent 8 }}
+      {{- end }}
+    {{- if .Values.userWorkloadMonitoring.thanosRuler.enabled }}
+    thanosRuler:
+      resources:
+        {{- .Values.userWorkloadMonitoring.thanosRuler.resources | toYaml | nindent 8 }}
+    {{- end }}
+    {{- if .Values.userWorkloadMonitoring.alertmanager.enabled }}
+    alertmanager:
+      enabled: true
+    {{- end }}
 {{- end }}

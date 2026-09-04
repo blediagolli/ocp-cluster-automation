@@ -1,0 +1,29 @@
+{{- range .Values.consoleLinks }}
+{{- if .include }}
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: {{ .name }}
+spec:
+  text: {{ .text | quote }}
+  href: {{ .href | quote }}
+  location: {{ .location }}
+  {{- if and (eq .location "ApplicationMenu") .applicationMenu }}
+  applicationMenu:
+    {{- if .applicationMenu.section }}
+    section: {{ .applicationMenu.section | quote }}
+    {{- end }}
+    {{- if .applicationMenu.imageURL }}
+    imageURL: {{ .applicationMenu.imageURL | quote }}
+    {{- end }}
+  {{- end }}
+  {{- if and (eq .location "NamespaceDashboard") .namespaceDashboard }}
+  namespaceDashboard:
+    {{- if .namespaceDashboard.namespaces }}
+    namespaces:
+      {{- toYaml .namespaceDashboard.namespaces | nindent 6 }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}

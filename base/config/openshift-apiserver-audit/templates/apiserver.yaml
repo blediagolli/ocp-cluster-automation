@@ -1,0 +1,33 @@
+{{- if .Values.apiServer.include }}
+apiVersion: config.openshift.io/v1
+kind: APIServer
+metadata:
+  name: cluster
+spec:
+  audit:
+    profile: {{ .Values.apiServer.audit.profile }}
+    {{- if .Values.apiServer.audit.customRules }}
+    customRules:
+      {{- toYaml .Values.apiServer.audit.customRules | nindent 6 }}
+    {{- end }}
+  {{- if .Values.apiServer.servingCerts.namedCertificates }}
+  servingCerts:
+    namedCertificates:
+      {{- range .Values.apiServer.servingCerts.namedCertificates }}
+      - names:
+          {{- toYaml .names | nindent 10 }}
+        servingCertificate:
+          name: {{ .servingCertificate.name }}
+      {{- end }}
+  {{- end }}
+  tlsSecurityProfile:
+    type: {{ .Values.apiServer.tlsSecurityProfile.type }}
+  {{- if .Values.apiServer.encryption }}
+  encryption:
+    type: {{ .Values.apiServer.encryption.type }}
+  {{- end }}
+  {{- if .Values.apiServer.additionalCORSAllowedOrigins }}
+  additionalCORSAllowedOrigins:
+    {{- toYaml .Values.apiServer.additionalCORSAllowedOrigins | nindent 4 }}
+  {{- end }}
+{{- end }}

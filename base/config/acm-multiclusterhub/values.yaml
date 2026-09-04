@@ -9,5 +9,27 @@ multiClusterHub:
   annotations: {}
   overrides:
     components:
+      - name: console
+        enabled: true
+      - name: insights
+        enabled: true
+      - name: search
+        enabled: true
+      - name: grc
+        enabled: true
+      - name: cluster-lifecycle
+        enabled: true
       - name: siteconfig
         enabled: true
+      - name: volsync
+        enabled: false
+      - name: cluster-proxy-addon
+        enabled: false
+      - name: managedserviceaccount
+        enabled: false
+  # nodeSelector for MCH pods (e.g., node-role.kubernetes.io/infra: "")
+  nodeSelector: {}
+  # tolerations for MCH pods
+  tolerations: []
+  # name of the image pull secret
+  imagePullSecret: ""

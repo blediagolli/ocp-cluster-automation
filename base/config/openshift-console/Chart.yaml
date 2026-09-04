@@ -1,0 +1,4 @@
+apiVersion: v2
+name: openshift-console
+description: OpenShift console branding, links, and customization
+version: 0.1.0

@@ -1,4 +1,4 @@
-{{- if .Values.machineConfig.include }}
+{{- if .Values.selinuxPermissive.include }}
 apiVersion: machineconfiguration.openshift.io/v1
 kind: MachineConfig
 metadata:

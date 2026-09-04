@@ -1,0 +1,23 @@
+scheduler:
+  include: false
+  # Available profiles: LowNodeUtilization, HighNodeUtilization, NoScoring
+  profile: LowNodeUtilization
+  customProfiles: []
+  # - name: custom-scheduler-profile
+  #   pluginConfig:
+  #     - name: NodeResourcesFit
+  #       args:
+  #         scoringStrategy:
+  #           type: MostAllocated
+  #           resources:
+  #             - name: cpu
+  #               weight: 1
+  #             - name: memory
+  #               weight: 1
+  #   plugins:
+  #     score:
+  #       disabled:
+  #         - name: NodeResourcesBalancedAllocation
+  #       enabled:
+  #         - name: NodeResourcesFit
+  #           weight: 1

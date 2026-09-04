@@ -1,0 +1,62 @@
+oauth:
+  include: false
+  tokenConfig:
+    accessTokenMaxAgeSeconds: 86400
+  identityProviders: []
+  # Example LDAP provider:
+  # - name: ldap
+  #   type: LDAP
+  #   mappingMethod: claim
+  #   ldap:
+  #     url: "ldaps://ldap.example.com:636/ou=users,dc=example,dc=com?uid"
+  #     insecure: false
+  #     ca:
+  #       name: ldap-ca-configmap
+  #     bindDN: "cn=admin,dc=example,dc=com"
+  #     bindPassword:
+  #       name: ldap-bind-password
+  #     attributes:
+  #       id:
+  #         - dn
+  #       email:
+  #         - mail
+  #       name:
+  #         - displayName
+  #       preferredUsername:
+  #         - uid
+  #
+  # Example OIDC provider:
+  # - name: oidc
+  #   type: OpenID
+  #   mappingMethod: claim
+  #   openID:
+  #     clientID: openshift-client
+  #     clientSecret:
+  #       name: oidc-client-secret
+  #     issuer: "https://idp.example.com"
+  #     claims:
+  #       preferredUsername:
+  #         - preferred_username
+  #       name:
+  #         - name
+  #       email:
+  #         - email
+  #
+  # Example GitHub provider:
+  # - name: github
+  #   type: GitHub
+  #   mappingMethod: claim
+  #   github:
+  #     clientID: "github-client-id"
+  #     clientSecret:
+  #       name: github-client-secret
+  #     organizations:
+  #       - my-org
+  #
+  # Example HTPasswd provider:
+  # - name: htpasswd
+  #   type: HTPasswd
+  #   mappingMethod: claim
+  #   htpasswd:
+  #     fileData:
+  #       name: htpasswd-secret

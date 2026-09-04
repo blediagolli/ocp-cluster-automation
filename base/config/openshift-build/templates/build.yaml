@@ -1,0 +1,66 @@
+{{- if .Values.build.include }}
+apiVersion: config.openshift.io/v1
+kind: Build
+metadata:
+  name: cluster
+spec:
+  buildDefaults:
+    {{- if or .Values.build.defaultProxy.httpProxy .Values.build.defaultProxy.httpsProxy .Values.build.defaultProxy.noProxy }}
+    defaultProxy:
+      {{- if .Values.build.defaultProxy.httpProxy }}
+      httpProxy: {{ .Values.build.defaultProxy.httpProxy | quote }}
+      {{- end }}
+      {{- if .Values.build.defaultProxy.httpsProxy }}
+      httpsProxy: {{ .Values.build.defaultProxy.httpsProxy | quote }}
+      {{- end }}
+      {{- if .Values.build.defaultProxy.noProxy }}
+      noProxy: {{ .Values.build.defaultProxy.noProxy | quote }}
+      {{- end }}
+    {{- end }}
+    {{- if or .Values.build.defaultProxy.gitProxy.httpProxy .Values.build.defaultProxy.gitProxy.httpsProxy .Values.build.defaultProxy.gitProxy.noProxy }}
+    gitProxy:
+      {{- if .Values.build.defaultProxy.gitProxy.httpProxy }}
+      httpProxy: {{ .Values.build.defaultProxy.gitProxy.httpProxy | quote }}
+      {{- end }}
+      {{- if .Values.build.defaultProxy.gitProxy.httpsProxy }}
+      httpsProxy: {{ .Values.build.defaultProxy.gitProxy.httpsProxy | quote }}
+      {{- end }}
+      {{- if .Values.build.defaultProxy.gitProxy.noProxy }}
+      noProxy: {{ .Values.build.defaultProxy.gitProxy.noProxy | quote }}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.build.env }}
+    env:
+      {{- toYaml .Values.build.env | nindent 6 }}
+    {{- end }}
+    {{- if or .Values.build.resources.requests.cpu .Values.build.resources.requests.memory .Values.build.resources.limits.cpu .Values.build.resources.limits.memory }}
+    resources:
+      {{- if or .Values.build.resources.requests.cpu .Values.build.resources.requests.memory }}
+      requests:
+        {{- if .Values.build.resources.requests.cpu }}
+        cpu: {{ .Values.build.resources.requests.cpu }}
+        {{- end }}
+        {{- if .Values.build.resources.requests.memory }}
+        memory: {{ .Values.build.resources.requests.memory }}
+        {{- end }}
+      {{- end }}
+      {{- if or .Values.build.resources.limits.cpu .Values.build.resources.limits.memory }}
+      limits:
+        {{- if .Values.build.resources.limits.cpu }}
+        cpu: {{ .Values.build.resources.limits.cpu }}
+        {{- end }}
+        {{- if .Values.build.resources.limits.memory }}
+        memory: {{ .Values.build.resources.limits.memory }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- if .Values.build.nodeSelector }}
+  buildOverrides:
+    nodeSelector:
+      {{- toYaml .Values.build.nodeSelector | nindent 6 }}
+    {{- if .Values.build.tolerations }}
+    tolerations:
+      {{- toYaml .Values.build.tolerations | nindent 6 }}
+    {{- end }}
+  {{- end }}
+{{- end }}

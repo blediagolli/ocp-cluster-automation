@@ -1,0 +1,32 @@
+machineHealthChecks:
+  include: false
+  namespace: openshift-machine-api
+  checks:
+    - name: worker-healthcheck
+      include: true
+      selector:
+        matchLabels:
+          machine.openshift.io/cluster-api-machine-role: worker
+      unhealthyConditions:
+        - type: Ready
+          status: "False"
+          timeout: 5m
+        - type: Ready
+          status: "Unknown"
+          timeout: 5m
+      maxUnhealthy: "40%"
+      nodeStartupTimeout: 10m
+    - name: infra-healthcheck
+      include: false
+      selector:
+        matchLabels:
+          machine.openshift.io/cluster-api-machine-role: infra
+      unhealthyConditions:
+        - type: Ready
+          status: "False"
+          timeout: 5m
+        - type: Ready
+          status: "Unknown"
+          timeout: 5m
+      maxUnhealthy: "40%"
+      nodeStartupTimeout: 10m

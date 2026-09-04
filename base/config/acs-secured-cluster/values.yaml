@@ -32,12 +32,25 @@ securedCluster:
     listenOnUpdates: false
     listenOnEvents: true
     contactImageScanners: ScanIfMissing
+    # what happens when admission controller is unavailable (Ignore or Fail)
+    failurePolicy: Ignore
   perNode:
     collector:
       collection: CORE_BPF
       imageFlavor: Regular
       forwardDeployedImageAnalysis: Inactive
     taintToleration: TolerateTaints
+  scannerV4:
+    # AutoSense enables delegated image scanning when connected to a Central that supports it
+    scannerComponent: AutoSense
+  network:
+    # controls whether ACS generates NetworkPolicies (empty string = default behavior)
+    policies: ""
+  customize:
+    # custom environment variables (e.g., ROX_VIRTUAL_MACHINES)
+    envVars: []
+  # enable virtual machine scanning
+  vmScanning: false
   monitoring:
     openshift:
       enabled: true

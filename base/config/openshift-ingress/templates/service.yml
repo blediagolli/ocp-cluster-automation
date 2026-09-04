@@ -13,17 +13,17 @@ metadata:
     ingresscontroller.operator.openshift.io/owning-ingresscontroller: {{ $domain.name }}
     router: router-nodeport-{{ $domain.name }}
 spec:
-  type: NodePort
-  externalTrafficPolicy: Local
+  type: {{ $.Values.ingress.service.type }}
+  externalTrafficPolicy: {{ $.Values.ingress.service.externalTrafficPolicy }}
   ports:
   - name: http
     nodePort: {{ $domain.http_port }}
-    port: 80
+    port: {{ $.Values.ingress.service.httpPort }}
     protocol: TCP
     targetPort: http
   - name: https
     nodePort: {{ $domain.https_port }}
-    port: 443
+    port: {{ $.Values.ingress.service.httpsPort }}
     protocol: TCP
     targetPort: https
   selector:
@@ -31,4 +31,4 @@ spec:
 
 {{- end }}
 
-{{ end }}
+{{- end }}

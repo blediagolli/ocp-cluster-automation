@@ -1,0 +1,4 @@
+apiVersion: v2
+name: image-pruner
+description: Image pruner configuration for automatic image cleanup
+version: 0.1.0

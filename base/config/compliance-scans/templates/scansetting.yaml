@@ -5,6 +5,7 @@ metadata:
   name: {{ .Values.scanSetting.name }}
   namespace: {{ .Values.scanSetting.namespace }}
 spec:
+  autoApplyRemediations: {{ .Values.scanSetting.autoApplyRemediations }}
   rawResultStorage:
     pvAccessModes:
       {{- toYaml .Values.scanSetting.rawResultStorage.pvAccessModes | nindent 6 }}

@@ -1,0 +1,4 @@
+apiVersion: v2
+name: storage-classes
+description: StorageClass definitions for different storage tiers
+version: 0.1.0

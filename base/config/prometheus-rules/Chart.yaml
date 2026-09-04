@@ -1,0 +1,4 @@
+apiVersion: v2
+name: prometheus-rules
+description: PrometheusRule CRs for critical cluster alerts
+version: 0.1.0

@@ -1,0 +1,4 @@
+apiVersion: v2
+name: etcd-backup
+description: Automated etcd backup CronJob
+version: 0.1.0

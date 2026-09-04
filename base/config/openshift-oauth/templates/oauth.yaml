@@ -1,0 +1,61 @@
+{{- if .Values.oauth.include }}
+apiVersion: config.openshift.io/v1
+kind: OAuth
+metadata:
+  name: cluster
+spec:
+  tokenConfig:
+    accessTokenMaxAgeSeconds: {{ .Values.oauth.tokenConfig.accessTokenMaxAgeSeconds }}
+  identityProviders:
+  {{- range .Values.oauth.identityProviders }}
+  - name: {{ .name }}
+    mappingMethod: {{ .mappingMethod | default "claim" }}
+    type: {{ .type }}
+    {{- if eq .type "LDAP" }}
+    ldap:
+      url: {{ .ldap.url | quote }}
+      insecure: {{ .ldap.insecure | default false }}
+      {{- if .ldap.ca }}
+      ca:
+        name: {{ .ldap.ca.name }}
+      {{- end }}
+      bindDN: {{ .ldap.bindDN | quote }}
+      bindPassword:
+        name: {{ .ldap.bindPassword.name }}
+      attributes:
+        {{- toYaml .ldap.attributes | nindent 8 }}
+    {{- end }}
+    {{- if eq .type "OpenID" }}
+    openID:
+      clientID: {{ .openID.clientID }}
+      clientSecret:
+        name: {{ .openID.clientSecret.name }}
+      issuer: {{ .openID.issuer | quote }}
+      claims:
+        {{- toYaml .openID.claims | nindent 8 }}
+      {{- if .openID.extraScopes }}
+      extraScopes:
+        {{- toYaml .openID.extraScopes | nindent 8 }}
+      {{- end }}
+    {{- end }}
+    {{- if eq .type "GitHub" }}
+    github:
+      clientID: {{ .github.clientID }}
+      clientSecret:
+        name: {{ .github.clientSecret.name }}
+      {{- if .github.organizations }}
+      organizations:
+        {{- toYaml .github.organizations | nindent 8 }}
+      {{- end }}
+      {{- if .github.teams }}
+      teams:
+        {{- toYaml .github.teams | nindent 8 }}
+      {{- end }}
+    {{- end }}
+    {{- if eq .type "HTPasswd" }}
+    htpasswd:
+      fileData:
+        name: {{ .htpasswd.fileData.name }}
+    {{- end }}
+  {{- end }}
+{{- end }}

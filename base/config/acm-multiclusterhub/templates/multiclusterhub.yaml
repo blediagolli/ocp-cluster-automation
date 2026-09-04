@@ -14,10 +14,20 @@ spec:
   {{- if .Values.multiClusterHub.disableHubSelfManagement }}
   disableHubSelfManagement: true
   {{- end }}
-  {{- if .Values.multiClusterHub.clusterInstall }}
+  {{- if .Values.multiClusterHub.overrides.components }}
   overrides:
     components:
-      - name: siteconfig
-        enabled: true
+      {{- toYaml .Values.multiClusterHub.overrides.components | nindent 6 }}
+  {{- end }}
+  {{- if .Values.multiClusterHub.nodeSelector }}
+  nodeSelector:
+    {{- toYaml .Values.multiClusterHub.nodeSelector | nindent 4 }}
+  {{- end }}
+  {{- if .Values.multiClusterHub.tolerations }}
+  tolerations:
+    {{- toYaml .Values.multiClusterHub.tolerations | nindent 4 }}
+  {{- end }}
+  {{- if .Values.multiClusterHub.imagePullSecret }}
+  imagePullSecret: {{ .Values.multiClusterHub.imagePullSecret }}
   {{- end }}
 {{- end }}

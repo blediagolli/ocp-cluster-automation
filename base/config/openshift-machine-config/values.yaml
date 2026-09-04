@@ -1,2 +1,122 @@
-machineConfig:
+# ---------------------------------------------------------------------------
+# KubeletConfig — worker pool
+# ---------------------------------------------------------------------------
+kubeletConfigWorker:
   include: false
+  name: worker-kubeletconfig
+  maxPods: 250
+  podsPerCore: 0
+  kubeAPIQPS: 50
+  kubeAPIBurst: 100
+  imageGCHighThresholdPercent: 85
+  imageGCLowThresholdPercent: 80
+  imageMinimumGCAge: 5m
+  evictionHard:
+    memory.available: 500Mi
+    nodefs.available: 10%
+    nodefs.inodesFree: 5%
+    imagefs.available: 15%
+    imagefs.inodesFree: 5%
+  evictionSoft:
+    memory.available: 1Gi
+    nodefs.available: 15%
+    nodefs.inodesFree: 10%
+    imagefs.available: 20%
+    imagefs.inodesFree: 10%
+  evictionSoftGracePeriod:
+    memory.available: 1m30s
+    nodefs.available: 1m30s
+    nodefs.inodesFree: 1m30s
+    imagefs.available: 1m30s
+    imagefs.inodesFree: 1m30s
+  evictionPressureTransitionPeriod: 0s
+
+# ---------------------------------------------------------------------------
+# KubeletConfig — master pool
+# ---------------------------------------------------------------------------
+kubeletConfigMaster:
+  include: false
+  name: master-kubeletconfig
+  maxPods: 250
+  podsPerCore: 0
+  kubeAPIQPS: 50
+  kubeAPIBurst: 100
+  imageGCHighThresholdPercent: 75
+  imageGCLowThresholdPercent: 60
+  imageMinimumGCAge: 5m
+  evictionHard:
+    memory.available: 500Mi
+    nodefs.available: 10%
+    nodefs.inodesFree: 5%
+    imagefs.available: 15%
+    imagefs.inodesFree: 5%
+  evictionSoft:
+    memory.available: 1Gi
+    nodefs.available: 15%
+    nodefs.inodesFree: 10%
+    imagefs.available: 20%
+    imagefs.inodesFree: 10%
+  evictionSoftGracePeriod:
+    memory.available: 1m30s
+    nodefs.available: 1m30s
+    nodefs.inodesFree: 1m30s
+    imagefs.available: 1m30s
+    imagefs.inodesFree: 1m30s
+  evictionPressureTransitionPeriod: 0s
+
+# ---------------------------------------------------------------------------
+# ContainerRuntimeConfig — CRI-O settings
+# ---------------------------------------------------------------------------
+containerRuntimeConfig:
+  include: false
+  name: custom-crio
+  machineConfigPoolSelector: worker
+  pidsLimit: 4096
+  logSizeMax: "-1"
+  logLevel: info
+
+# ---------------------------------------------------------------------------
+# MachineConfig — Chrony / NTP
+# ---------------------------------------------------------------------------
+machineConfigChrony:
+  include: false
+  name: 99-worker-chrony
+  role: worker
+  ntpServers:
+    - 0.rhel.pool.ntp.org
+    - 1.rhel.pool.ntp.org
+    - 2.rhel.pool.ntp.org
+    - 3.rhel.pool.ntp.org
+
+# ---------------------------------------------------------------------------
+# MachineConfig — Kernel arguments and sysctls
+# ---------------------------------------------------------------------------
+machineConfigKernel:
+  include: false
+  name: 99-worker-kernel-args
+  role: worker
+  kernelArguments: []
+  #   - nosmt
+  #   - hugepagesz=2M
+  #   - hugepages=128
+  sysctls: {}
+  #   vm.max_map_count: "262144"
+  #   net.core.somaxconn: "32768"
+  #   net.ipv4.ip_local_port_range: "1024 65535"
+
+# ---------------------------------------------------------------------------
+# MachineConfig — SELinux permissive (disabled by default for compliance)
+# ---------------------------------------------------------------------------
+selinuxPermissive:
+  include: false
+
+# ---------------------------------------------------------------------------
+# MachineConfigPool — Infra nodes
+# ---------------------------------------------------------------------------
+machineConfigPoolInfra:
+  include: false
+  name: infra
+  nodeSelector:
+    node-role.kubernetes.io/infra: ""
+  maxUnavailable: 1
+  paused: false

@@ -1,0 +1,20 @@
+image:
+  include: false
+  additionalTrustedCA:
+    name: ""
+    # Name of a ConfigMap in the openshift-config namespace containing
+    # additional CAs to trust during image pull/push operations
+  allowedRegistries: []
+  # - quay.io
+  # - registry.redhat.io
+  # - registry.access.redhat.com
+  # - image-registry.openshift-image-registry.svc:5000
+  blockedRegistries: []
+  # - docker.io
+  # - public.ecr.aws
+  registrySources:
+    insecureRegistries: []
+    # - registry.example.com:5000
+    containerRuntimeSearchRegistries: []
+    # - registry.redhat.io
+    # - docker.io

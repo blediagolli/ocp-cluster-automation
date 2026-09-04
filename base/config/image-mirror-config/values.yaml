@@ -1,0 +1,15 @@
+imageMirror:
+  include: false
+  mirrors:
+    - source: registry.redhat.io
+      include: false
+      mirrors:
+        - mirror.example.com/redhat
+    - source: quay.io
+      include: false
+      mirrors:
+        - mirror.example.com/quay
+    - source: docker.io
+      include: false
+      mirrors:
+        - mirror.example.com/dockerhub

@@ -1,0 +1,47 @@
+velero:
+  include: false
+  namespace: openshift-adp
+  backupStorageLocation:
+    include: false
+    name: default
+    provider: aws
+    bucket: ""
+    prefix: velero
+    region: us-east-1
+    credentialSecretName: cloud-credentials
+    config: {}
+    # s3ForcePathStyle: "true"
+    # s3Url: "https://minio.example.com"
+  volumeSnapshotLocation:
+    include: false
+    name: default
+    provider: aws
+    region: us-east-1
+    config: {}
+  schedules:
+    - name: daily-full
+      include: false
+      schedule: "0 2 * * *"
+      ttl: 720h
+      includedNamespaces: []
+      excludedNamespaces:
+        - openshift-*
+        - kube-*
+      includeClusterResources: true
+      snapshotVolumes: true
+      storageLocation: default
+      volumeSnapshotLocations:
+        - default
+    - name: weekly-full
+      include: false
+      schedule: "0 3 * * 0"
+      ttl: 2160h
+      includedNamespaces: []
+      excludedNamespaces:
+        - openshift-*
+        - kube-*
+      includeClusterResources: true
+      snapshotVolumes: true
+      storageLocation: default
+      volumeSnapshotLocations:
+        - default

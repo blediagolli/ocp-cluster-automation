@@ -1,0 +1,21 @@
+{{- if .Values.machineConfigPoolInfra.include }}
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfigPool
+metadata:
+  name: {{ .Values.machineConfigPoolInfra.name }}
+spec:
+  machineConfigSelector:
+    matchExpressions:
+      - key: machineconfiguration.openshift.io/role
+        operator: In
+        values:
+          - worker
+          - {{ .Values.machineConfigPoolInfra.name }}
+  maxUnavailable: {{ .Values.machineConfigPoolInfra.maxUnavailable }}
+  nodeSelector:
+    matchLabels:
+      {{- range $key, $val := .Values.machineConfigPoolInfra.nodeSelector }}
+      {{ $key }}: {{ $val | quote }}
+      {{- end }}
+  paused: {{ .Values.machineConfigPoolInfra.paused }}
+{{- end }}

@@ -4,6 +4,8 @@ kind: LokiStack
 metadata:
   name: {{ .Values.lokiStack.name }}
   namespace: {{ .Values.lokiStack.namespace }}
+  annotations:
+    lokistack.openshift.io/storage-size: {{ .Values.lokiStack.storageSize | quote }}
 spec:
   size: {{ .Values.lokiStack.size }}
   storage:
@@ -12,7 +14,7 @@ spec:
         effectiveDate: "2024-09-22"
     secret:
       name: {{ .Values.lokiStack.secretName }}
-      type: s3
+      type: {{ .Values.lokiStack.storageSecretType }}
   storageClassName: {{ .Values.lokiStack.storageClassName }}
   tenants:
     mode: openshift-logging
@@ -21,8 +23,8 @@ spec:
   limits:
     global:
       ingestion:
-        ingestionRate: 8
-        ingestionBurstSize: 16
+        ingestionRate: {{ .Values.lokiStack.ingestionRate }}
+        ingestionBurstSize: {{ .Values.lokiStack.ingestionBurstSize }}
       queries:
-        queryTimeout: 3m
+        queryTimeout: {{ .Values.lokiStack.queryTimeout }}
 {{- end }}

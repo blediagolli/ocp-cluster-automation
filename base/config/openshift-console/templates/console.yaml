@@ -1,0 +1,53 @@
+{{- if .Values.console.include }}
+apiVersion: config.openshift.io/v1
+kind: Console
+metadata:
+  name: cluster
+spec:
+  customization:
+    {{- if .Values.console.branding.customProductName }}
+    customProductName: {{ .Values.console.branding.customProductName | quote }}
+    {{- end }}
+    {{- if .Values.console.branding.customLogoFile.name }}
+    customLogoFile:
+      name: {{ .Values.console.branding.customLogoFile.name }}
+      key: {{ .Values.console.branding.customLogoFile.key }}
+    {{- end }}
+    {{- if .Values.console.notifications }}
+    notifications:
+      {{- range .Values.console.notifications }}
+      - text: {{ .text | quote }}
+        location: {{ .location }}
+        {{- if .color }}
+        color: {{ .color | quote }}
+        {{- end }}
+        {{- if .backgroundColor }}
+        backgroundColor: {{ .backgroundColor | quote }}
+        {{- end }}
+        {{- if .link }}
+        link:
+          href: {{ .link.href | quote }}
+          text: {{ .link.text | quote }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- if .Values.console.developerCatalog }}
+  developerCatalog:
+    {{- if .Values.console.developerCatalog.categories }}
+    categories:
+      {{- toYaml .Values.console.developerCatalog.categories | nindent 6 }}
+    {{- end }}
+    {{- if .Values.console.developerCatalog.types }}
+    types:
+      state: {{ .Values.console.developerCatalog.types.state }}
+      {{- if .Values.console.developerCatalog.types.enabled }}
+      enabled:
+        {{- toYaml .Values.console.developerCatalog.types.enabled | nindent 8 }}
+      {{- end }}
+      {{- if .Values.console.developerCatalog.types.disabled }}
+      disabled:
+        {{- toYaml .Values.console.developerCatalog.types.disabled | nindent 8 }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}

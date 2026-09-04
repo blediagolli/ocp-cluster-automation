@@ -1,0 +1,75 @@
+{{- if and .Values.policies.include .Values.policies.complianceOperator.include }}
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: {{ .Values.policies.complianceOperator.name }}
+  namespace: {{ .Values.policies.namespace }}
+  annotations:
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    policy.open-cluster-management.io/categories: CA Security Assessment and Authorization
+    policy.open-cluster-management.io/controls: CA-2 Security Assessments
+spec:
+  remediationAction: {{ .Values.policies.complianceOperator.remediationAction }}
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: {{ .Values.policies.complianceOperator.name }}-ns
+        spec:
+          remediationAction: {{ .Values.policies.complianceOperator.remediationAction }}
+          severity: {{ .Values.policies.complianceOperator.severity }}
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Namespace
+                metadata:
+                  name: openshift-compliance
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: {{ .Values.policies.complianceOperator.name }}-sub
+        spec:
+          remediationAction: {{ .Values.policies.complianceOperator.remediationAction }}
+          severity: {{ .Values.policies.complianceOperator.severity }}
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: operators.coreos.com/v1alpha1
+                kind: Subscription
+                metadata:
+                  name: compliance-operator
+                  namespace: openshift-compliance
+                spec:
+                  channel: stable
+                  name: compliance-operator
+                  source: redhat-operators
+                  sourceNamespace: openshift-marketplace
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  name: {{ .Values.policies.complianceOperator.name }}-placement
+  namespace: {{ .Values.policies.namespace }}
+spec:
+  clusterSelector:
+    matchExpressions:
+      {{- toYaml .Values.policies.complianceOperator.placement.clusterSelector.matchExpressions | nindent 6 }}
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: {{ .Values.policies.complianceOperator.name }}-binding
+  namespace: {{ .Values.policies.namespace }}
+placementRef:
+  apiGroup: apps.open-cluster-management.io
+  kind: PlacementRule
+  name: {{ .Values.policies.complianceOperator.name }}-placement
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: Policy
+    name: {{ .Values.policies.complianceOperator.name }}
+{{- end }}

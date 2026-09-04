@@ -4,9 +4,19 @@ lokiStack:
   namespace: openshift-logging
   size: 1x.extra-small
   storageClassName: gp3-csi
+  # PVC storage size for LokiStack components (rendered as annotation;
+  # actual PVC sizes are governed by the size preset above)
   storageSize: 10Gi
   secretName: logging-loki-odf
+  # Storage backend type: s3, azure, gcs, swift
+  storageSecretType: s3
+  # Ingestion and query rate limits
+  ingestionRate: 8
+  ingestionBurstSize: 16
+  queryTimeout: 3m
 clusterLogForwarder:
   include: false
   name: logging
   namespace: openshift-logging
+  # Collect audit logs in addition to infrastructure and application
+  collectAuditLogs: true

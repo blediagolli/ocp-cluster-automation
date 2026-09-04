@@ -1,0 +1,26 @@
+{{- if .Values.machineHealthChecks.include }}
+{{- range .Values.machineHealthChecks.checks }}
+{{- if .include }}
+---
+apiVersion: machine.openshift.io/v1beta1
+kind: MachineHealthCheck
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.machineHealthChecks.namespace }}
+spec:
+  selector:
+    matchLabels:
+      {{- toYaml .selector.matchLabels | nindent 6 }}
+  unhealthyConditions:
+    {{- range .unhealthyConditions }}
+    - type: {{ .type }}
+      status: {{ .status | quote }}
+      timeout: {{ .timeout }}
+    {{- end }}
+  maxUnhealthy: {{ .maxUnhealthy | quote }}
+  {{- if .nodeStartupTimeout }}
+  nodeStartupTimeout: {{ .nodeStartupTimeout }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,4 @@
+apiVersion: v2
+name: acm-policies
+description: ACM governance policies for multi-cluster enforcement
+version: 0.1.0

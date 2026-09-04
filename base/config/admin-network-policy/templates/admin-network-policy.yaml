@@ -1,0 +1,79 @@
+{{- range .Values.adminNetworkPolicies }}
+{{- if .include }}
+---
+apiVersion: policy.networking.k8s.io/v1alpha1
+kind: AdminNetworkPolicy
+metadata:
+  name: {{ .name }}
+spec:
+  priority: {{ .priority }}
+  subject:
+    namespaces:
+      {{- if .subject.namespaceSelector }}
+      {{- if .subject.namespaceSelector.matchLabels }}
+      matchLabels:
+        {{- toYaml .subject.namespaceSelector.matchLabels | nindent 8 }}
+      {{- end }}
+      {{- if .subject.namespaceSelector.matchExpressions }}
+      matchExpressions:
+        {{- toYaml .subject.namespaceSelector.matchExpressions | nindent 8 }}
+      {{- end }}
+      {{- end }}
+  {{- if .ingress }}
+  ingress:
+    {{- range .ingress }}
+    - name: {{ .name }}
+      action: {{ .action }}
+      from:
+        {{- range .from }}
+        - namespaces:
+            namespaceSelector:
+              {{- if .namespaces.namespaceSelector.matchLabels }}
+              matchLabels:
+                {{- toYaml .namespaces.namespaceSelector.matchLabels | nindent 16 }}
+              {{- end }}
+              {{- if .namespaces.namespaceSelector.matchExpressions }}
+              matchExpressions:
+                {{- toYaml .namespaces.namespaceSelector.matchExpressions | nindent 16 }}
+              {{- end }}
+        {{- end }}
+      {{- if .ports }}
+      ports:
+        {{- range .ports }}
+        - portNumber:
+            port: {{ .portNumber.port }}
+            protocol: {{ .portNumber.protocol }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- if .egress }}
+  egress:
+    {{- range .egress }}
+    - name: {{ .name }}
+      action: {{ .action }}
+      to:
+        {{- range .to }}
+        - namespaces:
+            namespaceSelector:
+              {{- if .namespaces.namespaceSelector.matchLabels }}
+              matchLabels:
+                {{- toYaml .namespaces.namespaceSelector.matchLabels | nindent 16 }}
+              {{- end }}
+              {{- if .namespaces.namespaceSelector.matchExpressions }}
+              matchExpressions:
+                {{- toYaml .namespaces.namespaceSelector.matchExpressions | nindent 16 }}
+              {{- end }}
+        {{- end }}
+      {{- if .ports }}
+      ports:
+        {{- range .ports }}
+        - portNumber:
+            port: {{ .portNumber.port }}
+            protocol: {{ .portNumber.protocol }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}

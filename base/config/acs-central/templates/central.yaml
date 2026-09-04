@@ -21,7 +21,7 @@ spec:
       isEnabled: {{ .Values.central.db.isEnabled }}
       persistence:
         persistentVolumeClaim:
-          claimName: {{ .Values.central.persistence.claimName }}
+          claimName: {{ .Values.central.db.persistence.claimName }}
       resources:
         requests:
           cpu: {{ .Values.central.db.resources.requests.cpu }}

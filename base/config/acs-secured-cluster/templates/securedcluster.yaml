@@ -16,12 +16,32 @@ spec:
     listenOnUpdates: {{ .Values.securedCluster.admissionControl.listenOnUpdates }}
     listenOnEvents: {{ .Values.securedCluster.admissionControl.listenOnEvents }}
     contactImageScanners: {{ .Values.securedCluster.admissionControl.contactImageScanners }}
+    {{- if .Values.securedCluster.admissionControl.failurePolicy }}
+    failurePolicy: {{ .Values.securedCluster.admissionControl.failurePolicy }}
+    {{- end }}
   perNode:
     collector:
       collection: {{ .Values.securedCluster.perNode.collector.collection }}
       imageFlavor: {{ .Values.securedCluster.perNode.collector.imageFlavor }}
       forwardDeployedImageAnalysis: {{ .Values.securedCluster.perNode.collector.forwardDeployedImageAnalysis }}
     taintToleration: {{ .Values.securedCluster.perNode.taintToleration }}
+  {{- if .Values.securedCluster.scannerV4.scannerComponent }}
+  scannerV4:
+    scannerComponent: {{ .Values.securedCluster.scannerV4.scannerComponent }}
+  {{- end }}
+  {{- if .Values.securedCluster.network.policies }}
+  network:
+    policies: {{ .Values.securedCluster.network.policies }}
+  {{- end }}
+  {{- if .Values.securedCluster.customize.envVars }}
+  customize:
+    envVars:
+      {{- toYaml .Values.securedCluster.customize.envVars | nindent 6 }}
+  {{- end }}
+  {{- if .Values.securedCluster.vmScanning }}
+  vmScanning:
+    enabled: true
+  {{- end }}
   monitoring:
     openshift:
       enabled: {{ .Values.securedCluster.monitoring.openshift.enabled }}

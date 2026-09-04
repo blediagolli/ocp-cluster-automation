@@ -1,0 +1,93 @@
+{{- if and .Values.policies.include .Values.policies.networkPolicy.include }}
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: {{ .Values.policies.networkPolicy.name }}
+  namespace: {{ .Values.policies.namespace }}
+  annotations:
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    policy.open-cluster-management.io/categories: SC System and Communications Protection
+    policy.open-cluster-management.io/controls: SC-7 Boundary Protection
+spec:
+  remediationAction: {{ .Values.policies.networkPolicy.remediationAction }}
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: {{ .Values.policies.networkPolicy.name }}
+        spec:
+          remediationAction: {{ .Values.policies.networkPolicy.remediationAction }}
+          severity: {{ .Values.policies.networkPolicy.severity }}
+          namespaceSelector:
+            include:
+              {{- toYaml .Values.policies.networkPolicy.namespaceSelector.include | nindent 14 }}
+            exclude:
+              {{- toYaml .Values.policies.networkPolicy.namespaceSelector.exclude | nindent 14 }}
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: networking.k8s.io/v1
+                kind: NetworkPolicy
+                metadata:
+                  name: default-deny-ingress
+                spec:
+                  podSelector: {}
+                  policyTypes:
+                    - Ingress
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: networking.k8s.io/v1
+                kind: NetworkPolicy
+                metadata:
+                  name: allow-from-openshift-ingress
+                spec:
+                  podSelector: {}
+                  ingress:
+                    - from:
+                        - namespaceSelector:
+                            matchLabels:
+                              network.openshift.io/policy-group: ingress
+                  policyTypes:
+                    - Ingress
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: networking.k8s.io/v1
+                kind: NetworkPolicy
+                metadata:
+                  name: allow-from-openshift-monitoring
+                spec:
+                  podSelector: {}
+                  ingress:
+                    - from:
+                        - namespaceSelector:
+                            matchLabels:
+                              network.openshift.io/policy-group: monitoring
+                  policyTypes:
+                    - Ingress
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  name: {{ .Values.policies.networkPolicy.name }}-placement
+  namespace: {{ .Values.policies.namespace }}
+spec:
+  clusterSelector:
+    matchExpressions:
+      {{- toYaml .Values.policies.networkPolicy.placement.clusterSelector.matchExpressions | nindent 6 }}
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: {{ .Values.policies.networkPolicy.name }}-binding
+  namespace: {{ .Values.policies.namespace }}
+placementRef:
+  apiGroup: apps.open-cluster-management.io
+  kind: PlacementRule
+  name: {{ .Values.policies.networkPolicy.name }}-placement
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: Policy
+    name: {{ .Values.policies.networkPolicy.name }}
+{{- end }}

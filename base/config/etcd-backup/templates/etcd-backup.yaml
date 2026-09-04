@@ -1,0 +1,83 @@
+{{- if .Values.etcdBackup.include }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.etcdBackup.storage.pvc.name }}
+  namespace: {{ .Values.etcdBackup.namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if .Values.etcdBackup.storage.pvc.storageClass }}
+  storageClassName: {{ .Values.etcdBackup.storage.pvc.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.etcdBackup.storage.pvc.size }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: etcd-backup
+  namespace: {{ .Values.etcdBackup.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: etcd-backup
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: etcd-backup
+    namespace: {{ .Values.etcdBackup.namespace }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etcd-backup
+  namespace: {{ .Values.etcdBackup.namespace }}
+spec:
+  schedule: {{ .Values.etcdBackup.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ .Values.etcdBackup.retentionCount }}
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: etcd-backup
+          restartPolicy: OnFailure
+          tolerations:
+            {{- toYaml .Values.etcdBackup.tolerations | nindent 12 }}
+          nodeSelector:
+            node-role.kubernetes.io/master: ""
+          containers:
+            - name: etcd-backup
+              image: {{ .Values.etcdBackup.image }}
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+                  BACKUP_DIR=/backup/$(date +%Y%m%d-%H%M%S)
+                  mkdir -p ${BACKUP_DIR}
+
+                  # Take etcd snapshot via debug pod
+                  oc debug node/$(oc get nodes -l node-role.kubernetes.io/master -o jsonpath='{.items[0].metadata.name}') \
+                    -- chroot /host /usr/local/bin/cluster-backup.sh ${BACKUP_DIR}
+
+                  # Cleanup old backups beyond retention
+                  ls -dt /backup/*/ | tail -n +{{ add .Values.etcdBackup.retentionCount 1 }} | xargs rm -rf || true
+
+                  echo "Backup complete: ${BACKUP_DIR}"
+              volumeMounts:
+                - name: backup-storage
+                  mountPath: /backup
+          volumes:
+            - name: backup-storage
+              persistentVolumeClaim:
+                claimName: {{ .Values.etcdBackup.storage.pvc.name }}
+{{- end }}

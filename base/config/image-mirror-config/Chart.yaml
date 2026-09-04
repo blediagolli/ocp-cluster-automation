@@ -1,0 +1,4 @@
+apiVersion: v2
+name: image-mirror-config
+description: ImageDigestMirrorSet for registry mirroring
+version: 0.1.0
