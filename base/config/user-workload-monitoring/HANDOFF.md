@@ -1,30 +1,31 @@
 # user-workload-monitoring — Handoff
 
-**Modified:** 2026-09-04 (deep dive agents — was too minimal)
+**Modified:** 2026-09-04
+**Last tested:** 2026-09-04 on hub (mgt/acm-hub)
 
 ## What it does
 
-Configures user workload monitoring via the `user-workload-monitoring-config` ConfigMap in `openshift-user-workload-monitoring`. Controls:
-- Prometheus: retention, replicas, persistent storage, resource limits
-- Thanos Ruler: sidecar for recording/alerting rules against object storage
-- AlertManager: user-defined alerting
-- Remote write: send metrics to external endpoints
+Enables user workload monitoring via two ConfigMaps:
+- `cluster-monitoring-config` in `openshift-monitoring` — sets `enableUserWorkload: true`
+- `user-workload-monitoring-config` in `openshift-user-workload-monitoring` — configures Prometheus retention, storage, resources, Thanos Ruler, AlertManager, and remote write
 
 ## What changed this session
 
 - Expanded from a bare-minimum ConfigMap to full parameterization
-- Added Prometheus resources, retention, replicas, storage configuration
-- Added Thanos Ruler toggle with resource limits
-- Added AlertManager toggle
-- Added remote write endpoint support
+- Added Prometheus resources, retention, persistent storage toggle
+- Added Thanos Ruler, AlertManager, and remote write toggles
+- Removed invalid `prometheus.replicas` field — rejected by the `monitoringconfigmaps.openshift.io` admission webhook
+- Configured hub with 48h retention, 50Gi persistent storage on ODF ceph-rbd, production resource limits
 
 ## Current state
 
-- Not enabled on any cluster (`include: false`)
-- Commented out in hub `cluster-config.yaml` ApplicationSet
-- Passes helm lint
+- **Enabled on hub** with persistent storage (2x 50Gi PVCs on `ocs-external-storagecluster-ceph-rbd`)
+- Hub: 48h retention, 2 CPU / 6Gi memory limits
+- Active in ApplicationSet (shared config — applies to all clusters)
+- Synced and Healthy on both hub and prod
+- All 5 pods running: prometheus-operator, 2x prometheus-user-workload, 2x thanos-ruler
 
 ## Outstanding
 
-- Enable per-cluster and tune retention/storage based on workload volume
-- Configure remote write if using external monitoring (e.g., ACM Observability)
+- ACM Observability not deployed — remote write has no target currently
+- Prod cluster is synced but using defaults (ephemeral storage) — configure per-cluster values when needed
