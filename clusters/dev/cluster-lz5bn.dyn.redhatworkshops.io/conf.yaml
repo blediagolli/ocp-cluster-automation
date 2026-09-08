@@ -15,11 +15,12 @@ managedCluster:
     include: false
 operators:
   openshift-gitops:
-    include: false
+    include: true
     channel: gitops-1.21
   advanced-cluster-management:
     channel: release-2.17
   advanced-cluster-security:
+    include: true
     channel: stable
   ansible-automation-platform:
     channel: stable-2.6
@@ -31,7 +32,7 @@ operators:
     channel: stable
   compliance-operator:
     channel: stable
-    include: false
+    include: true
   dev-spaces:
     channel: stable
   developer-hub:
