@@ -6,13 +6,12 @@ metadata:
   namespace: {{ .Values.central.namespace }}
   annotations:
     argocd.argoproj.io/sync-wave: "3"
-spec:
-  placementRef:
-    apiGroup: cluster.open-cluster-management.io
-    kind: Placement
-    name: acs-central-auth
-  subjects:
-    - apiGroup: policy.open-cluster-management.io
-      kind: Policy
-      name: acs-central-auth-distribution
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: acs-central-auth
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: Policy
+    name: acs-central-auth-distribution
 {{- end }}
