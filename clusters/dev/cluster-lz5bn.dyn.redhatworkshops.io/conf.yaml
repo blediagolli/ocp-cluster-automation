@@ -1,7 +1,7 @@
 cluster:
   name: "cluster-lz5bn"
   environment: dev
-  address: "https://api.cluster-lz5bn.dyn.redhatworkshops.io:6443"
+  address: "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/cluster-lz5bn"
 managedCluster:
   include: true
   name: "cluster-lz5bn"
