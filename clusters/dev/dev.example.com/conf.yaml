@@ -3,19 +3,19 @@ cluster:
   environment: dev
   address: "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/dev"
 managedCluster:
-  include: true
+  include: false
   name: dev
   environment: dev
   autoImport:
-    include: true
+    include: false
     mode: kubeconfig
     kubeconfig:
       secretName: dev-kubeconfig
   addons:
-    include: true
+    include: false
 operators:
   openshift-gitops:
-    include: true
+    include: false
     channel: gitops-1.21
   advanced-cluster-management:
     channel: release-2.17
@@ -31,7 +31,7 @@ operators:
     channel: stable
   compliance-operator:
     channel: stable
-    include: true
+    include: false
   dev-spaces:
     channel: stable
   developer-hub:

@@ -33,19 +33,19 @@ machineConfig:
 
 # Operators
 securedCluster:
-  include: true
+  include: false
   secretMode: "external"
   centralEndpoint: "central-stackrox.apps.cluster-c8444.dyn.redhatworkshops.io:443"
 securedClusterNamespace:
-  include: true
+  include: false
 
 operators:
   openshift-gitops:
-    include: true
+    include: false
   advanced-cluster-security:
-    include: true
+    include: false
 
 scanSetting:
-  include: true
+  include: false
 scanSettingBinding:
-  include: true
+  include: false
