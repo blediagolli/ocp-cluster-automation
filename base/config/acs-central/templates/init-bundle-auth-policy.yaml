@@ -1,4 +1,14 @@
 {{- if and .Values.central.include .Values.central.initBundle.include .Values.central.initBundle.distributeAuth }}
+apiVersion: cluster.open-cluster-management.io/v1beta2
+kind: ManagedClusterSetBinding
+metadata:
+  name: default
+  namespace: {{ .Values.central.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  clusterSet: default
+---
 apiVersion: cluster.open-cluster-management.io/v1beta1
 kind: Placement
 metadata:
