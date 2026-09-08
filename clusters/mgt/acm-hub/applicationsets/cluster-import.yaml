@@ -30,4 +30,12 @@ spec:
             - '/{{.path.path}}/conf.yaml'
       destination:
         server: 'https://kubernetes.default.svc'
-      syncPolicy: {}
+      syncPolicy:
+        automated:
+          selfHeal: true
+        retry:
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 10m
+          limit: 5
