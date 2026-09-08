@@ -11,6 +11,7 @@ operators:
     include: true
     channel: stable
   ansible-automation-platform:
+    include: true
     channel: stable-2.6
   cert-manager:
     channel: stable-v1
