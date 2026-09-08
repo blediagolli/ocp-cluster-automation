@@ -1,24 +1,23 @@
 # acs-central — Handoff
 
-**Modified:** 2026-09-04
+**Modified:** 2026-09-08
 
 ## What it does
-Deploys ACS Central Services (Central, Scanner, ScannerV4, DB) with route/LB/nodePort exposure options. Includes optional init-bundle Job (generates TLS secrets for SecuredCluster), ConsoleLink, and namespace creation.
+Deploys ACS Central Services (Central, Scanner, ScannerV4, DB) with route/LB/nodePort exposure options. Includes optional init-bundle Job (generates TLS secrets for SecuredCluster), ConsoleLink, namespace creation, and ACM Policy for distributing Central credentials to managed clusters.
 
 ## What changed this session
-- Fixed PVC name collision — Central DB and ScannerV4 DB had separate `claimName` fields but could collide if using defaults. Made claim names explicit: `stackrox-db`, `central-db`, `scanner-v4-db`
-- Added telemetry, egress connectivity policy, scanner autoscaling, and monitoring toggles
-- Added init-bundle Job mode for same-cluster Central+SecuredCluster setups
-- Added ConsoleLink for quick access from OCP console
-- **Fixed init-bundle Job empty-secret bug**: Job now checks if sensor-tls has non-empty `ca.pem` data, not just existence. If the secret exists but is empty (e.g., from stale preExisting placeholders), it deletes the stale secrets and regenerates
+- Fixed init-bundle Job empty-secret bug: checks for non-empty `ca.pem` data, deletes stale empty secrets
+- Fixed password lookup: switched from go-template `base64decode` to jsonpath + `base64 -d`
 - Added `delete` verb to init-bundle RBAC Role for stale secret cleanup
+- Added `distributeAuth` option: creates an ACM Policy that distributes `central-auth` secret (Central admin password) to managed clusters via hub-templates. Targets clusters by environment label.
 
 ## Current state
-- **Enabled** on hub (`central.include: true`, `initBundle.include: true`, `consoleLink.include: true`)
+- **Enabled** on hub with init-bundle and credential distribution
 - Central v4.11.3 running, all pods healthy
-- Init-bundle Job needs to re-run to populate empty TLS secrets (will happen on next ArgoCD sync)
+- ACM Policy distributes `central-auth` to dev/prod clusters
 
 ## Gotchas
-- Init-bundle Job requires Central to be healthy before it runs — uses a PostSync hook
+- Init-bundle Job requires Central to be healthy — uses a PostSync hook
 - The `centralUrl` in consoleLink must match the actual route
-- If sensor-tls exists with empty data, the Job now auto-cleans and regenerates (previous behavior was to skip)
+- `distributeAuth` uses ACM hub-templates to read `central-htpasswd` secret — if the secret name changes, update the Policy template
+- `targetEnvironments` controls which clusters receive the credential (default: dev, prod)

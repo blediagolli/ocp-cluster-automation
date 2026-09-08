@@ -1,0 +1,118 @@
+{{- if and .Values.securedCluster.include (eq .Values.securedCluster.secretMode "generate") }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: acs-init-bundle-generate
+  namespace: {{ .Values.securedCluster.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: acs-init-bundle-generate
+  namespace: {{ .Values.securedCluster.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "create", "patch", "update", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: acs-init-bundle-generate
+  namespace: {{ .Values.securedCluster.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: acs-init-bundle-generate
+subjects:
+  - kind: ServiceAccount
+    name: acs-init-bundle-generate
+    namespace: {{ .Values.securedCluster.namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: acs-init-bundle-generate
+  namespace: {{ .Values.securedCluster.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 10
+  template:
+    spec:
+      serviceAccountName: acs-init-bundle-generate
+      restartPolicy: OnFailure
+      containers:
+        - name: generate
+          image: registry.redhat.io/openshift4/ose-cli:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              NAMESPACE="{{ .Values.securedCluster.namespace }}"
+              CENTRAL_URL="https://{{ .Values.securedCluster.centralEndpoint }}"
+
+              echo "Checking if init bundle secrets already exist..."
+              EXISTING_CA=$(oc get secret sensor-tls -n "${NAMESPACE}" -o jsonpath='{.data.ca\.pem}' 2>/dev/null || echo "")
+              if [ -n "${EXISTING_CA}" ]; then
+                echo "Init bundle secrets already exist with valid data, skipping."
+                exit 0
+              fi
+
+              if oc get secret sensor-tls -n "${NAMESPACE}" &>/dev/null; then
+                echo "sensor-tls exists but has empty data — deleting stale secrets..."
+                oc delete secret sensor-tls collector-tls admission-control-tls -n "${NAMESPACE}" --ignore-not-found
+              fi
+
+              echo "Reading Central admin password..."
+              PASSWORD=$(oc get secret central-auth -n "${NAMESPACE}" -o jsonpath='{.data.password}' | base64 -d)
+              if [ -z "${PASSWORD}" ]; then
+                echo "ERROR: central-auth secret not found or password is empty"
+                exit 1
+              fi
+
+              echo "Waiting for Central at ${CENTRAL_URL}..."
+              for i in $(seq 1 30); do
+                if curl -k --output /dev/null --silent --head --fail "${CENTRAL_URL}"; then
+                  echo "Central is reachable."
+                  break
+                fi
+                if [ "$i" -eq 30 ]; then
+                  echo "ERROR: Central not reachable after 5 minutes"
+                  exit 1
+                fi
+                sleep 10
+              done
+
+              BUNDLE_NAME="$(cat /proc/sys/kernel/hostname)-$(date +%s)"
+              echo "Generating init bundle..."
+              RESPONSE=$(curl -k -s -X POST \
+                -u "admin:${PASSWORD}" \
+                -H "Content-Type: application/json" \
+                --data "{\"name\":\"${BUNDLE_NAME}\"}" \
+                "${CENTRAL_URL}/v1/cluster-init/init-bundles")
+
+              echo "${RESPONSE}" | python3 -c "
+              import sys, json
+              data = json.load(sys.stdin)
+              if 'kubectlBundle' not in data:
+                  print('Error: No kubectlBundle in response')
+                  print(json.dumps(data, indent=2))
+                  sys.exit(1)
+              import base64
+              print(base64.b64decode(data['kubectlBundle']).decode())
+              " | oc apply -n "${NAMESPACE}" -f -
+
+              echo "Init bundle created and applied successfully."
+{{- end }}

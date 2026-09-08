@@ -1,0 +1,86 @@
+{{- if and .Values.central.include .Values.central.initBundle.include .Values.central.initBundle.distributeAuth }}
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: acs-central-auth
+  namespace: {{ .Values.central.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  predicates:
+    - requiredClusterSelector:
+        labelSelector:
+          matchExpressions:
+            - key: environment
+              operator: In
+              values:
+              {{- range .Values.central.initBundle.targetEnvironments }}
+                - {{ . }}
+              {{- end }}
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: acs-central-auth-distribution
+  namespace: {{ .Values.central.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    policy.open-cluster-management.io/standards: NIST-800-53
+    policy.open-cluster-management.io/categories: CA Security Assessment and Authorization
+    policy.open-cluster-management.io/controls: CA-7 Continuous Monitoring
+spec:
+  remediationAction: enforce
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: acs-central-auth-namespace
+        spec:
+          remediationAction: enforce
+          severity: high
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Namespace
+                metadata:
+                  name: {{ .Values.central.namespace }}
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: acs-central-auth-secret
+        spec:
+          remediationAction: enforce
+          severity: high
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Secret
+                metadata:
+                  name: central-auth
+                  namespace: {{ .Values.central.namespace }}
+                type: Opaque
+                data:
+                  password: '{{`{{hub index (lookup "v1" "Secret" "stackrox" "central-htpasswd").data "password" hub}}`}}'
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: acs-central-auth
+  namespace: {{ .Values.central.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  placementRef:
+    apiGroup: cluster.open-cluster-management.io
+    kind: Placement
+    name: acs-central-auth
+  subjects:
+    - apiGroup: policy.open-cluster-management.io
+      kind: Policy
+      name: acs-central-auth-distribution
+{{- end }}

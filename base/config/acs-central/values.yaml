@@ -65,6 +65,11 @@ central:
     # Set to "job" when Central and SecuredCluster are on the same cluster
     mode: "job"
     password: ""
+    # distribute Central admin password to managed clusters via ACM Policy
+    distributeAuth: false
+    targetEnvironments:
+      - dev
+      - prod
   consoleLink:
     include: false
     centralUrl: ""

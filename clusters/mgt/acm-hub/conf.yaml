@@ -78,6 +78,7 @@ central:
   include: true
   initBundle:
     include: true
+    distributeAuth: true
   consoleLink:
     include: true
     centralUrl: "https://central-stackrox.apps.cluster-c8444.dyn.redhatworkshops.io"
