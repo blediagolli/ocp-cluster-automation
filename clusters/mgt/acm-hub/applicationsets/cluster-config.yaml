@@ -29,6 +29,7 @@ spec:
                 # - template: nmstate-config
                 # - template: node-feature-discovery-instance
                 - template: acs-secured-cluster
+                - template: aap-instance
     # Hub-only config charts — management clusters only
     - matrix:
         generators:
@@ -45,7 +46,7 @@ spec:
                 - template: etcd-backup
                 # - template: acm-multiclusterhub
                 - template: acm-observability
-                - template: aap-instance
+                # - template: aap-instance
                 # - template: cert-manager-certs
                 # - template: local-storage-volumes
                 # - template: lvm-cluster
