@@ -1,16 +1,16 @@
 cluster:
   name: dev
   environment: dev
-  address: "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/dev"
+  address: "https://api.cluster-lz5bn.dyn.redhatworkshops.io:6443"
 managedCluster:
-  include: false
+  include: true
   name: dev
   environment: dev
   autoImport:
-    include: false
+    include: true
     mode: kubeconfig
     kubeconfig:
-      secretName: dev-kubeconfig
+      secretName: lz5bn-kubeconfig
   addons:
     include: false
 operators:
