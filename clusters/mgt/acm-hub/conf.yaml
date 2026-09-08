@@ -143,3 +143,7 @@ etcdBackup:
     obc:
       name: etcd-backup-bucket
       storageClass: openshift-storage.noobaa.io
+aap:
+  include: true
+  name: aap
+  namespace: ansible-automation-platform
