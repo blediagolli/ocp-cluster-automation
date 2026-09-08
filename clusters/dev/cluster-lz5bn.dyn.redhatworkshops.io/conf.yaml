@@ -1,10 +1,10 @@
 cluster:
-  name: "cluster-lz5bn.dyn.redhatworkshops.io"
+  name: "cluster-lz5bn"
   environment: dev
   address: "https://api.cluster-lz5bn.dyn.redhatworkshops.io:6443"
 managedCluster:
   include: true
-  name: "cluster-lz5bn.dyn.redhatworkshops.io"
+  name: "cluster-lz5bn"
   environment: dev
   autoImport:
     include: true
