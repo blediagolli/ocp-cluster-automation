@@ -37,7 +37,7 @@ securedCluster:
   secretMode: "external"
   centralEndpoint: "central-stackrox.apps.cluster-c8444.dyn.redhatworkshops.io:443"
 securedClusterNamespace:
-  include: false
+  include: true
 
 operators:
   openshift-gitops:
