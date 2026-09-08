@@ -76,21 +76,4 @@ spec:
                 type: Opaque
                 data:
                   password: '{{`{{hub index (lookup "v1" "Secret" "stackrox" "central-htpasswd").data "password" hub}}`}}'
----
-apiVersion: policy.open-cluster-management.io/v1
-kind: PlacementBinding
-metadata:
-  name: acs-central-auth
-  namespace: {{ .Values.central.namespace }}
-  annotations:
-    argocd.argoproj.io/sync-wave: "3"
-spec:
-  placementRef:
-    apiGroup: cluster.open-cluster-management.io
-    kind: Placement
-    name: acs-central-auth
-  subjects:
-    - apiGroup: policy.open-cluster-management.io
-      kind: Policy
-      name: acs-central-auth-distribution
 {{- end }}
