@@ -10,7 +10,7 @@ Deploys a Red Hat Quay registry instance via the `QuayRegistry` CR with Keycloak
 - Quay Bridge operator deployed and verified working — creates Quay orgs for opted-in namespaces
 - `namespaceCreationDefault` configurable via `bridge.namespaceCreationDefault` (default false)
 - Config bundle uses operator-managed Clair (no FEATURE_SECURITY_SCANNER in bundle)
-- Action log rotation enabled, archiving to operator-managed object storage (`default` location)
+- Action log rotation enabled, archiving to ODF/RHOCSStorage via `local_us` location
 - Monitoring disabled (operator requires AllNamespaces install mode)
 - HPA and mirror disabled for test cluster
 
@@ -18,7 +18,7 @@ Deploys a Red Hat Quay registry instance via the `QuayRegistry` CR with Keycloak
 - `quayregistry.yaml` — QuayRegistry CR with minimal resources, single replica
 - `config-bundle-secret.yaml` — Production config with Keycloak OIDC, rate limits, quota management, team syncing
 - `quay-bridge.yaml` — QuayIntegration CR + OAuth token secret, comprehensive namespace denylist
-- `namespace.yaml` — quay-enterprise namespace
+- `namespace.yaml` — quay-enterprise namespace (disabled on hub — operators app owns it)
 
 ## Key values
 - `quayRegistry.bridge.oauthToken` — OAuth app token with super:user scope (NOT a robot account)
