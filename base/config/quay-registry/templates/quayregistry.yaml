@@ -9,24 +9,65 @@ spec:
   components:
     - kind: clair
       managed: true
+      overrides:
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+    - kind: clairpostgres
+      managed: true
+      overrides:
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
     - kind: postgres
       managed: true
+      overrides:
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 512Mi
     - kind: objectstorage
       managed: true
     - kind: redis
       managed: true
+      overrides:
+        resources:
+          requests:
+            cpu: 50m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 64Mi
     - kind: horizontalpodautoscaler
-      managed: true
+      managed: false
     - kind: route
       managed: true
     - kind: mirror
-      managed: true
+      managed: false
     - kind: monitoring
       managed: true
     - kind: tls
       managed: true
     - kind: quay
       managed: true
-    - kind: clairpostgres
-      managed: true
+      overrides:
+        replicas: 1
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
 {{- end }}
