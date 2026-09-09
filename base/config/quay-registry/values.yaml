@@ -11,7 +11,7 @@ quayRegistry:
   actionLogRotation:
     include: false
     archivePath: "action_log_archive/"
-    archiveLocation: "default"
+    archiveLocation: "local_us"
   bridge:
     include: false
     namespaceCreationDefault: false
