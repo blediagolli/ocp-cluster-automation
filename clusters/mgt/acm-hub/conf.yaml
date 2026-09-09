@@ -2,6 +2,19 @@ cluster:
   name: acm-hub
   environment: mgt
   address: "https://kubernetes.default.svc"
+configCharts:
+  - chart: openshift-machine-config
+  - chart: openshift-ingress
+  - chart: openshift-marketplace
+  - chart: user-workload-monitoring
+  - chart: acs-secured-cluster
+  - chart: aap-instance
+  - chart: acs-central
+  - chart: project-request-template
+  - chart: etcd-defrag
+  - chart: etcd-backup
+  - chart: acm-observability
+  - chart: quay-registry
 operators:
   openshift-gitops:
     channel: gitops-1.21

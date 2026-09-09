@@ -8,7 +8,6 @@ spec:
   goTemplateOptions:
     - missingkey=error
   generators:
-    # Shared config charts — all clusters
     - matrix:
         generators:
           - git:
@@ -17,49 +16,10 @@ spec:
               files:
                 - path: "clusters/**/conf.yaml"
           - list:
-              elements:
-                - template: openshift-machine-config
-                - template: openshift-ingress
-                - template: openshift-marketplace
-                # - template: openshift-dns
-                # - template: openshift-image-registry
-                - template: user-workload-monitoring
-                # - template: compliance-scans
-                # - template: logging-lokistack
-                # - template: nmstate-config
-                # - template: node-feature-discovery-instance
-                - template: acs-secured-cluster
-                - template: aap-instance
-    # Hub-only config charts — management clusters only
-    - matrix:
-        generators:
-          - git:
-              repoURL: git@github.com:blediagolli/gitops-for-organizations.git
-              revision: main
-              files:
-                - path: "clusters/mgt/**/conf.yaml"
-          - list:
-              elements:
-                - template: acs-central
-                - template: project-request-template
-                - template: etcd-defrag
-                - template: etcd-backup
-                # - template: acm-multiclusterhub
-                - template: acm-observability
-                # - template: aap-instance
-                # - template: cert-manager-certs
-                # - template: local-storage-volumes
-                # - template: lvm-cluster
-                # - template: metallb-config
-                # - template: mtv-controller
-                # - template: odf-storagecluster
-                # - template: openshift-virtualization-instance
-                - template: quay-registry
-                # - template: servicemesh-ambient
-                # - template: trident-config
+              elementsYaml: "{{ .configCharts | toJson }}"
   template:
     metadata:
-      name: 'config-{{.cluster.environment}}-{{.cluster.name}}-{{.template}}'
+      name: 'config-{{.cluster.environment}}-{{.cluster.name}}-{{.chart}}'
       labels:
         environment: '{{.cluster.environment}}'
         cluster: '{{.cluster.name}}'
@@ -68,7 +28,7 @@ spec:
       source:
         repoURL: git@github.com:blediagolli/gitops-for-organizations.git
         targetRevision: main
-        path: 'base/config/{{.template}}'
+        path: 'base/config/{{.chart}}'
         helm:
           valueFiles:
             - '/conf/{{.cluster.environment}}/conf.yaml'
