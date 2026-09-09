@@ -297,3 +297,95 @@ Add a comment in each config chart's `Chart.yaml` or `HANDOFF.md` noting which o
 The real problems — namespace conflicts, dual maintenance flags — are solvable without restructuring. The CRD race condition is already handled by ArgoCD retry and only affects initial cluster bootstrap, not day-2 operations.
 
 If you do want tighter coupling in the future, the cleanest path is Approach 2 (sync hooks with CRD wait jobs) applied selectively to operators that are slow to install CRDs, not as a blanket pattern.
+
+---
+
+## Appendix: Eliminating Empty Applications
+
+A separate but related pain point: the `cluster-config` ApplicationSet generates Applications for every chart in its hardcoded list, even when a chart's `include: false` means it renders nothing. This creates empty Applications that clutter the ArgoCD UI.
+
+### Root cause
+
+The ApplicationSet uses a matrix of `git files × static list`:
+
+```yaml
+generators:
+  - matrix:
+      generators:
+        - git:
+            files:
+              - path: "clusters/**/conf.yaml"
+        - list:
+            elements:
+              - template: quay-registry
+              - template: acs-central
+              # ...
+```
+
+Every cluster gets an Application for every chart in the list — 3 clusters × 7 shared charts × 7 hub charts = many empty apps.
+
+### Solution: `elementsYaml` with dynamic chart lists
+
+ArgoCD 2.7+ (OpenShift GitOps 1.12+) supports `elementsYaml` in the list generator within a matrix. This lets the inner list be dynamic, reading its elements from the outer generator's data.
+
+**Step 1**: Add a `configCharts` list to each cluster's `conf.yaml`:
+
+```yaml
+# clusters/mgt/acm-hub/conf.yaml
+cluster:
+  name: acm-hub
+  environment: mgt
+  address: "https://kubernetes.default.svc"
+configCharts:
+  - chart: openshift-machine-config
+  - chart: openshift-ingress
+  - chart: acs-central
+  - chart: quay-registry
+  # only list charts this cluster actually deploys
+```
+
+**Step 2**: Replace the two matrix generators (shared + hub-only) with one dynamic matrix:
+
+```yaml
+generators:
+  - matrix:
+      generators:
+        - git:
+            repoURL: git@github.com:blediagolli/gitops-for-organizations.git
+            revision: main
+            files:
+              - path: "clusters/**/conf.yaml"
+        - list:
+            elementsYaml: "{{ .configCharts | toJson }}"
+template:
+  metadata:
+    name: 'config-{{.cluster.environment}}-{{.cluster.name}}-{{.chart}}'
+  spec:
+    source:
+      path: 'base/config/{{.chart}}'
+      helm:
+        valueFiles:
+          - '/conf/{{.cluster.environment}}/conf.yaml'
+          - '/{{.path.path}}/conf.yaml'
+    destination:
+      server: '{{.cluster.address}}'
+```
+
+### What this solves
+
+- **No empty Applications** — only charts listed in `configCharts` generate Applications.
+- **No shared vs hub-only split** — each cluster explicitly declares its charts. The two matrix generators collapse into one.
+- **Single place to enable** — add/remove a chart from `configCharts` instead of uncommenting lines in the ApplicationSet YAML.
+- **Per-cluster control** — dev cluster can have 6 charts, hub can have 12, prod can have 4. No "all clusters get everything" problem.
+
+### What changes
+
+- Each cluster's `conf.yaml` gets a `configCharts` list (additive, no existing keys change).
+- The ApplicationSet YAML gets simpler (one generator instead of two).
+- The template references `.chart` instead of `.template` for the chart name field.
+- Existing chart templates and values are untouched.
+
+### What to watch for
+
+- Removing a chart from `configCharts` will cause the ApplicationSet to delete that Application and its managed resources (if prune is enabled). This is usually the desired behavior but can be surprising.
+- The `configCharts` list is the source of truth for what's deployed. The `include` flags in values still control what the chart renders, but the Application itself won't exist unless the chart is in `configCharts`.
