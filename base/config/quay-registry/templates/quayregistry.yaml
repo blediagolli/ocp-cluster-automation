@@ -56,7 +56,7 @@ spec:
     - kind: mirror
       managed: false
     - kind: monitoring
-      managed: true
+      managed: false
     - kind: tls
       managed: true
     - kind: quay
