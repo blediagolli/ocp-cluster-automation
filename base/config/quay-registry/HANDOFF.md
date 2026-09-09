@@ -1,19 +1,33 @@
 # quay-registry — Handoff
 
 ## What it does
-Deploys a Red Hat Quay registry instance via the `QuayRegistry` CR. Creates a dedicated namespace and configures all components as operator-managed (Clair, Postgres, object storage, Redis, HPA, route, mirror, monitoring, TLS).
+Deploys a Red Hat Quay registry instance via the `QuayRegistry` CR with Keycloak OIDC authentication, production-hardened config, and Quay Bridge operator integration for automatic namespace-to-organization syncing.
 
 ## Current state
-- **Not enabled** on any cluster (`include: false`)
-- Not in any ApplicationSet element list
-- Not tested
-- References a `quay-registry-config-bundle` Secret that must exist before deployment
+- **Enabled** on `mgt/acm-hub` cluster
+- Quay registry running with minimal resources (test cluster sizing)
+- Keycloak OIDC configured via `sso` realm, client `quay`
+- Quay Bridge operator deployed and verified working — creates Quay orgs for opted-in namespaces
+- `namespaceCreationDefault: false` — namespaces must be labeled to opt in
+- Config bundle uses operator-managed Clair (no FEATURE_SECURITY_SCANNER in bundle)
+- ACTION_LOG_ROTATION disabled (requires archive path setup)
+- Monitoring disabled (operator requires AllNamespaces install mode)
+- HPA and mirror disabled for test cluster
+
+## Templates
+- `quayregistry.yaml` — QuayRegistry CR with minimal resources, single replica
+- `config-bundle-secret.yaml` — Production config with Keycloak OIDC, rate limits, quota management, team syncing
+- `quay-bridge.yaml` — QuayIntegration CR + OAuth token secret, comprehensive namespace denylist
+- `namespace.yaml` — quay-enterprise namespace
+
+## Key values
+- `quayRegistry.bridge.oauthToken` — OAuth app token with super:user scope (NOT a robot account)
+- `quayRegistry.keycloak.*` — OIDC server URL must end with trailing `/`
+- `quayRegistry.superUsers` — list of super user usernames
 
 ## Outstanding
-- Config bundle secret (`quay-registry-config-bundle`) is hardcoded — should be parameterized in values.yaml
-- All components are hardcoded to `managed: true` — add toggles for external Postgres, external object storage, or unmanaged TLS
-- No resource limits or replica counts configured
-- No storage class or PVC size configuration for managed Postgres/object storage
-- Missing superuser credentials setup
-- No Route/hostname customization
-- Needs testing on a cluster with sufficient resources (Quay is resource-heavy)
+- `namespaceCreationDefault` could be made configurable via values
+- No archive path configured for action log rotation
+- Clean up stale DB entries from OAuth token troubleshooting (openshift org, robot account, OAuth app)
+- Consider enabling monitoring when operator is deployed in AllNamespaces mode
+- Resource requests are minimal (test sizing) — needs production sizing for real workloads
