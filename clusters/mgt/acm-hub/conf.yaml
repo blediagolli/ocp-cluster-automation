@@ -151,7 +151,7 @@ quayRegistry:
   include: true
   keycloak:
     include: true
-    oidcServer: "https://sso.apps.cluster-c8444.dyn.redhatworkshops.io/realms/sso"
+    oidcServer: "https://sso.apps.cluster-c8444.dyn.redhatworkshops.io/realms/sso/"
     clientId: "quay"
     clientSecret: "5QU2ntb5V1CSU6WaZx9ZoaEb0JpxdMqi"
 aap:
