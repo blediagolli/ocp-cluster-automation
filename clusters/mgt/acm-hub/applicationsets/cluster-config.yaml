@@ -54,7 +54,7 @@ spec:
                 # - template: mtv-controller
                 # - template: odf-storagecluster
                 # - template: openshift-virtualization-instance
-                # - template: quay-registry
+                - template: quay-registry
                 # - template: servicemesh-ambient
                 # - template: trident-config
   template:

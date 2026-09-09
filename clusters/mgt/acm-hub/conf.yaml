@@ -65,6 +65,7 @@ operators:
   opentelemetry:
     channel: stable
   quay:
+    include: true
     channel: stable-3.17
   servicemesh3:
     channel: stable
@@ -144,6 +145,10 @@ etcdBackup:
     obc:
       name: etcd-backup-bucket
       storageClass: openshift-storage.noobaa.io
+quayNamespace:
+  include: true
+quayRegistry:
+  include: true
 aap:
   include: true
   name: aap
