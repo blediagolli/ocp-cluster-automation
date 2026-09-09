@@ -27,6 +27,15 @@ Deploys a Red Hat Quay registry instance via the `QuayRegistry` CR with Keycloak
 - `quayRegistry.keycloak.*` — OIDC server URL must end with trailing `/`
 - `quayRegistry.superUsers` — list of super user usernames
 
+## Verified (2026-09-09)
+Full e2e test passed on `mgt/acm-hub`:
+1. Created namespace `quay-e2e-test` with bridge opt-in label
+2. Bridge auto-created Quay org `openshift_quay-e2e-test` and provisioned dockerconfigjson secrets for all SAs
+3. `oc new-build` with inline Dockerfile built image, pushed to Quay via ImageStream
+4. Both `test-app` and `ubi-minimal` repos synced to Quay org
+5. Deployment pulled image back from Quay successfully (image pull verified, container crash was httpd needing privileged port — not a Quay issue)
+6. Namespace deletion triggered bridge cleanup of Quay org
+
 ## Outstanding
 - Consider enabling monitoring when operator is deployed in AllNamespaces mode
 - Resource requests are minimal (test sizing) — needs production sizing for real workloads
