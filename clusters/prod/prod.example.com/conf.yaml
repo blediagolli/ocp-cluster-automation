@@ -2,13 +2,7 @@ cluster:
   name: prod
   environment: prod
   address: "https://kubernetes.default.svc"
-configCharts:
-  - chart: openshift-machine-config
-  - chart: openshift-ingress
-  - chart: openshift-marketplace
-  - chart: user-workload-monitoring
-  - chart: acs-secured-cluster
-  - chart: aap-instance
+configCharts: []
 managedCluster:
   include: true
   name: prod
