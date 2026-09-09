@@ -149,7 +149,7 @@ etcdBackup:
       name: etcd-backup-bucket
       storageClass: openshift-storage.noobaa.io
 quayNamespace:
-  include: true
+  include: false
 quayRegistry:
   include: true
   superUsers:
