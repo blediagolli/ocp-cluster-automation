@@ -8,9 +8,9 @@ Deploys a Red Hat Quay registry instance via the `QuayRegistry` CR with Keycloak
 - Quay registry running with minimal resources (test cluster sizing)
 - Keycloak OIDC configured via `sso` realm, client `quay`
 - Quay Bridge operator deployed and verified working — creates Quay orgs for opted-in namespaces
-- `namespaceCreationDefault: false` — namespaces must be labeled to opt in
+- `namespaceCreationDefault` configurable via `bridge.namespaceCreationDefault` (default false)
 - Config bundle uses operator-managed Clair (no FEATURE_SECURITY_SCANNER in bundle)
-- ACTION_LOG_ROTATION disabled (requires archive path setup)
+- Action log rotation enabled, archiving to operator-managed object storage (`default` location)
 - Monitoring disabled (operator requires AllNamespaces install mode)
 - HPA and mirror disabled for test cluster
 
@@ -22,12 +22,12 @@ Deploys a Red Hat Quay registry instance via the `QuayRegistry` CR with Keycloak
 
 ## Key values
 - `quayRegistry.bridge.oauthToken` — OAuth app token with super:user scope (NOT a robot account)
+- `quayRegistry.bridge.namespaceCreationDefault` — auto-create Quay orgs for all non-denylisted namespaces
+- `quayRegistry.actionLogRotation.include` — enable action log rotation with archive path
 - `quayRegistry.keycloak.*` — OIDC server URL must end with trailing `/`
 - `quayRegistry.superUsers` — list of super user usernames
 
 ## Outstanding
-- `namespaceCreationDefault` could be made configurable via values
-- No archive path configured for action log rotation
 - Clean up stale DB entries from OAuth token troubleshooting (openshift org, robot account, OAuth app)
 - Consider enabling monitoring when operator is deployed in AllNamespaces mode
 - Resource requests are minimal (test sizing) — needs production sizing for real workloads
