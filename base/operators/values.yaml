@@ -244,6 +244,15 @@ operators:
     channel: stable-3.11
     source: redhat-operators
     sourceNamespace: openshift-marketplace
+  quay-bridge:
+    include: false
+    namespace: openshift-operators
+    package: quay-bridge-operator
+    channel: stable-3.11
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+    skipNamespace: true
+    skipOperatorGroup: true
   servicemesh3:
     include: false
     namespace: openshift-operators

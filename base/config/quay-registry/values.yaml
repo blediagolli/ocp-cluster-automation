@@ -6,6 +6,12 @@ quayRegistry:
   name: registry
   namespace: quay-enterprise
   userInitialize: false
+  superUsers:
+    - quayadmin
+  bridge:
+    include: false
+    quayHostname: ""
+    robotAccountToken: ""
   keycloak:
     include: false
     oidcServer: ""

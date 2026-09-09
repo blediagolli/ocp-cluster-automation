@@ -67,6 +67,9 @@ operators:
   quay:
     include: true
     channel: stable-3.17
+  quay-bridge:
+    include: true
+    channel: stable-3.17
   servicemesh3:
     channel: stable
   tempo:
@@ -149,7 +152,13 @@ quayNamespace:
   include: true
 quayRegistry:
   include: true
-  userInitialize: true
+  superUsers:
+    - quayadmin
+    - admin
+  bridge:
+    include: true
+    quayHostname: "registry-quay-quay-enterprise.apps.cluster-c8444.dyn.redhatworkshops.io"
+    robotAccountToken: "PPQ2JK7R2IMNS0JUMNQT3NLA7AFPH34NBK07DAZ6DJFF9W0UJW0FQL5AP8A2RTGQLD6YQXDFUH4EYSS2M9V7PLJFO9RJW4ZBWRYYOYNMCFBNGF26VXFZVN7Z"
   keycloak:
     include: true
     oidcServer: "https://sso.apps.cluster-c8444.dyn.redhatworkshops.io/realms/sso/"
