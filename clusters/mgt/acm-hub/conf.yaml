@@ -155,8 +155,11 @@ quayRegistry:
   superUsers:
     - quayadmin
     - admin
+  actionLogRotation:
+    include: true
   bridge:
     include: true
+    namespaceCreationDefault: false
     quayHostname: "registry-quay-quay-enterprise.apps.cluster-c8444.dyn.redhatworkshops.io"
     oauthToken: "EPBol6rTiU6J2V3sOUBHrNl7j9prug1kkGEZwbsc"
   keycloak:

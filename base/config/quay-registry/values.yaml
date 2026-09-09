@@ -8,8 +8,13 @@ quayRegistry:
   userInitialize: false
   superUsers:
     - quayadmin
+  actionLogRotation:
+    include: false
+    archivePath: "action_log_archive/"
+    archiveLocation: "default"
   bridge:
     include: false
+    namespaceCreationDefault: false
     quayHostname: ""
     oauthToken: ""
   keycloak:

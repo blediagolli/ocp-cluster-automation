@@ -24,7 +24,7 @@ spec:
   quayHostname: https://{{ .Values.quayRegistry.bridge.quayHostname }}
   insecureRegistry: false
   scheduledImageStreamImport: true
-  namespaceCreationDefault: false
+  namespaceCreationDefault: {{ .Values.quayRegistry.bridge.namespaceCreationDefault | default false }}
   denylistNamespaces:
     - default
     - kube-system
