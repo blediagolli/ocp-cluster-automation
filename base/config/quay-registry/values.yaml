@@ -5,3 +5,8 @@ quayRegistry:
   include: false
   name: registry
   namespace: quay-enterprise
+  keycloak:
+    include: false
+    oidcServer: ""
+    clientId: "quay"
+    clientSecret: ""
