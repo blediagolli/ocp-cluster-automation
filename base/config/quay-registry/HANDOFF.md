@@ -28,6 +28,5 @@ Deploys a Red Hat Quay registry instance via the `QuayRegistry` CR with Keycloak
 - `quayRegistry.superUsers` — list of super user usernames
 
 ## Outstanding
-- Clean up stale DB entries from OAuth token troubleshooting (openshift org, robot account, OAuth app)
 - Consider enabling monitoring when operator is deployed in AllNamespaces mode
 - Resource requests are minimal (test sizing) — needs production sizing for real workloads
