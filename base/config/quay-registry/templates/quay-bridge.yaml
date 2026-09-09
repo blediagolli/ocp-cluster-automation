@@ -90,4 +90,11 @@ spec:
     - open-cluster-management
     - multicluster-engine
     - ansible-automation-platform
+    - hypershift
+    - openshift-storage
+    - openshift-local-storage
+    - openshift-nmstate
+    - openshift-dr-system
+    - hive
+    - local-quay
 {{- end }}
