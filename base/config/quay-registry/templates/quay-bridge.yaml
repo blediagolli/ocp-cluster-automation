@@ -8,7 +8,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
 type: Opaque
 stringData:
-  token: {{ required "quayRegistry.bridge.robotAccountToken is required when bridge is enabled" .Values.quayRegistry.bridge.robotAccountToken }}
+  token: {{ required "quayRegistry.bridge.oauthToken is required when bridge is enabled" .Values.quayRegistry.bridge.oauthToken }}
 ---
 apiVersion: quay.redhat.com/v1
 kind: QuayIntegration

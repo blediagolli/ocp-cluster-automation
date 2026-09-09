@@ -11,7 +11,7 @@ quayRegistry:
   bridge:
     include: false
     quayHostname: ""
-    robotAccountToken: ""
+    oauthToken: ""
   keycloak:
     include: false
     oidcServer: ""
