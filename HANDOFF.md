@@ -4,77 +4,77 @@
 
 ## What changed this session
 
-### 1. Collapsed redundant ApplicationSet toggles
-- Removed `operatorApps` and `importApps` fields from all cluster conf.yaml files
-- ApplicationSets now derive the toggle from the data blocks directly using `deployOperators` (top-level bool) and `managedCluster.deploy`
-- Used `index` for safe key lookup to avoid `missingkey=error` failures when a conf.yaml omits a block entirely
-- `deployOperators` is top-level (not inside `operators` map) to avoid collision with the operators chart which iterates `range $name, $operator := .Values.operators`
+### 1. Fixed OutOfSync bootstrap resources
+- Updated ArgoCD CR to include all operator-injected defaults (grafana, sso/dex, monitoring, notifications, prometheus, networkPolicy, imageUpdater, ha resources, server grpc/ingress/service, tls, initialSSHKnownHosts, controller processors/sharding, applicationSet webhookServer)
+- Updated MultiClusterHub CR: added `localClusterName: local-cluster`, removed stale `storageClass`
 
-### 2. Added type labels to all ApplicationSets
-- Added `type` label to every ApplicationSet template
-- Added `environment`, `cluster`, `type` labels to app-of-apps root Application
-- Dropped `managed-by` and `part-of` labels — redundant when everything is ApplicationSet-managed under `project: platform`
+### 2. Renamed app-of-apps to `platform-root`
+- Changed Application name from `openshift-gitops-config` (operator default) to `platform-root`
+- Old Application had no finalizers — non-cascading delete was safe
 
-### 3. Enabled auto-sync everywhere
-- Enabled `automated.selfHeal` on app-of-apps, config-overlays, and provisioning
-- Requires one manual sync of app-of-apps to bootstrap the auto-sync setting
+### 3. Moved ACM from bootstrap to Helm charts
+- ACM operator (Subscription, Namespace, OperatorGroup) now managed by `operator-deployment` chart
+  - Channel updated to `release-2.17` to match bootstrap source of truth
+  - Added `namespaceAnnotations`/`namespaceLabels` support to operator-deployment namespace template
+- ACM instance now managed by `acm-multiclusterhub` operator-instances chart:
+  - MultiClusterHub CR with CRD wait and MCH wait jobs (ArgoCD sync hooks)
+  - Assisted-service (AgentServiceConfig + ConfigMap) — togglable via `assistedService.include`
+  - Hive (HiveConfig + Provisioning) — togglable via `hiveConfig.include`
+  - GitOps-cluster (GitOpsCluster + ManagedClusterSetBinding + Placement) — togglable via `gitopsCluster.include`
+  - Console plugins (Job to enable acm/mce plugins) — togglable via `consolePlugins.include`
+- Removed entire `bootstrap/advanced-cluster-management/` directory
 
-### 4. Cleaned up non-included operators
-- Removed operator entries without `include: true` from all cluster conf files
-- MGT: 34 → 7 operators, DEV: 34 → 3, PROD: all removed (`operators: {}`) since `deployOperators: false`
+### 4. Moved OpenShift GitOps from bootstrap to Helm charts
+- GitOps operator Subscription now managed by `operator-deployment` chart (channel `gitops-1.21`)
+- New `openshift-gitops-instance` operator-instances chart manages:
+  - ArgoCD CR — togglable via `argocd.include`
+  - Cluster-admin ClusterRoleBinding — togglable via `clusterRoleBinding.include`
+  - `platform` AppProject — togglable via `appProject.include`
+  - Console plugin job — togglable via `consolePlugin.include`
+- Bootstrap directory retained for initial manual `oc apply` only — removed from `platform-root` kustomization
+- Bootstrap is now a one-time seed; all ongoing management is through the Helm charts
+- Cleaned up stale hook resources (ServiceAccounts, Jobs, ClusterRoles, ClusterRoleBindings) from `platform-root` tracking
 
-### 5. Team onboarding (new feature)
-- **ApplicationSet `onboarding-gitops`** — reads `clusters/**/teams/*.yaml`, provisions per-team ArgoCD instances
-- **ApplicationSet `onboarding-namespaces`** — reads same team files, provisions namespaces with RQ/LR sizing
-- **Charts:** `charts/onboarding/application-gitops` and `charts/onboarding/namespace-config`
-- T-shirt sizing (small/medium/large) with chart defaults → env → cluster override chain
+## Previous session changes
 
-### 6. Repository restructure
-- `base/` flattened to `charts/` with grouped subdirectories:
-  - `charts/operator-deployment/` — operator Subscription chart
-  - `charts/operator-instances/` — 27 operator CR instance charts
-  - `charts/platform-config/` — 28 OpenShift platform config charts
-  - `charts/onboarding/` — team provisioning charts
-  - `charts/cluster-provisioning/` — cluster provisioning chart
-- `conf/` renamed to `env/`
-
-### 7. Split ApplicationSets and values files by chart category
-- Split `cluster-config` ApplicationSet into `cluster-platform-config` and `cluster-operator-instances`
-- Split monolithic conf.yaml into category-specific values files at both env and cluster levels:
-  - `conf.yaml` — shared cluster metadata, chart lists, deploy toggles
-  - `platform-config.yaml` — values for platform-config charts
-  - `operator-instances.yaml` — values for operator-instance charts
-  - `operator-deployment.yaml` — operator Subscription config
-  - `namespace-sizes.yaml` — t-shirt size definitions (onboarding)
-- Each ApplicationSet loads `conf.yaml` (shared) plus its category-specific file
-- `ignoreMissingValueFiles: true` on all ApplicationSets so files are optional at any level
-- `configCharts` replaced by `platformCharts` and `operatorInstanceCharts` in conf.yaml
-- Config-overlays ApplicationSet now togglable via `deployOverlay` in conf.yaml
+1. **Collapsed redundant ApplicationSet toggles** — `deployOperators` (top-level bool) and `managedCluster.deploy` replace explicit toggle fields
+2. **Added type labels to all ApplicationSets** — `environment`, `cluster`, `type` on every Application template
+3. **Enabled auto-sync everywhere** — `automated.selfHeal` on all ApplicationSets
+4. **Cleaned up non-included operators** — MGT: 34 → 9, DEV: 34 → 3, PROD: all removed
+5. **Team onboarding** — `onboarding-gitops` and `onboarding-namespaces` ApplicationSets with t-shirt sizing
+6. **Repository restructure** — `base/` → `charts/` (grouped), `conf/` → `env/`, flat → categorized
+7. **Split ApplicationSets and values files** — `cluster-config` → `cluster-platform-config` + `cluster-operator-instances`, monolithic conf.yaml split into category-specific files
 
 ## Current state
 
 ### Repository structure
 ```
+bootstrap/                     # one-time oc apply seed (GitOps operator + ArgoCD)
 charts/
-  operator-deployment/     # operator Subscription chart
-  operator-instances/      # 27 operator CR instance charts
-  platform-config/         # 28 OpenShift platform config charts
-  onboarding/              # application-gitops, namespace-config
-  cluster-provisioning/    # cluster provisioning
+  operator-deployment/         # operator Subscription chart (Namespace, OG, Sub)
+  operator-instances/          # 28 operator CR instance charts
+    acm-multiclusterhub/       #   MCH + assisted-service, hive, gitops-cluster, console plugins
+    openshift-gitops-instance/ #   ArgoCD CR, ClusterRoleBinding, AppProject, console plugin
+    acs-central/               #   ACS Central + init bundle
+    acs-secured-cluster/       #   SecuredCluster
+    ...                        #   25 more operator instance charts
+  platform-config/             # 28 OpenShift platform config charts
+  onboarding/                  # application-gitops, namespace-config
+  cluster-provisioning/        # cluster provisioning
 env/<env>/
-  conf.yaml                # shared environment config (cluster.registry)
-  platform-config.yaml     # platform chart values
-  operator-instances.yaml  # operator instance chart values
-  operator-deployment.yaml # operator Subscription defaults
-  namespace-sizes.yaml     # t-shirt size definitions
+  conf.yaml                    # shared environment config
+  platform-config.yaml         # platform chart values
+  operator-instances.yaml      # operator instance chart values
+  operator-deployment.yaml     # operator Subscription defaults
+  namespace-sizes.yaml         # t-shirt size definitions
 clusters/<env>/<cluster>/
-  conf.yaml                # cluster metadata, chart lists, deploy toggles, managedCluster
-  platform-config.yaml     # cluster-level platform overrides
-  operator-instances.yaml  # cluster-level operator instance overrides
-  operator-deployment.yaml # cluster-level operator Subscriptions
-  namespace-sizes.yaml     # cluster-level size overrides (optional)
+  conf.yaml                    # cluster metadata, chart lists, deploy toggles
+  platform-config.yaml         # cluster-level platform overrides
+  operator-instances.yaml      # cluster-level operator instance overrides
+  operator-deployment.yaml     # cluster-level operator Subscriptions
+  namespace-sizes.yaml         # cluster-level size overrides (optional)
   teams/
-    team-alpha.yaml        # team definition with sized namespaces
+    team-alpha.yaml            # team definition with sized namespaces
 ```
 
 ### ApplicationSets (8 total)
@@ -89,6 +89,35 @@ clusters/<env>/<cluster>/
 | onboarding-gitops | `teams/*.yaml` | onboarding-gitops |
 | onboarding-namespaces | `teams/*.yaml` | onboarding-namespaces |
 
+### Management hierarchy
+```
+platform-root (Application)
+├── 8 ApplicationSets (above)
+├── platform-root itself (self-managing)
+│
+├── acm-hub-operators (operator-deployment chart)
+│   └── Subscriptions: openshift-gitops, ACM, ACS, AAP, cluster-observability,
+│       external-secrets, logging, quay, quay-bridge
+│
+├── config-mgt-acm-hub-openshift-gitops-instance
+│   └── ArgoCD CR, ClusterRoleBinding, AppProject, console plugin
+│
+├── config-mgt-acm-hub-acm-multiclusterhub
+│   └── MCH, assisted-service, hive, gitops-cluster, console plugins
+│
+├── config-mgt-acm-hub-* (platform-config + operator-instances)
+│   └── 12 config/instance Applications for acm-hub
+│
+└── config-dev-cluster-lz5bn-* (platform-config + operator-instances)
+    └── 9 config/instance Applications for dev cluster
+```
+
+### Bootstrap flow (new cluster setup)
+1. `oc apply -k clusters/mgt/acm-hub/bootstrap/` — installs GitOps operator + ArgoCD instance
+2. Manually create `platform-root` Application pointing to `clusters/mgt/acm-hub/`
+3. ArgoCD takes over — syncs ApplicationSets, operator-deployment, operator-instances
+4. All ongoing management is through git commits
+
 ### Team onboarding flow
 1. Create `clusters/<env>/<cluster>/teams/<team>.yaml`
 2. ArgoCD auto-creates two Applications: namespace provisioning + ArgoCD instance
@@ -99,37 +128,11 @@ clusters/<env>/<cluster>/
 - `managedCluster.deploy` is safe inside the map because the import chart only ranges over `managedCluster.labels`, not top-level keys
 - `missingkey=error` means you can't use `.foo` dot notation on keys that might not exist — use `index . "foo"` instead
 - Team files duplicate `cluster.*` (3 lines) because the git file generator reads one file — it can't merge with conf.yaml
-- App-of-apps needs one manual sync to bootstrap its own auto-sync setting
 - `ignoreMissingValueFiles: true` on all ApplicationSets — files at any level are optional
 - Renaming an ApplicationSet resource causes ArgoCD to delete the old and create the new — Applications with unchanged names are adopted
-
-### 8. Moved ACM from bootstrap to Helm charts
-- ACM operator (Subscription, Namespace, OperatorGroup) now managed by `operator-deployment` chart
-  - Channel updated to `release-2.17` to match bootstrap source of truth
-  - Added `namespaceAnnotations`/`namespaceLabels` support to operator-deployment namespace template
-- ACM instance (MultiClusterHub + all post-MCH config) now managed by `acm-multiclusterhub` operator-instances chart:
-  - MCH CR with CRD wait and MCH wait jobs (ArgoCD sync hooks)
-  - Assisted-service (AgentServiceConfig + ConfigMap) — togglable via `assistedService.include`
-  - Hive (HiveConfig + Provisioning) — togglable via `hiveConfig.include`
-  - GitOps-cluster (GitOpsCluster + ManagedClusterSetBinding + Placement) — togglable via `gitopsCluster.include`
-  - Console plugins (Job to enable acm/mce plugins) — togglable via `consolePlugins.include`
-- Removed entire `bootstrap/advanced-cluster-management/` directory
-- Removed entire `bootstrap/advanced-cluster-management/` directory
-
-### 9. Moved OpenShift GitOps from bootstrap to Helm charts
-- GitOps operator Subscription now managed by `operator-deployment` chart (channel `gitops-1.21`)
-- New `openshift-gitops-instance` operator-instances chart manages ArgoCD CR, cluster-admin ClusterRoleBinding, `platform` AppProject, and console plugin job
-- Each section independently togglable: `argocd.include`, `clusterRoleBinding.include`, `appProject.include`, `consolePlugin.include`
-- Bootstrap directory retained for initial manual `oc apply` only — removed from `platform-root` kustomization
-- Bootstrap is now a one-time seed; all ongoing management is through the Helm charts
-
-### 10. Renamed app-of-apps to `platform-root`
-- Changed Application name from `openshift-gitops-config` (operator default) to `platform-root`
-
-### 10. Fixed OutOfSync bootstrap resources
-- Updated ArgoCD CR (`clusters/mgt/acm-hub/bootstrap/openshift-gitops/instance/argocd.yaml`) to include all operator-injected defaults
-- Updated MultiClusterHub CR to match live state (subsequently moved to acm-multiclusterhub chart — see #8)
-- App-of-apps now fully Synced with zero out-of-sync resources
+- `platform-root` is self-managing — changes to `applications/app-argocd.yaml` sync automatically, but if it breaks, manual `oc apply` is the recovery path
+- ArgoCD hook resources (sync-wave Jobs) don't get pruned automatically — delete manually if they become stale after restructuring
+- The ArgoCD CR has many operator-injected defaults (grafana, sso, monitoring, etc.) — the `openshift-gitops-instance` chart includes all of them to stay in sync
 
 ## Outstanding
 - Team GitOps provisioning not yet tested end-to-end on a live cluster
