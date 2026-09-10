@@ -3,9 +3,6 @@ cluster:
   environment: mgt
   address: "https://kubernetes.default.svc"
 platformCharts:
-  - chart: openshift-machine-config
-  - chart: openshift-ingress
-  - chart: openshift-marketplace
   - chart: user-workload-monitoring
   - chart: project-request-template
   - chart: etcd-defrag

@@ -3,8 +3,6 @@ cluster:
   environment: dev
   address: "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/cluster-lz5bn"
 platformCharts:
-  - chart: openshift-machine-config
-  - chart: openshift-ingress
   - chart: openshift-marketplace
   - chart: user-workload-monitoring
 operatorInstanceCharts:
