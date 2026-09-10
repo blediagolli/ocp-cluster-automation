@@ -1,0 +1,10 @@
+cluster:
+  name: ""
+  environment: ""
+  address: ""
+
+team:
+  name: ""
+  admins: ""
+  repo: ""
+  namespaces: []

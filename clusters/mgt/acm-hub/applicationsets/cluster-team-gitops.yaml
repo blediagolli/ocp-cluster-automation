@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: team-gitops-instances
+  namespace: openshift-gitops
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - git:
+        repoURL: git@github.com:blediagolli/gitops-for-organizations.git
+        revision: main
+        files:
+          - path: "clusters/**/teams/*.yaml"
+  template:
+    metadata:
+      name: 'gitops-{{.cluster.environment}}-{{.team.name}}'
+      labels:
+        environment: '{{.cluster.environment}}'
+        cluster: '{{.cluster.name}}'
+        type: team-gitops
+    spec:
+      project: platform
+      source:
+        repoURL: git@github.com:blediagolli/gitops-for-organizations.git
+        targetRevision: main
+        path: base/config/team-gitops-instance
+        helm:
+          valueFiles:
+            - '/{{.path.path}}/{{.path.filename}}'
+      destination:
+        server: '{{.cluster.address}}'
+      syncPolicy:
+        automated:
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 30s
+            maxDuration: 10m
+            factor: 2

@@ -1,0 +1,12 @@
+cluster:
+  name: cluster-lz5bn
+  environment: dev
+  address: "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/cluster-lz5bn"
+
+team:
+  name: team-alpha
+  admins: team-alpha-admins
+  repo: git@github.com:blediagolli/team-alpha-apps.git
+  namespaces:
+    - team-alpha-dev
+    - team-alpha-stage

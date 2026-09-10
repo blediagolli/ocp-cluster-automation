@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: {{ .Values.team.name }}
+  namespace: {{ .Values.team.name }}-gitops
+spec:
+  sourceRepos:
+    - {{ .Values.team.repo }}
+  destinations:
+    - namespace: {{ .Values.team.name }}-gitops
+      server: 'https://kubernetes.default.svc'
+    {{- range .Values.team.namespaces }}
+    - namespace: {{ . }}
+      server: 'https://kubernetes.default.svc'
+    {{- end }}
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'

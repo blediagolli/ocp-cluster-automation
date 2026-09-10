@@ -6,3 +6,4 @@ resources:
 - cluster-import.yaml
 - cluster-operators-appset.yaml
 - cluster-provisioning.yaml
+- cluster-team-gitops.yaml
