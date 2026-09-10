@@ -12,3 +12,4 @@ aap:
     enabled: false
   redis:
     mode: standalone
+  routeTlsTermination: Edge

@@ -13,6 +13,8 @@ spec:
     disabled: {{ not .Values.aap.eda.enabled }}
   lightspeed:
     disabled: {{ not .Values.aap.lightspeed.enabled }}
-  redis:
-    mode: {{ .Values.aap.redis.mode }}
+  no_log: true
+  redis: {}
+  redis_mode: {{ .Values.aap.redis.mode }}
+  route_tls_termination_mechanism: {{ .Values.aap.routeTlsTermination | default "Edge" }}
 {{- end }}
