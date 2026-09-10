@@ -2,6 +2,8 @@ cluster:
   name: prod
   environment: prod
   address: "https://kubernetes.default.svc"
+operatorApps: []
+importApps: []
 configCharts: []
 managedCluster:
   include: true

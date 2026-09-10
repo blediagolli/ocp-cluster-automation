@@ -2,6 +2,10 @@ cluster:
   name: "cluster-lz5bn"
   environment: dev
   address: "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/cluster-lz5bn"
+operatorApps:
+  - {}
+importApps:
+  - {}
 configCharts:
   - chart: openshift-machine-config
   - chart: openshift-ingress

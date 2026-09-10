@@ -8,11 +8,15 @@ spec:
   goTemplateOptions:
     - missingkey=error
   generators:
-    - git:
-        repoURL: git@github.com:blediagolli/gitops-for-organizations.git
-        revision: main
-        files:
-          - path: "clusters/**/conf.yaml"
+    - matrix:
+        generators:
+          - git:
+              repoURL: git@github.com:blediagolli/gitops-for-organizations.git
+              revision: main
+              files:
+                - path: "clusters/**/conf.yaml"
+          - list:
+              elementsYaml: "{{ .operatorApps | toJson }}"
   template:
     metadata:
       name: '{{.cluster.name}}-operators'
