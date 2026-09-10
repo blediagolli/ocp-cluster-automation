@@ -34,3 +34,9 @@ operators:
     channel: stable
 securedCluster:
   clusterName: dev
+namespaceSizes:
+  small:
+    resourceQuota:
+      hard:
+        pods: "15"
+        requests.cpu: "2"
