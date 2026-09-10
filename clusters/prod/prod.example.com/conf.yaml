@@ -16,4 +16,5 @@ managedCluster:
   addons:
     include: true
 deployOperators: false
+deployOverlay: false
 operators: {}

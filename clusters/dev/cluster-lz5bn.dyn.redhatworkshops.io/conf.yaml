@@ -22,6 +22,7 @@ managedCluster:
   addons:
     include: false
 deployOperators: true
+deployOverlay: true
 operators:
   openshift-gitops:
     include: true

@@ -16,6 +16,7 @@ configCharts:
   - chart: operator-instances/acm-observability
   - chart: operator-instances/quay-registry
 deployOperators: true
+deployOverlay: true
 operators:
   advanced-cluster-security:
     include: true
