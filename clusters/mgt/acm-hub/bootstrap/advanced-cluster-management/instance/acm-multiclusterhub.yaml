@@ -8,7 +8,7 @@ metadata:
 spec:
   availabilityConfig: High
   disableHubSelfManagement: false
-  storageClass: ocs-external-storagecluster-ceph-rbd
+  localClusterName: local-cluster
   overrides:
     components:
       - enabled: true
