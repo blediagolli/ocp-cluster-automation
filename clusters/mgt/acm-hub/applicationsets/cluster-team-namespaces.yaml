@@ -15,7 +15,7 @@ spec:
           - path: "clusters/**/teams/*.yaml"
   template:
     metadata:
-      name: 'ns-{{.cluster.environment}}-{{.team.name}}'
+      name: 'team-ns-{{.cluster.environment}}-{{.cluster.name}}-{{.team.name}}'
       labels:
         environment: '{{.cluster.environment}}'
         cluster: '{{.cluster.name}}'
