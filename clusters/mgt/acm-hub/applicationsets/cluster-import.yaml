@@ -16,7 +16,7 @@ spec:
               files:
                 - path: "clusters/**/conf.yaml"
           - list:
-              elementsYaml: "{{ if and .managedCluster .managedCluster.deploy }}[{}]{{ else }}[]{{ end }}"
+              elementsYaml: "{{ $mc := index . \"managedCluster\" }}{{ if $mc }}{{ if $mc.deploy }}[{}]{{ else }}[]{{ end }}{{ else }}[]{{ end }}"
   template:
     metadata:
       name: 'import-{{.cluster.environment}}-{{.cluster.name}}'
