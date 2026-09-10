@@ -103,14 +103,26 @@ clusters/<env>/<cluster>/
 - `ignoreMissingValueFiles: true` on all ApplicationSets — files at any level are optional
 - Renaming an ApplicationSet resource causes ArgoCD to delete the old and create the new — Applications with unchanged names are adopted
 
-### 8. Renamed app-of-apps to `platform-root`
-- Changed Application name from `openshift-gitops-config` (operator default) to `platform-root`
-- Old Application had no finalizers so deletion was non-cascading (safe)
+### 8. Moved ACM from bootstrap to Helm charts
+- ACM operator (Subscription, Namespace, OperatorGroup) now managed by `operator-deployment` chart
+  - Channel updated to `release-2.17` to match bootstrap source of truth
+  - Added `namespaceAnnotations`/`namespaceLabels` support to operator-deployment namespace template
+- ACM instance (MultiClusterHub + all post-MCH config) now managed by `acm-multiclusterhub` operator-instances chart:
+  - MCH CR with CRD wait and MCH wait jobs (ArgoCD sync hooks)
+  - Assisted-service (AgentServiceConfig + ConfigMap) — togglable via `assistedService.include`
+  - Hive (HiveConfig + Provisioning) — togglable via `hiveConfig.include`
+  - GitOps-cluster (GitOpsCluster + ManagedClusterSetBinding + Placement) — togglable via `gitopsCluster.include`
+  - Console plugins (Job to enable acm/mce plugins) — togglable via `consolePlugins.include`
+- Removed entire `bootstrap/advanced-cluster-management/` directory
+- Bootstrap now only contains `openshift-gitops` (the only true chicken-and-egg dependency)
 
-### 9. Fixed OutOfSync bootstrap resources
-- Updated ArgoCD CR (`clusters/mgt/acm-hub/bootstrap/openshift-gitops/instance/argocd.yaml`) to include all operator-injected defaults: grafana, sso/dex, monitoring, notifications, prometheus, networkPolicy, imageUpdater, ha resources, server grpc/ingress/service, tls, initialSSHKnownHosts, controller processors/sharding, applicationSet webhookServer
-- Updated MultiClusterHub CR (`clusters/mgt/acm-hub/bootstrap/advanced-cluster-management/instance/acm-multiclusterhub.yaml`): added `localClusterName: local-cluster`, removed `storageClass` (not present in live state)
-- App-of-apps (`openshift-gitops-config`) now fully Synced with zero out-of-sync resources
+### 9. Renamed app-of-apps to `platform-root`
+- Changed Application name from `openshift-gitops-config` (operator default) to `platform-root`
+
+### 10. Fixed OutOfSync bootstrap resources
+- Updated ArgoCD CR (`clusters/mgt/acm-hub/bootstrap/openshift-gitops/instance/argocd.yaml`) to include all operator-injected defaults
+- Updated MultiClusterHub CR to match live state (subsequently moved to acm-multiclusterhub chart — see #8)
+- App-of-apps now fully Synced with zero out-of-sync resources
 
 ## Outstanding
 - Team GitOps provisioning not yet tested end-to-end on a live cluster
