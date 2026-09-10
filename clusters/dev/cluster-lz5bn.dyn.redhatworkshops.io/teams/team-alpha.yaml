@@ -10,3 +10,4 @@ team:
   namespaces:
     - team-alpha-dev
     - team-alpha-stage
+    - team-alpha-preprod
