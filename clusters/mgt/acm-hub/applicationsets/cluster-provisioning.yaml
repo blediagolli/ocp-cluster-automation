@@ -25,7 +25,7 @@ spec:
       source:
         repoURL: git@github.com:blediagolli/gitops-for-organizations.git
         targetRevision: main
-        path: charts/provisioning/openshift-provisioning
+        path: charts/cluster-provisioning/openshift-provisioning
         helm:
           valueFiles:
             - '/{{.path.path}}/provision.yaml'

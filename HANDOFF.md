@@ -56,7 +56,7 @@
   - `charts/operator-instances/` — 27 operator CR instance charts
   - `charts/platform-config/` — 28 OpenShift platform config charts
   - `charts/onboarding/` — 2 team provisioning charts
-  - `charts/provisioning/` — cluster provisioning chart (was `base/provision`)
+  - `charts/cluster-provisioning/` — cluster provisioning chart (was `base/provision`)
 - `conf/` renamed to `env/` — environment-level config
 - `clusters/` unchanged
 - `configCharts` entries in conf.yaml now include subdirectory prefix (e.g., `platform/openshift-ingress`)
