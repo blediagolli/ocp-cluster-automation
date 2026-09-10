@@ -4,6 +4,7 @@ metadata:
   name: onboarding-gitops
   namespace: openshift-gitops
 spec:
+  preserveResourcesOnDeletion: true
   goTemplate: true
   goTemplateOptions:
     - missingkey=error
