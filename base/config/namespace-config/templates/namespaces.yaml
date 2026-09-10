@@ -1,9 +1,5 @@
 {{- range .Values.team.namespaces }}
 {{- $size := index $.Values.namespaceSizes .size }}
-{{- $rqOverrides := dig "overrides" "resourceQuota" "hard" dict . }}
-{{- $rqHard := mergeOverwrite (deepCopy $size.resourceQuota.hard) $rqOverrides }}
-{{- $lrOverrides := dig "overrides" "limitRange" "limits" list . }}
-{{- $lrLimits := ternary $lrOverrides $size.limitRange.limits (gt (len $lrOverrides) 0) }}
 ---
 apiVersion: v1
 kind: Namespace
@@ -24,7 +20,7 @@ metadata:
     namespace-size: {{ .size }}
 spec:
   hard:
-    {{- toYaml $rqHard | nindent 4 }}
+    {{- toYaml $size.resourceQuota.hard | nindent 4 }}
 ---
 apiVersion: v1
 kind: LimitRange
@@ -35,5 +31,5 @@ metadata:
     namespace-size: {{ .size }}
 spec:
   limits:
-    {{- toYaml $lrLimits | nindent 4 }}
+    {{- toYaml $size.limitRange.limits | nindent 4 }}
 {{- end }}

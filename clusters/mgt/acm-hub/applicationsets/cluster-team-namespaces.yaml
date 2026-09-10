@@ -25,11 +25,14 @@ spec:
       source:
         repoURL: git@github.com:blediagolli/gitops-for-organizations.git
         targetRevision: main
-        path: base/config/team-namespace-config
+        path: base/config/namespace-config
         helm:
+          ignoreMissingValueFiles: true
           valueFiles:
             - '/conf/{{.cluster.environment}}/conf.yaml'
+            - '/conf/{{.cluster.environment}}/namespace-sizes.yaml'
             - '/{{ trimSuffix "/teams" .path.path }}/conf.yaml'
+            - '/{{ trimSuffix "/teams" .path.path }}/namespace-sizes.yaml'
             - '/{{.path.path}}/{{.path.filename}}'
       destination:
         server: '{{.cluster.address}}'

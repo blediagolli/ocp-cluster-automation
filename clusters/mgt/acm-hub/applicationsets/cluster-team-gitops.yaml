@@ -25,7 +25,7 @@ spec:
       source:
         repoURL: git@github.com:blediagolli/gitops-for-organizations.git
         targetRevision: main
-        path: base/config/team-gitops-instance
+        path: base/config/application-gitops
         helm:
           valueFiles:
             - '/conf/{{.cluster.environment}}/conf.yaml'

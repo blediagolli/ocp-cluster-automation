@@ -1,0 +1,6 @@
+namespaceSizes:
+  small:
+    resourceQuota:
+      hard:
+        pods: "15"
+        requests.cpu: "2"
