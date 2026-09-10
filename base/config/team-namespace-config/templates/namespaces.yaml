@@ -18,8 +18,10 @@ metadata:
 apiVersion: v1
 kind: ResourceQuota
 metadata:
-  name: {{ .size }}
+  name: team-quota
   namespace: {{ .name }}
+  labels:
+    namespace-size: {{ .size }}
 spec:
   hard:
     {{- toYaml $rqHard | nindent 4 }}
@@ -27,8 +29,10 @@ spec:
 apiVersion: v1
 kind: LimitRange
 metadata:
-  name: {{ .size }}
+  name: team-limits
   namespace: {{ .name }}
+  labels:
+    namespace-size: {{ .size }}
 spec:
   limits:
     {{- toYaml $lrLimits | nindent 4 }}

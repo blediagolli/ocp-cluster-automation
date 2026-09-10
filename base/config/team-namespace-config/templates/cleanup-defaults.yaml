@@ -1,0 +1,67 @@
+{{- range .Values.team.namespaces }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ns-cleanup
+  namespace: {{ .name }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ns-cleanup
+  namespace: {{ .name }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+rules:
+  - apiGroups: [""]
+    resources: ["resourcequotas", "limitranges"]
+    verbs: ["list", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-cleanup
+  namespace: {{ .name }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ns-cleanup
+subjects:
+  - kind: ServiceAccount
+    name: ns-cleanup
+    namespace: {{ .name }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cleanup-default-rq-{{ .name }}
+  namespace: {{ .name }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      serviceAccountName: ns-cleanup
+      restartPolicy: Never
+      containers:
+        - name: cleanup
+          image: registry.redhat.io/openshift4/ose-cli:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              oc delete resourcequota default --ignore-not-found -n {{ .name }}
+              oc delete limitrange default --ignore-not-found -n {{ .name }}
+              oc delete resourcequota small medium large --ignore-not-found -n {{ .name }}
+              oc delete limitrange small medium large --ignore-not-found -n {{ .name }}
+{{- end }}
