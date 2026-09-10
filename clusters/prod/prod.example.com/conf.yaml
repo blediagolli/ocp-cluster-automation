@@ -6,15 +6,15 @@ platformCharts: []
 operatorInstanceCharts: []
 managedCluster:
   deploy: false
-  include: true
+  include: false
   name: prod
   environment: prod
   autoImport:
-    include: true
+    include: false
     mode: kubeconfig
     kubeconfig:
       secretName: prod-kubeconfig
   addons:
-    include: true
+    include: false
 deployOperators: false
 deployOverlay: false
