@@ -16,4 +16,6 @@ spec:
     repoURL: >-
       git@github.com:blediagolli/gitops-for-organizations.git
     targetRevision: main
-  syncPolicy: {}
+  syncPolicy:
+    automated:
+      selfHeal: true

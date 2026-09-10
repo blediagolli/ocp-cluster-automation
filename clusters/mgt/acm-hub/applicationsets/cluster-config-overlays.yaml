@@ -28,4 +28,6 @@ spec:
         path: '{{.path.path}}/overlay'
       destination:
         server: '{{.cluster.address}}'
-      syncPolicy: {}
+      syncPolicy:
+        automated:
+          selfHeal: true
