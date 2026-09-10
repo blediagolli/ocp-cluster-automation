@@ -2,7 +2,6 @@ securedCluster:
   include: false
   name: stackrox-secured-cluster-services
   namespace: stackrox
-  clusterName: ""
   centralEndpoint: ""
   # "job" = secrets are created by the init bundle job on acs-central (same cluster)
   # "preExisting" = secrets are pre-created with cert data from values below (or external-secrets/sealed-secrets)
