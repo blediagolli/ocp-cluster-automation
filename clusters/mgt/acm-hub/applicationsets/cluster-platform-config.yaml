@@ -19,7 +19,7 @@ spec:
               elementsYaml: "{{ .platformCharts | toJson }}"
   template:
     metadata:
-      name: 'config-{{.cluster.environment}}-{{.cluster.name}}-{{.chart}}'
+      name: 'platform-{{.cluster.environment}}-{{.cluster.name}}-{{.chart}}'
       labels:
         environment: '{{.cluster.environment}}'
         cluster: '{{.cluster.name}}'

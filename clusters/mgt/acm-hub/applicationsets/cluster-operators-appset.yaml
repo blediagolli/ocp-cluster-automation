@@ -19,7 +19,7 @@ spec:
               elementsYaml: "{{ $d := index . \"deployOperators\" }}{{ if $d }}[{}]{{ else }}[]{{ end }}"
   template:
     metadata:
-      name: '{{.cluster.name}}-operators'
+      name: 'operators-{{.cluster.environment}}-{{.cluster.name}}'
       labels:
         environment: '{{.cluster.environment}}'
         cluster: '{{.cluster.name}}'

@@ -19,7 +19,7 @@ spec:
               elementsYaml: "{{ $d := index . \"deployOverlay\" }}{{ if $d }}[{}]{{ else }}[]{{ end }}"
   template:
     metadata:
-      name: 'config-{{.cluster.environment}}-{{.cluster.name}}-overlay'
+      name: 'overlay-{{.cluster.environment}}-{{.cluster.name}}'
       labels:
         environment: '{{.cluster.environment}}'
         cluster: '{{.cluster.name}}'

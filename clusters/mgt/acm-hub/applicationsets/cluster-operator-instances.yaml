@@ -19,7 +19,7 @@ spec:
               elementsYaml: "{{ .operatorInstanceCharts | toJson }}"
   template:
     metadata:
-      name: 'config-{{.cluster.environment}}-{{.cluster.name}}-{{.chart}}'
+      name: 'cr-{{.cluster.environment}}-{{.cluster.name}}-{{.chart}}'
       labels:
         environment: '{{.cluster.environment}}'
         cluster: '{{.cluster.name}}'

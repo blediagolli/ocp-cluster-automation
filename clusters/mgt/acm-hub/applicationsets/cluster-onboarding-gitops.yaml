@@ -15,7 +15,7 @@ spec:
           - path: "clusters/**/teams/*.yaml"
   template:
     metadata:
-      name: 'config-{{.cluster.environment}}-{{.cluster.name}}-{{.team.name}}-gitops'
+      name: 'onboarding-gitops-{{.cluster.environment}}-{{.cluster.name}}-{{.team.name}}'
       labels:
         environment: '{{.cluster.environment}}'
         cluster: '{{.cluster.name}}'
