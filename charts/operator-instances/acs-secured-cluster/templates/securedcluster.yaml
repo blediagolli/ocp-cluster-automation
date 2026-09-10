@@ -23,7 +23,6 @@ spec:
     collector:
       collection: {{ .Values.securedCluster.perNode.collector.collection }}
       imageFlavor: {{ .Values.securedCluster.perNode.collector.imageFlavor }}
-      forwardDeployedImageAnalysis: {{ .Values.securedCluster.perNode.collector.forwardDeployedImageAnalysis }}
     taintToleration: {{ .Values.securedCluster.perNode.taintToleration }}
   {{- if .Values.securedCluster.scannerV4.scannerComponent }}
   scannerV4:

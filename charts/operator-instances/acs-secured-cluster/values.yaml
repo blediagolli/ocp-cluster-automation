@@ -40,7 +40,6 @@ securedCluster:
     collector:
       collection: CORE_BPF
       imageFlavor: Regular
-      forwardDeployedImageAnalysis: Inactive
     taintToleration: TolerateTaints
   scannerV4:
     # AutoSense enables delegated image scanning when connected to a Central that supports it
