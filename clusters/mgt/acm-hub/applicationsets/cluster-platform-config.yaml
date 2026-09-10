@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: cluster-config
+  name: cluster-platform-config
   namespace: openshift-gitops
 spec:
   goTemplate: true
@@ -16,24 +16,27 @@ spec:
               files:
                 - path: "clusters/**/conf.yaml"
           - list:
-              elementsYaml: "{{ .configCharts | toJson }}"
+              elementsYaml: "{{ .platformCharts | toJson }}"
   template:
     metadata:
-      name: 'config-{{.cluster.environment}}-{{.cluster.name}}-{{ base .chart }}'
+      name: 'config-{{.cluster.environment}}-{{.cluster.name}}-{{.chart}}'
       labels:
         environment: '{{.cluster.environment}}'
         cluster: '{{.cluster.name}}'
-        type: config
+        type: platform-config
     spec:
       project: platform
       source:
         repoURL: git@github.com:blediagolli/gitops-for-organizations.git
         targetRevision: main
-        path: 'charts/{{.chart}}'
+        path: 'charts/platform-config/{{.chart}}'
         helm:
+          ignoreMissingValueFiles: true
           valueFiles:
             - '/env/{{.cluster.environment}}/conf.yaml'
+            - '/env/{{.cluster.environment}}/platform-config.yaml'
             - '/{{.path.path}}/conf.yaml'
+            - '/{{.path.path}}/platform-config.yaml'
       destination:
         server: '{{.cluster.address}}'
       syncPolicy:

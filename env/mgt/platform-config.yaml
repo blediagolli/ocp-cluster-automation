@@ -1,0 +1,14 @@
+catalogSource:
+  include: false
+
+ingress:
+  service:
+    include: false
+  controller:
+    include: false
+
+config:
+  include: false
+
+machineConfig:
+  include: false

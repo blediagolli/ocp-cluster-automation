@@ -1,0 +1,46 @@
+central:
+  include: true
+  initBundle:
+    include: true
+    distributeAuth: true
+  consoleLink:
+    include: true
+    centralUrl: "https://central-stackrox.apps.cluster-c8444.dyn.redhatworkshops.io"
+centralNamespace:
+  include: true
+securedCluster:
+  include: true
+  clusterName: acm-hub
+  centralEndpoint: "central-stackrox.apps.cluster-c8444.dyn.redhatworkshops.io:443"
+  secretMode: "job"
+securedClusterNamespace:
+  include: false
+multiClusterObservability:
+  include: true
+  storageClass: ocs-external-storagecluster-ceph-rbd
+consoleLink:
+  include: true
+  href: "https://grafana-open-cluster-management-observability.apps.cluster-c8444.dyn.redhatworkshops.io"
+quayNamespace:
+  include: false
+quayRegistry:
+  include: true
+  superUsers:
+    - quayadmin
+    - admin
+  actionLogRotation:
+    include: true
+  bridge:
+    include: true
+    namespaceCreationDefault: false
+    quayHostname: "registry-quay-quay-enterprise.apps.cluster-c8444.dyn.redhatworkshops.io"
+    oauthToken: "EPBol6rTiU6J2V3sOUBHrNl7j9prug1kkGEZwbsc"
+  keycloak:
+    include: true
+    oidcServer: "https://sso.apps.cluster-c8444.dyn.redhatworkshops.io/realms/sso/"
+    clientId: "quay"
+    clientSecret: "5QU2ntb5V1CSU6WaZx9ZoaEb0JpxdMqi"
+aap:
+  include: true
+  name: aap
+  namespace: ansible-automation-platform

@@ -2,133 +2,19 @@ cluster:
   name: acm-hub
   environment: mgt
   address: "https://kubernetes.default.svc"
-configCharts:
-  - chart: platform-config/openshift-machine-config
-  - chart: platform-config/openshift-ingress
-  - chart: platform-config/openshift-marketplace
-  - chart: platform-config/user-workload-monitoring
-  - chart: platform-config/project-request-template
-  - chart: platform-config/etcd-defrag
-  - chart: platform-config/etcd-backup
-  - chart: operator-instances/acs-secured-cluster
-  - chart: operator-instances/aap-instance
-  - chart: operator-instances/acs-central
-  - chart: operator-instances/acm-observability
-  - chart: operator-instances/quay-registry
+platformCharts:
+  - chart: openshift-machine-config
+  - chart: openshift-ingress
+  - chart: openshift-marketplace
+  - chart: user-workload-monitoring
+  - chart: project-request-template
+  - chart: etcd-defrag
+  - chart: etcd-backup
+operatorInstanceCharts:
+  - chart: acs-secured-cluster
+  - chart: aap-instance
+  - chart: acs-central
+  - chart: acm-observability
+  - chart: quay-registry
 deployOperators: true
 deployOverlay: true
-operators:
-  advanced-cluster-security:
-    include: true
-    channel: stable
-  ansible-automation-platform:
-    include: true
-    channel: stable-2.6
-  cluster-observability:
-    include: true
-    channel: stable
-  external-secrets-operator:
-    include: true
-    channel: stable-v1
-  openshift-logging:
-    include: true
-    channel: stable-6.6
-  quay:
-    include: true
-    channel: stable-3.17
-  quay-bridge:
-    include: true
-    channel: stable-3.17
-central:
-  include: true
-  initBundle:
-    include: true
-    distributeAuth: true
-  consoleLink:
-    include: true
-    centralUrl: "https://central-stackrox.apps.cluster-c8444.dyn.redhatworkshops.io"
-centralNamespace:
-  include: true
-securedCluster:
-  include: true
-  clusterName: acm-hub
-  centralEndpoint: "central-stackrox.apps.cluster-c8444.dyn.redhatworkshops.io:443"
-  secretMode: "job"
-securedClusterNamespace:
-  include: false
-projectConfig:
-  include: true
-  projectRequestMessage: "Contact platform-team to request a project."
-selfProvisioners:
-  include: true
-networkPolicy:
-  include: true
-resourceQuota:
-  include: true
-limitRange:
-  include: true
-roleBindings:
-  include: true
-serviceAccount:
-  include: true
-egressFirewall:
-  include: true
-  rules:
-    - type: Allow
-      to:
-        cidrSelector: 0.0.0.0/0
-multiClusterObservability:
-  include: true
-  storageClass: ocs-external-storagecluster-ceph-rbd
-consoleLink:
-  include: true
-  href: "https://grafana-open-cluster-management-observability.apps.cluster-c8444.dyn.redhatworkshops.io"
-userWorkloadMonitoring:
-  include: true
-  prometheus:
-    retention: 48h
-    storageClass: ocs-external-storagecluster-ceph-rbd
-    pvcSize: 50Gi
-    resources:
-      requests:
-        cpu: 200m
-        memory: 1Gi
-      limits:
-        cpu: "2"
-        memory: 6Gi
-etcdDefrag:
-  include: true
-  schedule: "0 3 * * 0"
-  fragmentationThreshold: 50
-etcdBackup:
-  include: true
-  schedule: "0 */6 * * *"
-  retentionCount: 7
-  storage:
-    type: obc
-    obc:
-      name: etcd-backup-bucket
-      storageClass: openshift-storage.noobaa.io
-quayNamespace:
-  include: false
-quayRegistry:
-  include: true
-  superUsers:
-    - quayadmin
-    - admin
-  actionLogRotation:
-    include: true
-  bridge:
-    include: true
-    namespaceCreationDefault: false
-    quayHostname: "registry-quay-quay-enterprise.apps.cluster-c8444.dyn.redhatworkshops.io"
-    oauthToken: "EPBol6rTiU6J2V3sOUBHrNl7j9prug1kkGEZwbsc"
-  keycloak:
-    include: true
-    oidcServer: "https://sso.apps.cluster-c8444.dyn.redhatworkshops.io/realms/sso/"
-    clientId: "quay"
-    clientSecret: "5QU2ntb5V1CSU6WaZx9ZoaEb0JpxdMqi"
-aap:
-  include: true
-  name: aap
-  namespace: ansible-automation-platform

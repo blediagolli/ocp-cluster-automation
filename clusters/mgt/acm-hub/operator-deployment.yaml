@@ -1,0 +1,22 @@
+operators:
+  advanced-cluster-security:
+    include: true
+    channel: stable
+  ansible-automation-platform:
+    include: true
+    channel: stable-2.6
+  cluster-observability:
+    include: true
+    channel: stable
+  external-secrets-operator:
+    include: true
+    channel: stable-v1
+  openshift-logging:
+    include: true
+    channel: stable-6.6
+  quay:
+    include: true
+    channel: stable-3.17
+  quay-bridge:
+    include: true
+    channel: stable-3.17

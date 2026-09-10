@@ -2,13 +2,14 @@ cluster:
   name: "cluster-lz5bn"
   environment: dev
   address: "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/cluster-lz5bn"
-configCharts:
-  - chart: platform-config/openshift-machine-config
-  - chart: platform-config/openshift-ingress
-  - chart: platform-config/openshift-marketplace
-  - chart: platform-config/user-workload-monitoring
-  - chart: operator-instances/acs-secured-cluster
-  - chart: operator-instances/aap-instance
+platformCharts:
+  - chart: openshift-machine-config
+  - chart: openshift-ingress
+  - chart: openshift-marketplace
+  - chart: user-workload-monitoring
+operatorInstanceCharts:
+  - chart: acs-secured-cluster
+  - chart: aap-instance
 managedCluster:
   deploy: true
   include: true
@@ -23,15 +24,3 @@ managedCluster:
     include: false
 deployOperators: true
 deployOverlay: true
-operators:
-  openshift-gitops:
-    include: true
-    channel: gitops-1.21
-  advanced-cluster-security:
-    include: true
-    channel: stable
-  compliance-operator:
-    include: true
-    channel: stable
-securedCluster:
-  clusterName: dev

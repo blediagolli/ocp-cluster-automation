@@ -1,0 +1,10 @@
+operators:
+  openshift-gitops:
+    include: true
+    channel: gitops-1.21
+  advanced-cluster-security:
+    include: true
+    channel: stable
+  compliance-operator:
+    include: true
+    channel: stable

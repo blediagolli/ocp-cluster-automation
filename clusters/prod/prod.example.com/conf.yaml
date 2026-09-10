@@ -2,7 +2,8 @@ cluster:
   name: prod
   environment: prod
   address: "https://kubernetes.default.svc"
-configCharts: []
+platformCharts: []
+operatorInstanceCharts: []
 managedCluster:
   deploy: false
   include: true
@@ -17,4 +18,3 @@ managedCluster:
     include: true
 deployOperators: false
 deployOverlay: false
-operators: {}

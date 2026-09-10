@@ -1,0 +1,47 @@
+projectConfig:
+  include: true
+  projectRequestMessage: "Contact platform-team to request a project."
+selfProvisioners:
+  include: true
+networkPolicy:
+  include: true
+resourceQuota:
+  include: true
+limitRange:
+  include: true
+roleBindings:
+  include: true
+serviceAccount:
+  include: true
+egressFirewall:
+  include: true
+  rules:
+    - type: Allow
+      to:
+        cidrSelector: 0.0.0.0/0
+userWorkloadMonitoring:
+  include: true
+  prometheus:
+    retention: 48h
+    storageClass: ocs-external-storagecluster-ceph-rbd
+    pvcSize: 50Gi
+    resources:
+      requests:
+        cpu: 200m
+        memory: 1Gi
+      limits:
+        cpu: "2"
+        memory: 6Gi
+etcdDefrag:
+  include: true
+  schedule: "0 3 * * 0"
+  fragmentationThreshold: 50
+etcdBackup:
+  include: true
+  schedule: "0 */6 * * *"
+  retentionCount: 7
+  storage:
+    type: obc
+    obc:
+      name: etcd-backup-bucket
+      storageClass: openshift-storage.noobaa.io

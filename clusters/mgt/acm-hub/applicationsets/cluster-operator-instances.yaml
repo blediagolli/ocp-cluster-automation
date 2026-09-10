@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: cluster-operators
+  name: cluster-operator-instances
   namespace: openshift-gitops
 spec:
   goTemplate: true
@@ -16,42 +16,37 @@ spec:
               files:
                 - path: "clusters/**/conf.yaml"
           - list:
-              elementsYaml: "{{ $d := index . \"deployOperators\" }}{{ if $d }}[{}]{{ else }}[]{{ end }}"
+              elementsYaml: "{{ .operatorInstanceCharts | toJson }}"
   template:
     metadata:
-      name: '{{.cluster.name}}-operators'
+      name: 'config-{{.cluster.environment}}-{{.cluster.name}}-{{.chart}}'
       labels:
         environment: '{{.cluster.environment}}'
         cluster: '{{.cluster.name}}'
-        type: operators
+        type: operator-instances
     spec:
       project: platform
       source:
         repoURL: git@github.com:blediagolli/gitops-for-organizations.git
         targetRevision: main
-        path: charts/operator-deployment
+        path: 'charts/operator-instances/{{.chart}}'
         helm:
           ignoreMissingValueFiles: true
           valueFiles:
             - '/env/{{.cluster.environment}}/conf.yaml'
-            - '/env/{{.cluster.environment}}/operator-deployment.yaml'
+            - '/env/{{.cluster.environment}}/operator-instances.yaml'
             - '/{{.path.path}}/conf.yaml'
-            - '/{{.path.path}}/operator-deployment.yaml'
+            - '/{{.path.path}}/operator-instances.yaml'
       destination:
         server: '{{.cluster.address}}'
       syncPolicy:
         automated:
-          prune: true
           selfHeal: true
-        syncOptions:
-          - CreateNamespace=true
-          - ApplyOutOfSyncOnly=true
         retry:
-          limit: 5
           backoff:
             duration: 30s
-            maxDuration: 10m
             factor: 2
-  ignoreApplicationDifferences:
-    - jsonPointers:
-        - /spec/syncPolicy
+            maxDuration: 10m
+          limit: 5
+        syncOptions:
+          - ApplyOutOfSyncOnly=true
