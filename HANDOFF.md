@@ -103,6 +103,11 @@ clusters/<env>/<cluster>/
 - `ignoreMissingValueFiles: true` on all ApplicationSets — files at any level are optional
 - Renaming an ApplicationSet resource causes ArgoCD to delete the old and create the new — Applications with unchanged names are adopted
 
+### 8. Fixed OutOfSync bootstrap resources
+- Updated ArgoCD CR (`clusters/mgt/acm-hub/bootstrap/openshift-gitops/instance/argocd.yaml`) to include all operator-injected defaults: grafana, sso/dex, monitoring, notifications, prometheus, networkPolicy, imageUpdater, ha resources, server grpc/ingress/service, tls, initialSSHKnownHosts, controller processors/sharding, applicationSet webhookServer
+- Updated MultiClusterHub CR (`clusters/mgt/acm-hub/bootstrap/advanced-cluster-management/instance/acm-multiclusterhub.yaml`): added `localClusterName: local-cluster`, removed `storageClass` (not present in live state)
+- App-of-apps (`openshift-gitops-config`) now fully Synced with zero out-of-sync resources
+
 ## Outstanding
 - Team GitOps provisioning not yet tested end-to-end on a live cluster
 - No NetworkPolicy template in namespace-config yet
