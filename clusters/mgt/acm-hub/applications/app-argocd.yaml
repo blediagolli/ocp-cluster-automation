@@ -3,6 +3,10 @@ kind: Application
 metadata:
   name: openshift-gitops-config
   namespace: openshift-gitops
+  labels:
+    environment: mgt
+    cluster: acm-hub
+    type: app-of-apps
 spec:
   destination:
     server: 'https://kubernetes.default.svc'
