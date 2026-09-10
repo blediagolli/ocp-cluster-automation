@@ -1,4 +1,7 @@
 operators:
+  openshift-gitops:
+    include: true
+    channel: gitops-1.21
   advanced-cluster-management:
     include: true
     channel: release-2.17

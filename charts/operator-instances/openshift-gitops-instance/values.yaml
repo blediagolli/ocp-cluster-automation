@@ -1,0 +1,79 @@
+argocd:
+  include: false
+  name: openshift-gitops
+  namespace: openshift-gitops
+  applicationSet:
+    resources:
+      limits:
+        cpu: "2"
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+  controller:
+    resources:
+      limits:
+        cpu: "2"
+        memory: 6Gi
+      requests:
+        cpu: 250m
+        memory: 1Gi
+  ha:
+    enabled: false
+  rbac:
+    defaultPolicy: role:admin
+    policy: |
+      g, system:cluster-admins, role:admin
+      g, cluster-admins, role:admin
+    scopes: '[groups, preferred_username]'
+  redis:
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 250m
+        memory: 128Mi
+  repo:
+    resources:
+      limits:
+        cpu: "1"
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+  resourceExclusions: |
+    - apiGroups:
+      - tekton.dev
+      clusters:
+      - '*'
+      kinds:
+      - TaskRun
+      - PipelineRun
+  server:
+    autoscale:
+      enabled: false
+    route:
+      enabled: true
+    resources:
+      limits:
+        cpu: "1"
+        memory: 1Gi
+      requests:
+        cpu: 125m
+        memory: 128Mi
+
+clusterRoleBinding:
+  include: false
+
+appProject:
+  include: false
+  name: platform
+  description: Provisioning, cluster configuration, and operator management
+  sourceRepos:
+    - git@github.com:blediagolli/gitops-for-organizations.git
+
+consolePlugin:
+  include: false
+  plugins:
+    - gitops-plugin

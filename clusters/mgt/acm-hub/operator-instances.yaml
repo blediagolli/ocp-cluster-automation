@@ -1,3 +1,11 @@
+argocd:
+  include: true
+clusterRoleBinding:
+  include: true
+appProject:
+  include: true
+consolePlugin:
+  include: true
 multiClusterHub:
   include: true
 assistedService:

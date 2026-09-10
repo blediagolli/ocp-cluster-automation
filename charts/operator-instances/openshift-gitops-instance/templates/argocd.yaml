@@ -1,0 +1,97 @@
+{{- if .Values.argocd.include }}
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: {{ .Values.argocd.name }}
+  namespace: {{ .Values.argocd.namespace }}
+spec:
+  applicationSet:
+    resources:
+      {{- toYaml .Values.argocd.applicationSet.resources | nindent 6 }}
+    webhookServer:
+      ingress:
+        enabled: false
+      route:
+        enabled: false
+  controller:
+    processors: {}
+    resources:
+      {{- toYaml .Values.argocd.controller.resources | nindent 6 }}
+    sharding: {}
+  grafana:
+    enabled: false
+    ingress:
+      enabled: false
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 250m
+        memory: 128Mi
+    route:
+      enabled: false
+  ha:
+    enabled: {{ .Values.argocd.ha.enabled }}
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 250m
+        memory: 128Mi
+  imageUpdater:
+    enabled: false
+  initialSSHKnownHosts: {}
+  monitoring:
+    enabled: false
+  networkPolicy: {}
+  notifications:
+    enabled: false
+  prometheus:
+    enabled: false
+    ingress:
+      enabled: false
+    route:
+      enabled: false
+  rbac:
+    defaultPolicy: {{ .Values.argocd.rbac.defaultPolicy }}
+    policy: |
+      {{- .Values.argocd.rbac.policy | nindent 6 }}
+    scopes: '{{ .Values.argocd.rbac.scopes }}'
+  redis:
+    resources:
+      {{- toYaml .Values.argocd.redis.resources | nindent 6 }}
+  repo:
+    resources:
+      {{- toYaml .Values.argocd.repo.resources | nindent 6 }}
+  resourceExclusions: |
+    {{- .Values.argocd.resourceExclusions | nindent 4 }}
+  server:
+    autoscale:
+      enabled: {{ .Values.argocd.server.autoscale.enabled }}
+    grpc:
+      ingress:
+        enabled: false
+    ingress:
+      enabled: false
+    resources:
+      {{- toYaml .Values.argocd.server.resources | nindent 6 }}
+    route:
+      enabled: {{ .Values.argocd.server.route.enabled }}
+    service:
+      type: ""
+  sso:
+    dex:
+      openShiftOAuth: true
+      resources:
+        limits:
+          cpu: 500m
+          memory: 256Mi
+        requests:
+          cpu: 250m
+          memory: 128Mi
+    provider: dex
+  tls:
+    ca: {}
+{{- end }}

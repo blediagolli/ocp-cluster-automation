@@ -4,7 +4,7 @@ operators:
     namespace: openshift-gitops-operator
     operatorGroup: openshift-gitops-operator
     package: openshift-gitops-operator
-    channel: latest
+    channel: gitops-1.21
     source: redhat-operators
     sourceNamespace: openshift-marketplace
     clusterScoped: true
