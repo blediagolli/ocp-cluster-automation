@@ -29,7 +29,7 @@ spec:
       source:
         repoURL: git@github.com:blediagolli/gitops-for-organizations.git
         targetRevision: main
-        path: charts/subscriptions
+        path: charts/operator-deployment
         helm:
           valueFiles:
             - '/env/{{.cluster.environment}}/conf.yaml'
