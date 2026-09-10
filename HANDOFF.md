@@ -53,7 +53,7 @@
 ### 8. Repository restructure
 - `base/` flattened to `charts/` with grouped subdirectories:
   - `charts/subscriptions/` — operator Subscription chart (was `base/operators`)
-  - `charts/operators/` — 27 operator CR instance charts
+  - `charts/operator-instances/` — 27 operator CR instance charts
   - `charts/platform/` — 28 OpenShift platform config charts
   - `charts/onboarding/` — 2 team provisioning charts
   - `charts/provisioning/` — cluster provisioning chart (was `base/provision`)

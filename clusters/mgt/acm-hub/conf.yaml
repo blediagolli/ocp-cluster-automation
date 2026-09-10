@@ -10,11 +10,11 @@ configCharts:
   - chart: platform/project-request-template
   - chart: platform/etcd-defrag
   - chart: platform/etcd-backup
-  - chart: operators/acs-secured-cluster
-  - chart: operators/aap-instance
-  - chart: operators/acs-central
-  - chart: operators/acm-observability
-  - chart: operators/quay-registry
+  - chart: operator-instances/acs-secured-cluster
+  - chart: operator-instances/aap-instance
+  - chart: operator-instances/acs-central
+  - chart: operator-instances/acm-observability
+  - chart: operator-instances/quay-registry
 deployOperators: true
 operators:
   advanced-cluster-security:
