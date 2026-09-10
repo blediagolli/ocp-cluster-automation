@@ -114,9 +114,16 @@ clusters/<env>/<cluster>/
   - GitOps-cluster (GitOpsCluster + ManagedClusterSetBinding + Placement) — togglable via `gitopsCluster.include`
   - Console plugins (Job to enable acm/mce plugins) — togglable via `consolePlugins.include`
 - Removed entire `bootstrap/advanced-cluster-management/` directory
-- Bootstrap now only contains `openshift-gitops` (the only true chicken-and-egg dependency)
+- Removed entire `bootstrap/advanced-cluster-management/` directory
 
-### 9. Renamed app-of-apps to `platform-root`
+### 9. Moved OpenShift GitOps from bootstrap to Helm charts
+- GitOps operator Subscription now managed by `operator-deployment` chart (channel `gitops-1.21`)
+- New `openshift-gitops-instance` operator-instances chart manages ArgoCD CR, cluster-admin ClusterRoleBinding, `platform` AppProject, and console plugin job
+- Each section independently togglable: `argocd.include`, `clusterRoleBinding.include`, `appProject.include`, `consolePlugin.include`
+- Bootstrap directory retained for initial manual `oc apply` only — removed from `platform-root` kustomization
+- Bootstrap is now a one-time seed; all ongoing management is through the Helm charts
+
+### 10. Renamed app-of-apps to `platform-root`
 - Changed Application name from `openshift-gitops-config` (operator default) to `platform-root`
 
 ### 10. Fixed OutOfSync bootstrap resources
