@@ -16,13 +16,14 @@ spec:
               files:
                 - path: "clusters/**/conf.yaml"
           - list:
-              elementsYaml: "{{ .operatorApps | toJson }}"
+              elementsYaml: "{{ if and .operators .operators.deploy }}[{}]{{ else }}[]{{ end }}"
   template:
     metadata:
       name: '{{.cluster.name}}-operators'
       labels:
         environment: '{{.cluster.environment}}'
         cluster: '{{.cluster.name}}'
+        type: operators
     spec:
       project: platform
       source:

@@ -23,6 +23,7 @@ spec:
       labels:
         environment: '{{.cluster.environment}}'
         cluster: '{{.cluster.name}}'
+        type: config
     spec:
       project: platform
       source:

@@ -16,13 +16,14 @@ spec:
               files:
                 - path: "clusters/**/conf.yaml"
           - list:
-              elementsYaml: "{{ .importApps | toJson }}"
+              elementsYaml: "{{ if and .managedCluster .managedCluster.deploy }}[{}]{{ else }}[]{{ end }}"
   template:
     metadata:
       name: 'import-{{.cluster.environment}}-{{.cluster.name}}'
       labels:
         environment: '{{.cluster.environment}}'
         cluster: '{{.cluster.name}}'
+        type: import
     spec:
       project: platform
       source:

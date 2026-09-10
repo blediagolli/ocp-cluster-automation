@@ -2,10 +2,9 @@ cluster:
   name: prod
   environment: prod
   address: "https://kubernetes.default.svc"
-operatorApps: []
-importApps: []
 configCharts: []
 managedCluster:
+  deploy: false
   include: true
   name: prod
   environment: prod
@@ -17,6 +16,7 @@ managedCluster:
   addons:
     include: true
 operators:
+  deploy: false
   openshift-gitops:
     include: false
     channel: gitops-1.21
