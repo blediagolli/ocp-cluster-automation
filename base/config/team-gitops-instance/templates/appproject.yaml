@@ -10,7 +10,7 @@ spec:
     - namespace: {{ .Values.team.name }}-gitops
       server: 'https://kubernetes.default.svc'
     {{- range .Values.team.namespaces }}
-    - namespace: {{ . }}
+    - namespace: {{ .name }}
       server: 'https://kubernetes.default.svc'
     {{- end }}
   clusterResourceWhitelist: []

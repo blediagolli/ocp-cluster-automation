@@ -1,9 +1,35 @@
 {{- range .Values.team.namespaces }}
+{{- $size := index $.Values.namespaceSizes .size }}
+{{- $rqOverrides := dig "overrides" "resourceQuota" "hard" dict . }}
+{{- $rqHard := mergeOverwrite (deepCopy $size.resourceQuota.hard) $rqOverrides }}
+{{- $lrOverrides := dig "overrides" "limitRange" "limits" list . }}
+{{- $lrLimits := ternary $lrOverrides $size.limitRange.limits (gt (len $lrOverrides) 0) }}
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ . }}
+  name: {{ .name }}
+  annotations:
+    argocd.argoproj.io/sync-options: ServerSideApply=true
   labels:
     argocd.argoproj.io/managed-by: {{ $.Values.team.name }}-gitops
+    namespace-size: {{ .size }}
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: default
+  namespace: {{ .name }}
+spec:
+  hard:
+    {{- toYaml $rqHard | nindent 4 }}
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: default
+  namespace: {{ .name }}
+spec:
+  limits:
+    {{- toYaml $lrLimits | nindent 4 }}
 {{- end }}

@@ -28,6 +28,8 @@ spec:
         path: base/config/team-gitops-instance
         helm:
           valueFiles:
+            - '/conf/{{.cluster.environment}}/conf.yaml'
+            - '/{{ trimSuffix "/teams" .path.path }}/conf.yaml'
             - '/{{.path.path}}/{{.path.filename}}'
       destination:
         server: '{{.cluster.address}}'
