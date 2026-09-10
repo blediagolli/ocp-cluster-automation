@@ -7,6 +7,13 @@ metadata:
   labels:
     app.kubernetes.io/managed-by: multi-cluster-config
     operator: {{ $name }}
+    {{- with $operator.namespaceLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $operator.namespaceAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 ---
 {{- end }}
 {{- end }}

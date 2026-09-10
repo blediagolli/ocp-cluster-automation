@@ -1,10 +1,11 @@
+{{- if .Values.multiClusterHub.include }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: acm-mch-wait
-  namespace: open-cluster-management
+  namespace: {{ .Values.multiClusterHub.namespace }}
   annotations:
-    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-wave: "2"
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 ---
@@ -13,7 +14,7 @@ kind: ClusterRole
 metadata:
   name: acm-mch-wait
   annotations:
-    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-wave: "2"
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 rules:
@@ -37,7 +38,7 @@ kind: ClusterRoleBinding
 metadata:
   name: acm-mch-wait-binding
   annotations:
-    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-wave: "2"
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 roleRef:
@@ -47,15 +48,15 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: acm-mch-wait
-    namespace: open-cluster-management
+    namespace: {{ .Values.multiClusterHub.namespace }}
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: acm-mch-wait
-  namespace: open-cluster-management
+  namespace: {{ .Values.multiClusterHub.namespace }}
   annotations:
-    argocd.argoproj.io/sync-wave: "6"
+    argocd.argoproj.io/sync-wave: "2"
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
@@ -71,7 +72,7 @@ spec:
             - -c
             - |
               echo "Waiting for MultiClusterHub to be ready..."
-              until oc get multiclusterhub multiclusterhub -n open-cluster-management -o jsonpath='{.status.phase}' 2>/dev/null | grep -q "Running"; do
+              until oc get multiclusterhub multiclusterhub -n {{ .Values.multiClusterHub.namespace }} -o jsonpath='{.status.phase}' 2>/dev/null | grep -q "Running"; do
                 echo "MCH not ready yet, retrying in 30s..."
                 sleep 30
               done
@@ -95,3 +96,4 @@ spec:
             seccompProfile:
               type: RuntimeDefault
       terminationGracePeriodSeconds: 0
+{{- end }}

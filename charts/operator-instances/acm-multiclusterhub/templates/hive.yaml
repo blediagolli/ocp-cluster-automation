@@ -1,0 +1,25 @@
+{{- if .Values.hiveConfig.include }}
+apiVersion: hive.openshift.io/v1
+kind: HiveConfig
+metadata:
+  name: hive
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  logLevel: {{ .Values.hiveConfig.logLevel }}
+  targetNamespace: {{ .Values.hiveConfig.targetNamespace }}
+  featureGates:
+    custom:
+      enabled:
+        {{- toYaml .Values.hiveConfig.featureGates | nindent 8 }}
+---
+apiVersion: metal3.io/v1alpha1
+kind: Provisioning
+metadata:
+  name: provisioning-configuration
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  provisioningNetwork: {{ .Values.hiveConfig.provisioning.provisioningNetwork }}
+  watchAllNamespaces: {{ .Values.hiveConfig.provisioning.watchAllNamespaces }}
+{{- end }}

@@ -1,0 +1,41 @@
+{{- if .Values.assistedService.include }}
+apiVersion: agent-install.openshift.io/v1beta1
+kind: AgentServiceConfig
+metadata:
+  name: agent
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  databaseStorage:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: {{ .Values.assistedService.databaseStorage }}
+  filesystemStorage:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: {{ .Values.assistedService.filesystemStorage }}
+  imageStorage:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: {{ .Values.assistedService.imageStorage }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: assisted-service-config
+  namespace: multicluster-engine
+  labels:
+    app: assisted-service
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+data:
+  LOG_LEVEL: {{ .Values.assistedService.logLevel }}
+  ISO_IMAGE_TYPE: {{ .Values.assistedService.isoImageType }}
+  DISABLED_HOST_VALIDATIONS: ""
+{{- end }}

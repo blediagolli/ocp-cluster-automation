@@ -1,4 +1,7 @@
 operators:
+  advanced-cluster-management:
+    include: true
+    channel: release-2.17
   advanced-cluster-security:
     include: true
     channel: stable

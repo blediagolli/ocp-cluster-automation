@@ -1,9 +1,0 @@
-apiVersion: metal3.io/v1alpha1
-kind: Provisioning
-metadata:
-  name: provisioning-configuration
-  annotations:
-    argocd.argoproj.io/sync-wave: "7"
-spec:
-  provisioningNetwork: Disabled
-  watchAllNamespaces: true

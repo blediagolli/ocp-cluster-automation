@@ -1,3 +1,13 @@
+multiClusterHub:
+  include: true
+assistedService:
+  include: true
+hiveConfig:
+  include: true
+gitopsCluster:
+  include: true
+consolePlugins:
+  include: true
 central:
   include: true
   initBundle:

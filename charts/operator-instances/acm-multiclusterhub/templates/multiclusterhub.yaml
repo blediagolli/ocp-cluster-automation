@@ -4,30 +4,15 @@ kind: MultiClusterHub
 metadata:
   name: {{ .Values.multiClusterHub.name }}
   namespace: {{ .Values.multiClusterHub.namespace }}
-  {{- with .Values.multiClusterHub.annotations }}
   annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   availabilityConfig: {{ .Values.multiClusterHub.availabilityConfig }}
-  enableAnalytics: {{ .Values.multiClusterHub.enableAnalytics }}
-  {{- if .Values.multiClusterHub.disableHubSelfManagement }}
-  disableHubSelfManagement: true
-  {{- end }}
-  {{- if .Values.multiClusterHub.overrides.components }}
+  disableHubSelfManagement: {{ .Values.multiClusterHub.disableHubSelfManagement }}
+  localClusterName: {{ .Values.multiClusterHub.localClusterName }}
+  {{- with .Values.multiClusterHub.overrides.components }}
   overrides:
     components:
-      {{- toYaml .Values.multiClusterHub.overrides.components | nindent 6 }}
-  {{- end }}
-  {{- if .Values.multiClusterHub.nodeSelector }}
-  nodeSelector:
-    {{- toYaml .Values.multiClusterHub.nodeSelector | nindent 4 }}
-  {{- end }}
-  {{- if .Values.multiClusterHub.tolerations }}
-  tolerations:
-    {{- toYaml .Values.multiClusterHub.tolerations | nindent 4 }}
-  {{- end }}
-  {{- if .Values.multiClusterHub.imagePullSecret }}
-  imagePullSecret: {{ .Values.multiClusterHub.imagePullSecret }}
+      {{- toYaml . | nindent 6 }}
   {{- end }}
 {{- end }}

@@ -1,10 +1,11 @@
+{{- if .Values.consolePlugins.include }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: acm-console-plugins
-  namespace: open-cluster-management
+  namespace: {{ .Values.multiClusterHub.namespace }}
   annotations:
-    argocd.argoproj.io/sync-wave: "7"
+    argocd.argoproj.io/sync-wave: "3"
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 ---
@@ -13,7 +14,7 @@ kind: ClusterRole
 metadata:
   name: acm-console-plugins
   annotations:
-    argocd.argoproj.io/sync-wave: "7"
+    argocd.argoproj.io/sync-wave: "3"
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 rules:
@@ -37,7 +38,7 @@ kind: ClusterRoleBinding
 metadata:
   name: acm-console-plugins-binding
   annotations:
-    argocd.argoproj.io/sync-wave: "7"
+    argocd.argoproj.io/sync-wave: "3"
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 roleRef:
@@ -47,15 +48,15 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: acm-console-plugins
-    namespace: open-cluster-management
+    namespace: {{ .Values.multiClusterHub.namespace }}
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: acm-console-plugins
-  namespace: open-cluster-management
+  namespace: {{ .Values.multiClusterHub.namespace }}
   annotations:
-    argocd.argoproj.io/sync-wave: "8"
+    argocd.argoproj.io/sync-wave: "4"
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
@@ -70,7 +71,7 @@ spec:
             - /bin/bash
             - -c
             - |
-              PLUGINS="acm mce"
+              PLUGINS="{{ join " " .Values.consolePlugins.plugins }}"
               for plugin in $PLUGINS; do
                 echo "Waiting for ConsolePlugin ${plugin}..."
                 until oc get consoleplugin "${plugin}" &>/dev/null; do
@@ -94,3 +95,4 @@ spec:
             seccompProfile:
               type: RuntimeDefault
       terminationGracePeriodSeconds: 0
+{{- end }}

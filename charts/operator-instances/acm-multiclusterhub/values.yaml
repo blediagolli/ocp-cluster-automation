@@ -3,33 +3,69 @@ multiClusterHub:
   name: multiclusterhub
   namespace: open-cluster-management
   availabilityConfig: High
-  enableAnalytics: true
   disableHubSelfManagement: false
-  clusterInstall: false
-  annotations: {}
+  localClusterName: local-cluster
   overrides:
     components:
-      - name: console
-        enabled: true
-      - name: insights
-        enabled: true
-      - name: search
-        enabled: true
-      - name: grc
+      - name: app-lifecycle
         enabled: true
       - name: cluster-lifecycle
         enabled: true
-      - name: siteconfig
+      - name: console
+        enabled: true
+      - name: grc
+        enabled: true
+      - name: insights
+        enabled: true
+      - name: multicluster-engine
+        enabled: true
+      - name: multicluster-observability
+        enabled: true
+      - name: search
+        enabled: true
+      - name: submariner-addon
         enabled: true
       - name: volsync
+        enabled: true
+      - name: cluster-backup
         enabled: false
-      - name: cluster-proxy-addon
+      - name: fine-grained-rbac
         enabled: false
-      - name: managedserviceaccount
+      - name: siteconfig
         enabled: false
-  # nodeSelector for MCH pods (e.g., node-role.kubernetes.io/infra: "")
-  nodeSelector: {}
-  # tolerations for MCH pods
-  tolerations: []
-  # name of the image pull secret
-  imagePullSecret: ""
+      - name: cnv-mtv-integrations
+        enabled: false
+
+assistedService:
+  include: false
+  databaseStorage: 10Gi
+  filesystemStorage: 100Gi
+  imageStorage: 50Gi
+  logLevel: info
+  isoImageType: minimal-iso
+
+hiveConfig:
+  include: false
+  logLevel: debug
+  targetNamespace: hive
+  featureGates:
+    - AlphaAgentInstallStrategy
+  provisioning:
+    provisioningNetwork: Disabled
+    watchAllNamespaces: true
+
+gitopsCluster:
+  include: false
+  name: argo-acm-clusters
+  argoNamespace: openshift-gitops
+  placementName: default
+  clusterSet: default
+  matchEnvironments:
+    - dev
+    - prod
+
+consolePlugins:
+  include: false
+  plugins:
+    - acm
+    - mce

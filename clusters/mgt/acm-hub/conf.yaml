@@ -11,6 +11,7 @@ platformCharts:
   - chart: etcd-defrag
   - chart: etcd-backup
 operatorInstanceCharts:
+  - chart: acm-multiclusterhub
   - chart: acs-secured-cluster
   - chart: aap-instance
   - chart: acs-central

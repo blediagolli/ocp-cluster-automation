@@ -13,9 +13,13 @@ operators:
     namespace: open-cluster-management
     operatorGroup: open-cluster-management
     package: advanced-cluster-management
-    channel: release-2.8
+    channel: release-2.17
     source: redhat-operators
     sourceNamespace: openshift-marketplace
+    namespaceAnnotations:
+      openshift.io/node-selector: ""
+    namespaceLabels:
+      openshift.io/cluster-monitoring: "true"
   advanced-cluster-security:
     include: false
     namespace: rhacs-operator
