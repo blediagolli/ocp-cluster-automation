@@ -6,5 +6,5 @@ operators:
     include: true
     channel: stable
   compliance-operator:
-    include: true
+    include: false
     channel: stable
