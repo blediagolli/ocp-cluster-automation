@@ -7,3 +7,4 @@ resources:
 - cluster-operators-appset.yaml
 - cluster-provisioning.yaml
 - cluster-team-gitops.yaml
+- cluster-team-namespaces.yaml

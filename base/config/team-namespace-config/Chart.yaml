@@ -1,0 +1,4 @@
+apiVersion: v2
+name: team-namespace-config
+description: Provisions and labels namespaces for application teams
+version: 0.1.0
