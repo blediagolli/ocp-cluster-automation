@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: openshift-gitops-config
+  name: platform-root
   namespace: openshift-gitops
   labels:
     environment: mgt
