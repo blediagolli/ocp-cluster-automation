@@ -23,8 +23,10 @@ spec:
     name: quay-bridge-token
   quayHostname: https://{{ .Values.quayRegistry.bridge.quayHostname }}
   insecureRegistry: false
+  {{- if .Values.quayRegistry.bridge.namespaceCreationDefault }}
+  namespaceCreationDefault: true
+  {{- end }}
   scheduledImageStreamImport: true
-  namespaceCreationDefault: {{ .Values.quayRegistry.bridge.namespaceCreationDefault | default false }}
   denylistNamespaces:
     - default
     - kube-system

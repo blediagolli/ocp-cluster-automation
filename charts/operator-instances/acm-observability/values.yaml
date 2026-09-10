@@ -2,19 +2,17 @@ multiClusterObservability:
   include: false
   name: observability
   namespace: open-cluster-management-observability
+  enableDownsampling: true
   storageClass: ocs-external-storagecluster-ceph-rbd
+  alertmanagerStorageSize: 1Gi
   compactStorageSize: 50Gi
   receiveStorageSize: 50Gi
   ruleStorageSize: 50Gi
   storeStorageSize: 50Gi
-  retention:
-    raw: 14d
-    fiveMinute: 180d
-    oneHour: 365d
-    blockDuration: 2h
-    deleteDelay: 48h
-  capabilities: {}
-  observabilityAddonSpec: {}
+  observabilityAddonSpec:
+    interval: 300
+    scrapeSizeLimitBytes: 1073741824
+    workers: 1
 setupImage: registry.redhat.io/openshift4/ose-cli:latest
 pullSecret:
   include: true

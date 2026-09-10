@@ -4,7 +4,8 @@ metadata:
   name: cluster-platform-config
   namespace: openshift-gitops
 spec:
-  preserveResourcesOnDeletion: true
+  syncPolicy:
+    preserveResourcesOnDeletion: true
   goTemplate: true
   goTemplateOptions:
     - missingkey=error
@@ -40,6 +41,17 @@ spec:
             - '/{{.path.path}}/platform-config.yaml'
       destination:
         server: '{{.cluster.address}}'
+      ignoreDifferences:
+        - kind: ConfigMap
+          namespace: openshift-monitoring
+          name: cluster-monitoring-config
+          jsonPointers:
+            - /data
+        - kind: ConfigMap
+          namespace: openshift-user-workload-monitoring
+          name: user-workload-monitoring-config
+          jsonPointers:
+            - /data
       syncPolicy:
         automated:
           selfHeal: true
@@ -51,3 +63,4 @@ spec:
           limit: 5
         syncOptions:
           - ApplyOutOfSyncOnly=true
+          - RespectIgnoreDifferences=true

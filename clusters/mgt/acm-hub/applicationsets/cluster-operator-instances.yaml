@@ -4,7 +4,8 @@ metadata:
   name: cluster-operator-instances
   namespace: openshift-gitops
 spec:
-  preserveResourcesOnDeletion: true
+  syncPolicy:
+    preserveResourcesOnDeletion: true
   goTemplate: true
   goTemplateOptions:
     - missingkey=error
@@ -40,6 +41,11 @@ spec:
             - '/{{.path.path}}/operator-instances.yaml'
       destination:
         server: '{{.cluster.address}}'
+      ignoreDifferences:
+        - group: observability.open-cluster-management.io
+          kind: MultiClusterObservability
+          jsonPointers:
+            - /spec/capabilities
       syncPolicy:
         automated:
           selfHeal: true
@@ -51,3 +57,4 @@ spec:
           limit: 5
         syncOptions:
           - ApplyOutOfSyncOnly=true
+          - RespectIgnoreDifferences=true

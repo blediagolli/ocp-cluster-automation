@@ -4,7 +4,8 @@ metadata:
   name: cluster-import
   namespace: openshift-gitops
 spec:
-  preserveResourcesOnDeletion: true
+  syncPolicy:
+    preserveResourcesOnDeletion: true
   goTemplate: true
   goTemplateOptions:
     - missingkey=error
@@ -40,9 +41,18 @@ spec:
             - '/{{.path.path}}/platform-config.yaml'
       destination:
         server: 'https://kubernetes.default.svc'
+      ignoreDifferences:
+        - group: cluster.open-cluster-management.io
+          kind: ManagedCluster
+          jsonPointers:
+            - /metadata/labels
+            - /spec/leaseDurationSeconds
+            - /spec/managedClusterClientConfigs
       syncPolicy:
         automated:
           selfHeal: true
+        syncOptions:
+          - RespectIgnoreDifferences=true
         retry:
           backoff:
             duration: 30s

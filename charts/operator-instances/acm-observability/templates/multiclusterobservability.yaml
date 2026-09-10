@@ -6,25 +6,17 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
-  {{- if .Values.multiClusterObservability.capabilities }}
-  capabilities:
-    {{- toYaml .Values.multiClusterObservability.capabilities | nindent 4 }}
-  {{- end }}
+  enableDownsampling: {{ .Values.multiClusterObservability.enableDownsampling }}
   observabilityAddonSpec:
     enableMetrics: true
-    {{- with .Values.multiClusterObservability.observabilityAddonSpec }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-  retentionConfig:
-    retentionResolutionRaw: {{ .Values.multiClusterObservability.retention.raw }}
-    retentionResolution5m: {{ .Values.multiClusterObservability.retention.fiveMinute }}
-    retentionResolution1h: {{ .Values.multiClusterObservability.retention.oneHour }}
-    blockDuration: {{ .Values.multiClusterObservability.retention.blockDuration }}
-    deleteDelay: {{ .Values.multiClusterObservability.retention.deleteDelay }}
+    interval: {{ .Values.multiClusterObservability.observabilityAddonSpec.interval }}
+    scrapeSizeLimitBytes: {{ .Values.multiClusterObservability.observabilityAddonSpec.scrapeSizeLimitBytes }}
+    workers: {{ .Values.multiClusterObservability.observabilityAddonSpec.workers }}
   storageConfig:
+    alertmanagerStorageSize: {{ .Values.multiClusterObservability.alertmanagerStorageSize }}
     metricObjectStorage:
-      name: {{ .Values.objectStorage.secretName }}
       key: {{ .Values.objectStorage.key }}
+      name: {{ .Values.objectStorage.secretName }}
     storageClass: {{ .Values.multiClusterObservability.storageClass }}
     compactStorageSize: {{ .Values.multiClusterObservability.compactStorageSize }}
     receiveStorageSize: {{ .Values.multiClusterObservability.receiveStorageSize }}
