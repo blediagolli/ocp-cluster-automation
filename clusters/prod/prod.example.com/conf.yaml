@@ -15,8 +15,8 @@ managedCluster:
       secretName: prod-kubeconfig
   addons:
     include: true
+deployOperators: false
 operators:
-  deploy: false
   openshift-gitops:
     include: false
     channel: gitops-1.21

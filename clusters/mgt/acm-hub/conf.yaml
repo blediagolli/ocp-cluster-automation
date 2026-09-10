@@ -15,8 +15,8 @@ configCharts:
   - chart: etcd-backup
   - chart: acm-observability
   - chart: quay-registry
+deployOperators: true
 operators:
-  deploy: true
   openshift-gitops:
     channel: gitops-1.21
   advanced-cluster-management:

@@ -16,7 +16,7 @@ spec:
               files:
                 - path: "clusters/**/conf.yaml"
           - list:
-              elementsYaml: "{{ $op := index . \"operators\" }}{{ if $op }}{{ if $op.deploy }}[{}]{{ else }}[]{{ end }}{{ else }}[]{{ end }}"
+              elementsYaml: "{{ $d := index . \"deployOperators\" }}{{ if $d }}[{}]{{ else }}[]{{ end }}"
   template:
     metadata:
       name: '{{.cluster.name}}-operators'

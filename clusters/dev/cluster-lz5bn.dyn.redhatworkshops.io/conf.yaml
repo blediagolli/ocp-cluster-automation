@@ -21,8 +21,8 @@ managedCluster:
       secretName: lz5bn-kubeconfig
   addons:
     include: false
+deployOperators: true
 operators:
-  deploy: true
   openshift-gitops:
     include: true
     channel: gitops-1.21
