@@ -54,7 +54,7 @@
 - `base/` flattened to `charts/` with grouped subdirectories:
   - `charts/operator-deployment/` — operator Subscription chart (was `base/operators`)
   - `charts/operator-instances/` — 27 operator CR instance charts
-  - `charts/platform/` — 28 OpenShift platform config charts
+  - `charts/platform-config/` — 28 OpenShift platform config charts
   - `charts/onboarding/` — 2 team provisioning charts
   - `charts/provisioning/` — cluster provisioning chart (was `base/provision`)
 - `conf/` renamed to `env/` — environment-level config

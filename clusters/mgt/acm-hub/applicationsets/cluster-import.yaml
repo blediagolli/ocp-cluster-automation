@@ -29,7 +29,7 @@ spec:
       source:
         repoURL: git@github.com:blediagolli/gitops-for-organizations.git
         targetRevision: main
-        path: charts/platform/acm-managed-cluster
+        path: charts/platform-config/acm-managed-cluster
         helm:
           valueFiles:
             - '/{{.path.path}}/conf.yaml'

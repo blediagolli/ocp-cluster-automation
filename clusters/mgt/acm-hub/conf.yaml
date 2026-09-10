@@ -3,13 +3,13 @@ cluster:
   environment: mgt
   address: "https://kubernetes.default.svc"
 configCharts:
-  - chart: platform/openshift-machine-config
-  - chart: platform/openshift-ingress
-  - chart: platform/openshift-marketplace
-  - chart: platform/user-workload-monitoring
-  - chart: platform/project-request-template
-  - chart: platform/etcd-defrag
-  - chart: platform/etcd-backup
+  - chart: platform-config/openshift-machine-config
+  - chart: platform-config/openshift-ingress
+  - chart: platform-config/openshift-marketplace
+  - chart: platform-config/user-workload-monitoring
+  - chart: platform-config/project-request-template
+  - chart: platform-config/etcd-defrag
+  - chart: platform-config/etcd-backup
   - chart: operator-instances/acs-secured-cluster
   - chart: operator-instances/aap-instance
   - chart: operator-instances/acs-central
