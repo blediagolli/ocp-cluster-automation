@@ -26,7 +26,7 @@
 
 ### 5. Team GitOps instance provisioning (new feature)
 - **New ApplicationSet:** `application-gitopss` — reads `clusters/**/teams/*.yaml`, creates one Application per team
-- **New chart:** `base/config/application-gitops` — provisions per team:
+- **New chart:** `base/config/onboarding/application-gitops` — provisions per team:
   - `<team>-gitops` namespace
   - ArgoCD CR with RBAC (team group gets admin role)
   - AppProject locked to team's repo + namespaces
@@ -35,14 +35,14 @@
 
 ### 6. Separate team namespace provisioning (new feature)
 - **New ApplicationSet:** `team-namespaces` — reads same team files, separate Application per team
-- **New chart:** `base/config/namespace-config` — provisions per namespace:
+- **New chart:** `base/config/onboarding/namespace-config` — provisions per namespace:
   - Namespace with `managed-by` label (SSA patch — won't take ownership of existing namespaces)
   - ResourceQuota based on t-shirt size
   - LimitRange based on t-shirt size
 - Namespace creation is decoupled from ArgoCD instance creation — each syncs independently
 
 ### 7. T-shirt sizing for namespace resources
-- Chart defaults (`base/config/namespace-config/values.yaml`) define baseline sizes
+- Chart defaults (`base/config/onboarding/namespace-config/values.yaml`) define baseline sizes
 - Environment-level overrides in dedicated `conf/<env>/namespace-sizes.yaml` files
 - Cluster-level overrides in optional `clusters/<env>/<cluster>/namespace-sizes.yaml` (only specify fields to change)
 - Sizing config is separated from cluster/environment conf.yaml into its own files
