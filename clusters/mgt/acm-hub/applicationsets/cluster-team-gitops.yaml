@@ -25,10 +25,10 @@ spec:
       source:
         repoURL: git@github.com:blediagolli/gitops-for-organizations.git
         targetRevision: main
-        path: base/config/onboarding/application-gitops
+        path: charts/onboarding/application-gitops
         helm:
           valueFiles:
-            - '/conf/{{.cluster.environment}}/conf.yaml'
+            - '/env/{{.cluster.environment}}/conf.yaml'
             - '/{{ trimSuffix "/teams" .path.path }}/conf.yaml'
             - '/{{.path.path}}/{{.path.filename}}'
       destination:

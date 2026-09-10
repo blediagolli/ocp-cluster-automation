@@ -19,7 +19,7 @@ spec:
               elementsYaml: "{{ .configCharts | toJson }}"
   template:
     metadata:
-      name: 'config-{{.cluster.environment}}-{{.cluster.name}}-{{.chart}}'
+      name: 'config-{{.cluster.environment}}-{{.cluster.name}}-{{ base .chart }}'
       labels:
         environment: '{{.cluster.environment}}'
         cluster: '{{.cluster.name}}'
@@ -29,10 +29,10 @@ spec:
       source:
         repoURL: git@github.com:blediagolli/gitops-for-organizations.git
         targetRevision: main
-        path: 'base/config/{{.chart}}'
+        path: 'charts/{{.chart}}'
         helm:
           valueFiles:
-            - '/conf/{{.cluster.environment}}/conf.yaml'
+            - '/env/{{.cluster.environment}}/conf.yaml'
             - '/{{.path.path}}/conf.yaml'
       destination:
         server: '{{.cluster.address}}'

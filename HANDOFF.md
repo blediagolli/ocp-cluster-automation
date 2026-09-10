@@ -25,8 +25,8 @@
 - Hub `importApps` was also removed — hub doesn't need an import Application
 
 ### 5. Team GitOps instance provisioning (new feature)
-- **New ApplicationSet:** `application-gitopss` — reads `clusters/**/teams/*.yaml`, creates one Application per team
-- **New chart:** `base/config/onboarding/application-gitops` — provisions per team:
+- **New ApplicationSet:** `team-gitops-instances` — reads `clusters/**/teams/*.yaml`, creates one Application per team
+- **New chart:** `charts/onboarding/application-gitops` — provisions per team:
   - `<team>-gitops` namespace
   - ArgoCD CR with RBAC (team group gets admin role)
   - AppProject locked to team's repo + namespaces
@@ -35,33 +35,57 @@
 
 ### 6. Separate team namespace provisioning (new feature)
 - **New ApplicationSet:** `team-namespaces` — reads same team files, separate Application per team
-- **New chart:** `base/config/onboarding/namespace-config` — provisions per namespace:
+- **New chart:** `charts/onboarding/namespace-config` — provisions per namespace:
   - Namespace with `managed-by` label (SSA patch — won't take ownership of existing namespaces)
   - ResourceQuota based on t-shirt size
   - LimitRange based on t-shirt size
 - Namespace creation is decoupled from ArgoCD instance creation — each syncs independently
 
 ### 7. T-shirt sizing for namespace resources
-- Chart defaults (`base/config/onboarding/namespace-config/values.yaml`) define baseline sizes
-- Environment-level overrides in dedicated `conf/<env>/namespace-sizes.yaml` files
+- Chart defaults (`charts/onboarding/namespace-config/values.yaml`) define baseline sizes
+- Environment-level overrides in dedicated `env/<env>/namespace-sizes.yaml` files
 - Cluster-level overrides in optional `clusters/<env>/<cluster>/namespace-sizes.yaml` (only specify fields to change)
 - Sizing config is separated from cluster/environment conf.yaml into its own files
 - `ignoreMissingValueFiles: true` on the team-namespaces ApplicationSet so cluster-level sizing files are optional
 - Per-namespace overrides removed from template — sizing is controlled at environment and cluster level, not per-namespace
 - ValueFiles chain: chart defaults → env conf → env namespace-sizes → cluster conf → cluster namespace-sizes → team file
 
+### 8. Repository restructure
+- `base/` flattened to `charts/` with grouped subdirectories:
+  - `charts/subscriptions/` — operator Subscription chart (was `base/operators`)
+  - `charts/operators/` — 27 operator CR instance charts
+  - `charts/platform/` — 28 OpenShift platform config charts
+  - `charts/onboarding/` — 2 team provisioning charts
+  - `charts/provisioning/` — cluster provisioning chart (was `base/provision`)
+- `conf/` renamed to `env/` — environment-level config
+- `clusters/` unchanged
+- `configCharts` entries in conf.yaml now include subdirectory prefix (e.g., `platform/openshift-ingress`)
+- Application names use `{{ base .chart }}` to strip directory prefix, keeping names unchanged
+
 ## Current state
 
-### Cluster conf structure
+### Repository structure
 ```
-conf/<env>/
-  conf.yaml              # environment-level config (registry, ingress, operators, etc.)
-  namespace-sizes.yaml   # environment-level t-shirt size definitions
+charts/
+  subscriptions/       # operator Subscription chart
+  operators/           # 27 operator CR instance charts
+  platform/            # 28 OpenShift platform config charts
+  onboarding/          # application-gitops, namespace-config
+  provisioning/        # cluster provisioning
+env/
+  dev/
+    conf.yaml            # environment-level config
+    namespace-sizes.yaml # t-shirt size definitions for dev
+  prod/
+    conf.yaml
+    namespace-sizes.yaml
+  mgt/
+    conf.yaml
 clusters/<env>/<cluster>/
   conf.yaml              # cluster metadata, configCharts, deployOperators, operators, managedCluster
   namespace-sizes.yaml   # cluster-level size overrides (optional, only changed fields)
   teams/
-    team-alpha.yaml      # team definition with sized namespaces (no size overrides here)
+    team-alpha.yaml      # team definition with sized namespaces
 ```
 
 ### ApplicationSets (7 total)
@@ -72,7 +96,7 @@ clusters/<env>/<cluster>/
 | cluster-config-overlays | `conf.yaml` | config-overlay |
 | cluster-import | `conf.yaml` + `managedCluster.deploy` | import |
 | cluster-provisioning | `provision.yaml` | provisioning |
-| application-gitopss | `teams/*.yaml` | team-gitops |
+| team-gitops-instances | `teams/*.yaml` | team-gitops |
 | team-namespaces | `teams/*.yaml` | team-namespaces |
 
 ### T-shirt sizes (dev vs prod)
@@ -93,11 +117,12 @@ clusters/<env>/<cluster>/
 - `missingkey=error` means you can't use `.foo` dot notation on keys that might not exist — use `index . "foo"` instead
 - Team files duplicate `cluster.*` (3 lines) because the git file generator reads one file — it can't merge with conf.yaml
 - App-of-apps needs one manual sync to bootstrap its own auto-sync setting
-- `RECOMMENDATION-conf-split.md` is in the repo — documents the design decisions and constraints around conf.yaml splitting
+- `configCharts` entries must include the subdirectory prefix (e.g., `platform/openshift-ingress`, `operators/acs-secured-cluster`)
+- Application names use `{{ base .chart }}` to strip the directory prefix — keeps names clean
 - `namespace-sizes.yaml` files are loaded via `ignoreMissingValueFiles: true` — if a cluster doesn't have one, it inherits from the environment
+- `RECOMMENDATION-conf-split.md` is in the repo — documents the design decisions and constraints around conf.yaml splitting
 
 ## Outstanding
 - Team GitOps provisioning not yet tested end-to-end on a live cluster — awaiting app-of-apps sync
 - No NetworkPolicy template in namespace-config yet — could inherit from project-request-template patterns
-- Provisioning ApplicationSet untouched this session
-- `conf/mgt/namespace-sizes.yaml` does not exist — create if mgt cluster needs team onboarding
+- `env/mgt/namespace-sizes.yaml` does not exist — create if mgt cluster needs team onboarding
