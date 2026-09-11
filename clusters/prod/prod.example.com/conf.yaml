@@ -21,3 +21,4 @@ managedCluster:
     include: false
 deployOperators: false
 deployOverlay: false
+teams: []

@@ -70,20 +70,22 @@ charts/
   platform-config/             # 28 OpenShift platform config charts
   onboarding/                  # application-gitops, namespace-config
   cluster-provisioning/        # cluster provisioning
+teams/
+  team-alpha.yaml              # central team definition (name, admins, repo, namespaces)
 env/<env>/
   conf.yaml                    # shared environment config
   platform-config.yaml         # platform chart values
   operator-instances.yaml      # operator instance chart values
   operator-deployment.yaml     # operator Subscription defaults
   namespace-sizes.yaml         # t-shirt size definitions
+  teams/<team>.yaml            # env-level team overrides (optional)
 clusters/<env>/<cluster>/
-  conf.yaml                    # cluster metadata, chart lists, deploy toggles
+  conf.yaml                    # cluster metadata, chart lists, deploy toggles, teams list
   platform-config.yaml         # cluster-level platform overrides
   operator-instances.yaml      # cluster-level operator instance overrides
   operator-deployment.yaml     # cluster-level operator Subscriptions
   namespace-sizes.yaml         # cluster-level size overrides (optional)
-  teams/
-    team-alpha.yaml            # team definition with sized namespaces
+  teams/<team>.yaml            # cluster-level team overrides (optional)
 ```
 
 ### ApplicationSets (8 total)
@@ -95,8 +97,8 @@ clusters/<env>/<cluster>/
 | cluster-config-overlays | `conf.yaml` + `deployOverlay` | config-overlay |
 | cluster-import | `conf.yaml` + `managedCluster.deploy` | import |
 | cluster-provisioning | `provision.yaml` | provisioning |
-| onboarding-gitops | `teams/*.yaml` | onboarding-gitops |
-| onboarding-namespaces | `teams/*.yaml` | onboarding-namespaces |
+| onboarding-gitops | `conf.yaml` + `teams` | onboarding-gitops |
+| onboarding-namespaces | `conf.yaml` + `teams` | onboarding-namespaces |
 
 ### Management hierarchy
 ```
@@ -128,15 +130,18 @@ platform-root (Application)
 4. All ongoing management is through git commits
 
 ### Team onboarding flow
-1. Create `clusters/<env>/<cluster>/teams/<team>.yaml`
-2. ArgoCD auto-creates two Applications: namespace provisioning + ArgoCD instance
-3. Team gets their own ArgoCD at `<team>-gitops` with admin access
+1. Create `teams/<team>.yaml` with team name, admins group, repo, and namespaces
+2. Add `- team: <team>` to the `teams` list in each target cluster's `conf.yaml`
+3. (Optional) Create `env/<env>/teams/<team>.yaml` for environment-specific overrides
+4. ArgoCD auto-creates two Applications per cluster: namespace provisioning + ArgoCD instance
+5. Team gets their own ArgoCD at `<team>-gitops` with admin access
 
 ## Gotchas
 - `deployOperators` must be top-level in conf.yaml, NOT inside the `operators` map — the chart iterates all keys in `operators` as Subscriptions
 - `managedCluster.deploy` is safe inside the map because the import chart only ranges over `managedCluster.labels`, not top-level keys
 - `missingkey=error` means you can't use `.foo` dot notation on keys that might not exist — use `index . "foo"` instead
-- Onboarding ApplicationSets use a matrix generator to pair `conf.yaml` with team files — team files only define `team.*`, no `cluster.*` duplication needed
+- Onboarding ApplicationSets use `conf.yaml` `teams` list + `elementsYaml` — same pattern as `platformCharts`. Team definitions live centrally in `teams/`. Add a team name to a cluster's `teams` list to onboard it there
+- `teams: []` is required in every conf.yaml (due to `missingkey=error`) even if the cluster has no teams
 - `ignoreMissingValueFiles: true` on all ApplicationSets — files at any level are optional
 - Renaming an ApplicationSet resource causes ArgoCD to delete the old and create the new — Applications with unchanged names are adopted
 - `platform-root` is self-managing — changes to `applications/app-argocd.yaml` sync automatically, but if it breaks, manual `oc apply` is the recovery path

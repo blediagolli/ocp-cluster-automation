@@ -17,14 +17,11 @@ spec:
               revision: main
               files:
                 - path: "clusters/**/conf.yaml"
-          - git:
-              repoURL: git@github.com:blediagolli/gitops-for-organizations.git
-              revision: main
-              files:
-                - path: "{{.path.path}}/teams/*.yaml"
+          - list:
+              elementsYaml: "{{ .teams | toJson }}"
   template:
     metadata:
-      name: 'onboarding-gitops-{{.cluster.environment}}-{{.cluster.name}}-{{.team.name}}'
+      name: 'onboarding-gitops-{{.cluster.environment}}-{{.cluster.name}}-{{.team}}'
       labels:
         environment: '{{.cluster.environment}}'
         cluster: '{{.cluster.name}}'
@@ -36,10 +33,13 @@ spec:
         targetRevision: main
         path: charts/onboarding/application-gitops
         helm:
+          ignoreMissingValueFiles: true
           valueFiles:
+            - '/teams/{{.team}}.yaml'
             - '/env/{{.cluster.environment}}/conf.yaml'
+            - '/env/{{.cluster.environment}}/teams/{{.team}}.yaml'
             - '/{{.path.path}}/conf.yaml'
-            - '/{{.path.path}}/teams/{{.team.name}}.yaml'
+            - '/{{.path.path}}/teams/{{.team}}.yaml'
       destination:
         server: '{{.cluster.address}}'
       syncPolicy:

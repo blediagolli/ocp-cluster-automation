@@ -1,6 +1,6 @@
-# Team definition for onboarding. The onboarding ApplicationSets use a matrix
-# generator that pairs this file with the cluster's conf.yaml, so cluster.*
-# values are inherited automatically — only team.* needs to be defined here.
+# Central team definition. Onboarding ApplicationSets deploy this team to every
+# cluster that lists it in conf.yaml under 'teams'. Environment- and cluster-level
+# overrides (env/<env>/teams/<team>.yaml, clusters/.../<team>.yaml) are optional.
 team:
   name: team-alpha
   admins: team-alpha-admins

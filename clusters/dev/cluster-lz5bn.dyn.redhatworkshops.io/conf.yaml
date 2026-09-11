@@ -26,3 +26,5 @@ managedCluster:
     include: false
 deployOperators: true
 deployOverlay: true
+teams:
+  - team: team-alpha

@@ -22,3 +22,4 @@ operatorInstanceCharts:
   - chart: quay-registry
 deployOperators: true
 deployOverlay: true
+teams: []
