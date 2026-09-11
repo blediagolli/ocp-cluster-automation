@@ -1,6 +1,6 @@
 # Session Handoff
 
-**Modified:** 2026-09-10
+**Modified:** 2026-09-11
 
 ## What changed this session
 
@@ -225,5 +225,52 @@ Every active chart has both a Helm test template (`templates/tests/test-connecti
 | application-gitops | `./tests/e2e-test.sh <team-name>` |
 | namespace-config | `./tests/e2e-test.sh <team-name> <environment>` |
 
+### E2E test results (2026-09-11)
+
+Ran against hub (cluster-c8444) and dev (cluster-lz5bn).
+
+**Hub cluster:**
+
+| Chart                          | Result     | Notes                                       |
+|--------------------------------|------------|---------------------------------------------|
+| operator-deployment            | 26/26 PASS |                                             |
+| openshift-gitops-instance      | 5/5 PASS   |                                             |
+| acm-multiclusterhub            | 6/6 PASS   |                                             |
+| acs-central                    | 5/5 PASS   |                                             |
+| acs-secured-cluster            | 5/5 PASS   |                                             |
+| acm-observability              | 6/6 PASS   |                                             |
+| acm-managed-cluster (dev)      | 5/5 PASS   |                                             |
+| acm-managed-cluster (prod)     | 5/5 PASS   |                                             |
+| user-workload-monitoring       | 5/5 PASS   |                                             |
+| project-request-template       | 5/5 PASS   | Created+verified+cleaned up test project    |
+| etcd-defrag                    | 4/5        | Weekly CronJob hasn't triggered yet         |
+| etcd-backup                    | 4/5        | CronJob created but no completed Job yet    |
+| aap-instance                   | 2/5        | AAP controller not deployed                 |
+
+**Dev cluster:**
+
+| Chart                          | Result     | Notes                                       |
+|--------------------------------|------------|---------------------------------------------|
+| application-gitops (alpha)     | 5/5 PASS   |                                             |
+| application-gitops (beta)      | 5/5 PASS   |                                             |
+| namespace-config (alpha)       | 8/8 PASS   | Both namespaces, quotas, limits validated   |
+| acs-secured-cluster            | 5/5 PASS   |                                             |
+| user-workload-monitoring       | 2/5        | UWM not configured with custom ConfigMap    |
+| openshift-marketplace          | 1/4        | Local CatalogSources not enabled            |
+| aap-instance                   | 2/5        | AAP controller not deployed                 |
+
+**Not yet tested:** prod cluster (cluster-m6tk9) — same charts as dev
+
+### Session changes (2026-09-11)
+
+- Made cluster-provisioning ApplicationSet toggleable via `deployProvision` flag in conf.yaml (was file-presence based)
+- Created e2e tests (Helm test template + shell script) for all 15 active charts
+- Fixed test bugs found during live cluster run: `((PASSED++))` with `set -e`, wrong pod labels, wrong job names, OBC column index, SA token method
+- Created HANDOFF.md for operator-deployment and openshift-gitops-instance charts
+- Added `## Testing` section to all 13 existing active chart HANDOFFs
+
 ## Outstanding
 - No NetworkPolicy template in namespace-config yet
+- AAP controller not deploying on any cluster — needs investigation
+- Prod cluster (cluster-m6tk9) e2e tests not yet run
+- etcd-backup/etcd-defrag CronJobs need verification after they fire

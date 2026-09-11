@@ -11,22 +11,22 @@
 
 | Chart                          | Hub | Dev | Prod | E2E     | Notes                                                          |
 |--------------------------------|-----|-----|------|---------|----------------------------------------------------------------|
-| operator-deployment            | Yes | Yes | Yes  | Tested  | 9 operators on hub, 2 on dev/prod                              |
-| openshift-gitops-instance      | Yes | —   | —    | Tested  | ArgoCD CR, AppProject, RBAC                                    |
-| acm-multiclusterhub            | Yes | —   | —    | Tested  | MCH, hive, gitops-cluster, assisted-service                    |
-| acs-central                    | Yes | —   | —    | Tested  | Central + init-bundle + credential distribution                |
-| acs-secured-cluster            | Yes | Yes | Yes  | Partial | Hub+dev tested; prod generate mode not verified                |
-| aap-instance                   | Yes | Yes | Yes  | No      | Synced but AAP functionality not verified                      |
-| acm-observability              | Yes | —   | —    | Partial | Pods running; metrics flow from managed clusters not verified  |
+| operator-deployment            | Yes | Yes | Yes  | Tested  | Hub 26/26 operators passed                                     |
+| openshift-gitops-instance      | Yes | —   | —    | Tested  | Hub 5/5 — CR, pods, route, AppProject, CRB                    |
+| acm-multiclusterhub            | Yes | —   | —    | Tested  | Hub 6/6 — MCH, components, assisted, hive, GitOpsCluster      |
+| acs-central                    | Yes | —   | —    | Tested  | Hub 5/5 — CR, pods, API /v1/ping, init-bundle, scanner        |
+| acs-secured-cluster            | Yes | Yes | Yes  | Tested  | Hub 5/5, dev 5/5; prod not yet tested                         |
+| aap-instance                   | Yes | Yes | Yes  | Failing | Hub 2/5, dev 2/5 — AAP controller not deploying               |
+| acm-observability              | Yes | —   | —    | Tested  | Hub 6/6 — Thanos, OBC, Grafana, addon on managed clusters     |
 | quay-registry                  | Yes | —   | —    | Tested  | Full e2e: bridge, build, push, pull, cleanup                   |
-| acm-managed-cluster            | —   | Yes | Yes  | Tested  | Import, addons, GitOpsCluster auto-registration                |
-| user-workload-monitoring       | Yes | Yes | Yes  | Partial | Hub tested with persistent storage; dev/prod using defaults    |
-| etcd-backup                    | Yes | —   | —    | Partial | OBC mode configured; last backup job not confirmed             |
-| etcd-defrag                    | Yes | —   | —    | Tested  | 3 members at 11% frag, correctly skipped                       |
-| project-request-template       | Yes | —   | —    | Partial | Synced; project creation with template not tested              |
-| openshift-marketplace          | —   | Yes | Yes  | No      | Synced but catalog sources not verified                        |
-| onboarding: application-gitops | —   | Yes | —    | Tested  | team-alpha + team-beta, ArgoCD instances running               |
-| onboarding: namespace-config   | —   | Yes | —    | Tested  | Environment-scoped namespaces, auto-prune verified             |
+| acm-managed-cluster            | —   | Yes | Yes  | Tested  | Hub 5/5 both clusters — joined, available, 9/9 addons, ArgoCD |
+| user-workload-monitoring       | Yes | Yes | Yes  | Tested  | Hub 5/5 — Prometheus, Thanos Ruler, metrics query              |
+| etcd-backup                    | Yes | —   | —    | Partial | Hub 4/5 — CronJob+RBAC+OBC ok, no completed Job yet           |
+| etcd-defrag                    | Yes | —   | —    | Partial | Hub 4/5 — CronJob+RBAC+alerts ok, weekly schedule not fired   |
+| project-request-template       | Yes | —   | —    | Tested  | Hub 5/5 — created test project, verified NP/RQ/LR, cleaned up |
+| openshift-marketplace          | —   | Yes | Yes  | Partial | Dev 1/4 — local CatalogSources not enabled (using defaults)   |
+| onboarding: application-gitops | —   | Yes | —    | Tested  | Dev 5/5 alpha, 5/5 beta — ArgoCD, AppProject, RoleBinding     |
+| onboarding: namespace-config   | —   | Yes | —    | Tested  | Dev 8/8 alpha — namespaces, quotas, limits match size tier     |
 
 ## Not Yet Deployed Charts
 
@@ -85,12 +85,14 @@
 
 ## Priority E2E Tests
 
-| #   | Test                                       | Why                                                             |
-|-----|--------------------------------------------|-----------------------------------------------------------------|
-| 1   | ACS SecuredCluster generate mode on prod   | Prod cluster imported but TLS secret generation not verified    |
-| 2   | ACM Observability metrics flow             | Thanos stack running but no confirmation metrics arrive         |
-| 3   | etcd-backup Job completion                 | OBC mode configured but last backup job status unknown          |
-| 4   | Team onboarding on prod                    | Tested on dev only — verify prod namespaces get the right sizes |
-| 5   | AAP instance functionality                 | Synced on 3 clusters but AAP not verified working               |
-| 6   | project-request-template                   | Synced on hub but new project creation not tested               |
-| 7   | NetworkPolicy in namespace-config          | Outstanding — no template exists yet                            |
+| #   | Test                                       | Status   | Why                                                          |
+|-----|--------------------------------------------|----------|--------------------------------------------------------------|
+| 1   | ACS SecuredCluster generate mode on prod   | Open     | Prod cluster imported but TLS secret generation not verified |
+| 2   | AAP controller deployment                  | Open     | 2/5 on hub+dev — controller pods never start                 |
+| 3   | etcd-backup Job completion                 | Waiting  | CronJob exists, OBC bound — waiting for next 6h trigger      |
+| 4   | etcd-defrag Job completion                 | Waiting  | CronJob exists — weekly schedule, hasn't fired yet           |
+| 5   | Prod cluster e2e tests                     | Open     | All prod charts untested (same set as dev)                   |
+| 6   | NetworkPolicy in namespace-config          | Open     | No template exists yet                                       |
+| ~~7~~   | ~~ACM Observability metrics flow~~     | **Done** | Hub 6/6 — Thanos + OBC + Grafana + addon verified           |
+| ~~8~~   | ~~project-request-template~~           | **Done** | Hub 5/5 — created project, verified NP/RQ/LR injected       |
+| ~~9~~   | ~~Team onboarding on dev~~             | **Done** | Dev 5/5+8/8 — ArgoCD + namespaces + quotas verified         |

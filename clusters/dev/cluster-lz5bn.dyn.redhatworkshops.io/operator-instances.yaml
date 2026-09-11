@@ -2,5 +2,4 @@
 # Custom Resources (CRs) for this cluster. Each top-level key maps to a section
 # in the corresponding operator-instances Helm chart.
 # Precedence: chart defaults < env/<env>/operator-instances.yaml < this file.
-securedCluster:
-  clusterName: dev
+
