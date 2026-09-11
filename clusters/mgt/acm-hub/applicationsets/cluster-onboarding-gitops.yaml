@@ -38,8 +38,8 @@ spec:
         helm:
           valueFiles:
             - '/env/{{.cluster.environment}}/conf.yaml'
-            - '/{{ trimSuffix "/teams" .path.path }}/conf.yaml'
-            - '/{{.path.path}}/{{.path.filename}}'
+            - '/{{.path.path}}/conf.yaml'
+            - '/{{.path.path}}/teams/{{.team.name}}.yaml'
       destination:
         server: '{{.cluster.address}}'
       syncPolicy:
