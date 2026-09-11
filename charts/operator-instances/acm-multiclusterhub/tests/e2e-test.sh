@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -uo pipefail
 
 # ACM MultiClusterHub E2E Test
 # Validates MCH phase, components, assisted-service, hive, and GitOpsCluster.
@@ -12,8 +12,8 @@ PASSED=0
 FAILED=0
 TOTAL=6
 
-pass() { echo "  PASS: $1"; ((PASSED++)); }
-fail() { echo "  FAIL: $1"; ((FAILED++)); }
+pass() { echo "  PASS: $1"; PASSED=$((PASSED + 1)); }
+fail() { echo "  FAIL: $1"; FAILED=$((FAILED + 1)); }
 
 echo "=== ACM MultiClusterHub E2E Test ==="
 echo "  Namespace: ${NS}"

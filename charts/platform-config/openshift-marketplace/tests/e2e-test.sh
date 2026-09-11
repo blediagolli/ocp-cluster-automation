@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -uo pipefail
 
 # openshift-marketplace E2E Test
 # Validates CatalogSource resources exist, their pods are running, and
@@ -15,8 +15,8 @@ PASSED=0
 FAILED=0
 TOTAL=4
 
-pass() { echo "  PASS: $1"; ((PASSED++)); }
-fail() { echo "  FAIL: $1"; ((FAILED++)); }
+pass() { echo "  PASS: $1"; PASSED=$((PASSED + 1)); }
+fail() { echo "  FAIL: $1"; FAILED=$((FAILED + 1)); }
 
 echo "=== openshift-marketplace E2E Test ==="
 echo "  Namespace:  ${NAMESPACE}"

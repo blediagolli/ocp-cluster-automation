@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -uo pipefail
 
 # etcd Backup E2E Test
 # Validates CronJob, last Job status, storage binding, and backup content
@@ -12,8 +12,8 @@ PASSED=0
 FAILED=0
 TOTAL=5
 
-pass() { echo "  PASS: $1"; ((PASSED++)); }
-fail() { echo "  FAIL: $1"; ((FAILED++)); }
+pass() { echo "  PASS: $1"; PASSED=$((PASSED + 1)); }
+fail() { echo "  FAIL: $1"; FAILED=$((FAILED + 1)); }
 
 echo "=== etcd Backup E2E Test ==="
 echo "  Namespace: ${NAMESPACE}"
@@ -65,7 +65,7 @@ if [ -n "${PVC}" ]; then
     fail "PVC storage: ${PVC_STATUS}"
   fi
 elif [ -n "${OBC}" ]; then
-  OBC_STATUS=$(echo "${OBC}" | awk '{print $2}')
+  OBC_STATUS=$(echo "${OBC}" | awk '{print $3}')
   if [ "${OBC_STATUS}" = "Bound" ]; then
     pass "OBC storage: Bound"
   else

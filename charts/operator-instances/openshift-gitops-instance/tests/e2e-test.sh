@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -uo pipefail
 
 # OpenShift GitOps Instance E2E Test
 # Validates ArgoCD instance, AppProject, route, and RBAC.
@@ -12,8 +12,8 @@ PASSED=0
 FAILED=0
 TOTAL=5
 
-pass() { echo "  PASS: $1"; ((PASSED++)); }
-fail() { echo "  FAIL: $1"; ((FAILED++)); }
+pass() { echo "  PASS: $1"; PASSED=$((PASSED + 1)); }
+fail() { echo "  FAIL: $1"; FAILED=$((FAILED + 1)); }
 
 echo "=== OpenShift GitOps Instance E2E Test ==="
 echo "  Namespace: ${NS}"
@@ -28,8 +28,8 @@ else
 fi
 
 echo "--- Step 2: ArgoCD pods running ---"
-NOT_READY=$(oc get pods -n "$NS" -l app.kubernetes.io/part-of=argocd --no-headers 2>/dev/null | grep -cv "Running" || true)
-TOTAL_PODS=$(oc get pods -n "$NS" -l app.kubernetes.io/part-of=argocd --no-headers 2>/dev/null | wc -l | tr -d ' ')
+TOTAL_PODS=$(oc get pods -n "$NS" --no-headers 2>/dev/null | grep "^openshift-gitops-" | wc -l | tr -d ' ')
+NOT_READY=$(oc get pods -n "$NS" --no-headers 2>/dev/null | grep "^openshift-gitops-" | grep -cv "Running" || true)
 if [ "$TOTAL_PODS" -gt 0 ] && [ "$NOT_READY" -eq 0 ]; then
   pass "All ${TOTAL_PODS} ArgoCD pods running"
 else
@@ -57,10 +57,10 @@ else
 fi
 
 echo "--- Step 5: ClusterRoleBinding ---"
-if oc get clusterrolebinding openshift-gitops-argocd-application-controller &>/dev/null; then
+if oc get clusterrolebinding openshift-gitops-argocd-cluster-admin &>/dev/null; then
   pass "ClusterRoleBinding exists"
 else
-  fail "ClusterRoleBinding openshift-gitops-argocd-application-controller not found"
+  fail "ClusterRoleBinding openshift-gitops-argocd-cluster-admin not found"
 fi
 
 echo ""

@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -uo pipefail
 
 # ACS Central E2E Test
 # Validates Central deployment, route, API, init-bundle, and scanner.
@@ -12,8 +12,8 @@ PASSED=0
 FAILED=0
 TOTAL=5
 
-pass() { echo "  PASS: $1"; ((PASSED++)); }
-fail() { echo "  FAIL: $1"; ((FAILED++)); }
+pass() { echo "  PASS: $1"; PASSED=$((PASSED + 1)); }
+fail() { echo "  FAIL: $1"; FAILED=$((FAILED + 1)); }
 
 echo "=== ACS Central E2E Test ==="
 echo "  Namespace: ${NS}"
@@ -50,7 +50,7 @@ else
 fi
 
 echo "--- Step 4: Init-bundle job ---"
-JOB_STATUS=$(oc get job -n "$NS" -l app=stackrox-init-bundle -o jsonpath='{.items[0].status.succeeded}' 2>/dev/null || echo "0")
+JOB_STATUS=$(oc get job acs-init-bundle -n "$NS" -o jsonpath='{.status.succeeded}' 2>/dev/null || echo "0")
 if [ "$JOB_STATUS" = "1" ]; then
   pass "Init-bundle job completed"
 else

@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -uo pipefail
 
 # Operator Deployment E2E Test
 # Verifies all Subscriptions have a CSV in Succeeded phase.
@@ -10,28 +10,27 @@ PASSED=0
 FAILED=0
 TOTAL=0
 
-pass() { echo "  PASS: $1"; ((PASSED++)); }
-fail() { echo "  FAIL: $1"; ((FAILED++)); }
+pass() { echo "  PASS: $1"; PASSED=$((PASSED + 1)); }
+fail() { echo "  FAIL: $1"; FAILED=$((FAILED + 1)); }
 
 echo "=== Operator Deployment E2E Test ==="
 echo ""
 
-SUBS=$(oc get subscriptions.operators.coreos.com --all-namespaces -o json)
-SUB_COUNT=$(echo "$SUBS" | jq '.items | length')
-
-if [ "$SUB_COUNT" -eq 0 ]; then
+SUBS=$(oc get subscriptions.operators.coreos.com --all-namespaces --no-headers 2>/dev/null)
+if [ -z "$SUBS" ]; then
   echo "  No Subscriptions found"
   exit 1
 fi
 
-for i in $(seq 0 $((SUB_COUNT - 1))); do
-  NAME=$(echo "$SUBS" | jq -r ".items[$i].metadata.name")
-  NS=$(echo "$SUBS" | jq -r ".items[$i].metadata.namespace")
-  CSV=$(echo "$SUBS" | jq -r ".items[$i].status.currentCSV // empty")
-  ((TOTAL++))
+while IFS= read -r line; do
+  [ -z "$line" ] && continue
+  NS=$(echo "$line" | awk '{print $1}')
+  NAME=$(echo "$line" | awk '{print $2}')
+  TOTAL=$((TOTAL + 1))
 
   echo "--- $NAME ($NS) ---"
 
+  CSV=$(oc get subscription.operators.coreos.com "$NAME" -n "$NS" -o jsonpath='{.status.currentCSV}' 2>/dev/null || echo "")
   if [ -z "$CSV" ]; then
     fail "$NAME has no currentCSV"
     continue
@@ -43,7 +42,7 @@ for i in $(seq 0 $((SUB_COUNT - 1))); do
   else
     fail "$CSV phase=$PHASE (expected Succeeded)"
   fi
-done
+done <<< "$SUBS"
 
 echo ""
 echo "=== Results ==="

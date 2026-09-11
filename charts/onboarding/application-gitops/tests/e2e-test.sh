@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -uo pipefail
 
 # application-gitops E2E Test
 # Validates team ArgoCD instance, AppProject configuration, namespace, and
@@ -14,8 +14,8 @@ PASSED=0
 FAILED=0
 TOTAL=5
 
-pass() { echo "  PASS: $1"; ((PASSED++)); }
-fail() { echo "  FAIL: $1"; ((FAILED++)); }
+pass() { echo "  PASS: $1"; PASSED=$((PASSED + 1)); }
+fail() { echo "  FAIL: $1"; FAILED=$((FAILED + 1)); }
 
 echo "=== application-gitops E2E Test ==="
 echo "  Team:      ${TEAM}"

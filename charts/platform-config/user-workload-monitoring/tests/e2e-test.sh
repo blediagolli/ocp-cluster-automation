@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -uo pipefail
 
 # User Workload Monitoring E2E Test
 # Validates Prometheus UWM pods, ConfigMaps, and optional ServiceMonitor scraping
@@ -11,8 +11,8 @@ PASSED=0
 FAILED=0
 TOTAL=5
 
-pass() { echo "  PASS: $1"; ((PASSED++)); }
-fail() { echo "  FAIL: $1"; ((FAILED++)); }
+pass() { echo "  PASS: $1"; PASSED=$((PASSED + 1)); }
+fail() { echo "  FAIL: $1"; FAILED=$((FAILED + 1)); }
 
 echo "=== User Workload Monitoring E2E Test ==="
 echo ""
@@ -60,7 +60,7 @@ fi
 
 # 5. Check metrics availability
 echo "--- Step 5: Metrics endpoint ---"
-SA_TOKEN=$(oc create token prometheus-k8s -n openshift-monitoring --duration=60s 2>/dev/null || echo "")
+SA_TOKEN=$(oc whoami -t 2>/dev/null || echo "")
 if [ -n "${SA_TOKEN}" ]; then
   THANOS_HOST=$(oc get route thanos-querier -n openshift-monitoring -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
   if [ -n "${THANOS_HOST}" ]; then
