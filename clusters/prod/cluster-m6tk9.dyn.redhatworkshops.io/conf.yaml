@@ -5,8 +5,12 @@ cluster:
   name: cluster-m6tk9
   environment: prod
   address: ""
-platformCharts: []
-operatorInstanceCharts: []
+platformCharts:
+  - chart: openshift-marketplace
+  - chart: user-workload-monitoring
+operatorInstanceCharts:
+  - chart: acs-secured-cluster
+  - chart: aap-instance
 deployOperators: true
 deployOverlay: false
 deployImport: true
