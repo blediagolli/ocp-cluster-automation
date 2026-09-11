@@ -4,7 +4,16 @@
 
 ## What changed this session
 
-### 1. Fixed OutOfSync bootstrap resources
+### 1. Values refactoring — flattened nesting and auto-derived URLs
+- **acs-central**: Moved `central.initBundle` → top-level `initBundle`, `central.consoleLink` → top-level `centralConsoleLink`; `centralUrl` auto-derived from `cluster.baseDomain`
+- **acs-secured-cluster**: `centralEndpoint` auto-derived from `cluster.baseDomain` (explicit override still required for managed clusters pointing to remote Central)
+- **quay-registry**: Flattened `quayRegistry.bridge` → `quayBridge`, `quayRegistry.keycloak` → `quayKeycloak`; `quayHostname` auto-derived from `cluster.baseDomain`
+- **acm-observability**: Renamed `consoleLink` → `observabilityConsoleLink`; `href` auto-derived from `cluster.baseDomain`; `storageClass` uses `cluster.storageClass`; OBC namespace uses `multiClusterObservability.namespace`
+- **user-workload-monitoring**: `storageClass` falls back to `cluster.storageClass`
+- **conf.yaml**: Added `cluster.baseDomain` (all clusters) and `cluster.storageClass` (mgt)
+- **operator-instances.yaml overrides**: Removed redundant URLs (now derived), cleaned up redundant AAP defaults, updated to match new flattened structure
+
+### 2. Fixed OutOfSync bootstrap resources
 - Updated ArgoCD CR to include all operator-injected defaults (grafana, sso/dex, monitoring, notifications, prometheus, networkPolicy, imageUpdater, ha resources, server grpc/ingress/service, tls, initialSSHKnownHosts, controller processors/sharding, applicationSet webhookServer)
 - Updated MultiClusterHub CR: added `localClusterName: local-cluster`, removed stale `storageClass`
 
@@ -137,4 +146,3 @@ platform-root (Application)
 ## Outstanding
 - Team GitOps provisioning not yet tested end-to-end on a live cluster
 - No NetworkPolicy template in namespace-config yet
-- `env/mgt/namespace-sizes.yaml` does not exist — create if mgt cluster needs team onboarding

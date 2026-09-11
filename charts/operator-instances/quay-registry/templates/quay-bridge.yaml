@@ -1,4 +1,4 @@
-{{- if and .Values.quayRegistry.include .Values.quayRegistry.bridge.include }}
+{{- if and .Values.quayRegistry.include .Values.quayBridge.include }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -8,7 +8,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
 type: Opaque
 stringData:
-  token: {{ required "quayRegistry.bridge.oauthToken is required when bridge is enabled" .Values.quayRegistry.bridge.oauthToken }}
+  token: {{ required "quayBridge.oauthToken is required when bridge is enabled" .Values.quayBridge.oauthToken }}
 ---
 apiVersion: quay.redhat.com/v1
 kind: QuayIntegration
@@ -21,9 +21,9 @@ spec:
   credentialsSecret:
     namespace: openshift-operators
     name: quay-bridge-token
-  quayHostname: https://{{ .Values.quayRegistry.bridge.quayHostname }}
+  quayHostname: https://{{ .Values.quayBridge.quayHostname | default (printf "registry-quay-quay-enterprise.%s" .Values.cluster.baseDomain) }}
   insecureRegistry: false
-  {{- if .Values.quayRegistry.bridge.namespaceCreationDefault }}
+  {{- if .Values.quayBridge.namespaceCreationDefault }}
   namespaceCreationDefault: true
   {{- end }}
   scheduledImageStreamImport: true

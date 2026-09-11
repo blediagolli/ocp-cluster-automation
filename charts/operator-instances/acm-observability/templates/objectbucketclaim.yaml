@@ -3,7 +3,7 @@ apiVersion: objectbucket.io/v1alpha1
 kind: ObjectBucketClaim
 metadata:
   name: {{ .Values.objectStorage.objectBucketClaim.name }}
-  namespace: {{ .Values.objectStorage.objectBucketClaim.namespace }}
+  namespace: {{ .Values.multiClusterObservability.namespace }}
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:

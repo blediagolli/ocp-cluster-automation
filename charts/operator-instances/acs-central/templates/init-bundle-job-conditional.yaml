@@ -1,4 +1,4 @@
-{{- if and .Values.central.include .Values.central.initBundle.include (eq .Values.central.initBundle.mode "job") }}
+{{- if and .Values.central.include .Values.initBundle.include (eq .Values.initBundle.mode "job") }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -73,8 +73,8 @@ spec:
               done
               echo "Central is ready."
 
-              {{- if .Values.central.initBundle.password }}
-              PASSWORD="{{ .Values.central.initBundle.password }}"
+              {{- if .Values.initBundle.password }}
+              PASSWORD="{{ .Values.initBundle.password }}"
               {{- else }}
               PASSWORD=$(oc get secret central-htpasswd -n "${NAMESPACE}" -o jsonpath='{.data.password}' | base64 -d)
               {{- end }}

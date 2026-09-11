@@ -17,7 +17,7 @@ spec:
     metricObjectStorage:
       key: {{ .Values.objectStorage.key }}
       name: {{ .Values.objectStorage.secretName }}
-    storageClass: {{ .Values.multiClusterObservability.storageClass }}
+    storageClass: {{ .Values.cluster.storageClass }}
     compactStorageSize: {{ .Values.multiClusterObservability.compactStorageSize }}
     receiveStorageSize: {{ .Values.multiClusterObservability.receiveStorageSize }}
     ruleStorageSize: {{ .Values.multiClusterObservability.ruleStorageSize }}

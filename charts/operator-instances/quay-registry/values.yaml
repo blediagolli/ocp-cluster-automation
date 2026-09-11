@@ -12,13 +12,12 @@ quayRegistry:
     include: false
     archivePath: "action_log_archive/"
     archiveLocation: "local_us"
-  bridge:
-    include: false
-    namespaceCreationDefault: false
-    quayHostname: ""
-    oauthToken: ""
-  keycloak:
-    include: false
-    oidcServer: ""
-    clientId: "quay"
-    clientSecret: ""
+quayBridge:
+  include: false
+  quayHostname: ""
+  oauthToken: ""
+quayKeycloak:
+  include: false
+  oidcServer: ""
+  clientId: "quay"
+  clientSecret: ""

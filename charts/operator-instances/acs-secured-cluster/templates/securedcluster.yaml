@@ -6,9 +6,7 @@ metadata:
   namespace: {{ .Values.securedCluster.namespace }}
 spec:
   clusterName: {{ .Values.securedCluster.clusterName | default .Values.cluster.name }}
-  {{- if .Values.securedCluster.centralEndpoint }}
-  centralEndpoint: {{ .Values.securedCluster.centralEndpoint }}
-  {{- end }}
+  centralEndpoint: {{ .Values.securedCluster.centralEndpoint | default (printf "central-stackrox.%s:443" .Values.cluster.baseDomain) }}
   auditLogs:
     collection: {{ .Values.securedCluster.auditLogs.collection }}
   admissionControl:

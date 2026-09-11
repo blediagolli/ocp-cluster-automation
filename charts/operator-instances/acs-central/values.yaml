@@ -59,19 +59,19 @@ central:
       claimName: scanner-v4-db
       persistence:
         size: 50Gi
-  initBundle:
-    include: false
-    # "job" = PostSync job calls Central API to generate init bundle secrets
-    # Set to "job" when Central and SecuredCluster are on the same cluster
-    mode: "job"
-    password: ""
-    # distribute Central admin password to managed clusters via ACM Policy
-    distributeAuth: false
-    targetEnvironments:
-      - dev
-      - prod
-  consoleLink:
-    include: false
-    centralUrl: ""
 centralNamespace:
   include: false
+initBundle:
+  include: false
+  # "job" = PostSync job calls Central API to generate init bundle secrets
+  # Set to "job" when Central and SecuredCluster are on the same cluster
+  mode: "job"
+  password: ""
+  # distribute Central admin password to managed clusters via ACM Policy
+  distributeAuth: false
+  targetEnvironments:
+    - dev
+    - prod
+centralConsoleLink:
+  include: false
+  centralUrl: ""

@@ -17,10 +17,11 @@ data:
   config.yaml: |
     prometheus:
       retention: {{ .Values.userWorkloadMonitoring.prometheus.retention }}
-      {{- if .Values.userWorkloadMonitoring.prometheus.storageClass }}
+      {{- $sc := .Values.userWorkloadMonitoring.prometheus.storageClass | default .Values.cluster.storageClass }}
+      {{- if $sc }}
       volumeClaimTemplate:
         spec:
-          storageClassName: {{ .Values.userWorkloadMonitoring.prometheus.storageClass }}
+          storageClassName: {{ $sc }}
           resources:
             requests:
               storage: {{ .Values.userWorkloadMonitoring.prometheus.pvcSize }}

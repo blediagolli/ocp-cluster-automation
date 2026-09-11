@@ -1,4 +1,4 @@
-{{- if .Values.central.consoleLink.include }}
+{{- if .Values.centralConsoleLink.include }}
 apiVersion: console.openshift.io/v1
 kind: ConsoleLink
 metadata:
@@ -6,7 +6,7 @@ metadata:
 spec:
   applicationMenu:
     section: Security
-  href: {{ .Values.central.consoleLink.centralUrl | quote }}
+  href: {{ .Values.centralConsoleLink.centralUrl | default (printf "https://central-stackrox.%s" .Values.cluster.baseDomain) | quote }}
   location: ApplicationMenu
   text: Advanced Cluster Security
 {{- end }}

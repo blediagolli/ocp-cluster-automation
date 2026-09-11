@@ -1,4 +1,4 @@
-{{- if and .Values.central.include .Values.central.initBundle.include .Values.central.initBundle.distributeAuth }}
+{{- if and .Values.central.include .Values.initBundle.include .Values.initBundle.distributeAuth }}
 apiVersion: cluster.open-cluster-management.io/v1beta2
 kind: ManagedClusterSetBinding
 metadata:
@@ -24,7 +24,7 @@ spec:
             - key: environment
               operator: In
               values:
-              {{- range .Values.central.initBundle.targetEnvironments }}
+              {{- range .Values.initBundle.targetEnvironments }}
                 - {{ . }}
               {{- end }}
 ---

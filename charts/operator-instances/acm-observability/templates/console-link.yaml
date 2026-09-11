@@ -1,13 +1,14 @@
-{{- if and .Values.consoleLink.include .Values.consoleLink.href }}
+{{- if .Values.observabilityConsoleLink.include }}
+{{- $href := .Values.observabilityConsoleLink.href | default (printf "https://grafana-open-cluster-management-observability.%s" .Values.cluster.baseDomain) }}
 apiVersion: console.openshift.io/v1
 kind: ConsoleLink
 metadata:
-  name: {{ .Values.consoleLink.name }}
+  name: {{ .Values.observabilityConsoleLink.name }}
 spec:
   applicationMenu:
-    section: {{ .Values.consoleLink.section }}
-    imageURL: {{ .Values.consoleLink.imageURL | quote }}
-  href: {{ .Values.consoleLink.href | quote }}
-  location: {{ .Values.consoleLink.location }}
-  text: {{ .Values.consoleLink.text | quote }}
+    section: {{ .Values.observabilityConsoleLink.section }}
+    imageURL: {{ .Values.observabilityConsoleLink.imageURL | quote }}
+  href: {{ $href | quote }}
+  location: {{ .Values.observabilityConsoleLink.location }}
+  text: {{ .Values.observabilityConsoleLink.text | quote }}
 {{- end }}

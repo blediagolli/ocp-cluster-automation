@@ -3,7 +3,6 @@ multiClusterObservability:
   name: observability
   namespace: open-cluster-management-observability
   enableDownsampling: true
-  storageClass: ocs-external-storagecluster-ceph-rbd
   alertmanagerStorageSize: 1Gi
   compactStorageSize: 50Gi
   receiveStorageSize: 50Gi
@@ -34,12 +33,11 @@ objectStorage:
   objectBucketClaim:
     include: true
     name: observability-obc
-    namespace: open-cluster-management-observability
     bucketName: observability
     storageClassName: openshift-storage.noobaa.io
 observabilityNamespace:
   include: true
-consoleLink:
+observabilityConsoleLink:
   include: false
   name: observability
   href: ""

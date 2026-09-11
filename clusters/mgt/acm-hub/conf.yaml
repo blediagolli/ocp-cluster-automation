@@ -2,6 +2,8 @@ cluster:
   name: acm-hub
   environment: mgt
   address: "https://kubernetes.default.svc"
+  baseDomain: "apps.cluster-c8444.dyn.redhatworkshops.io"
+  storageClass: "ocs-external-storagecluster-ceph-rbd"
 platformCharts:
   - chart: user-workload-monitoring
   - chart: project-request-template

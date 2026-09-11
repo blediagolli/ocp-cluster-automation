@@ -1,4 +1,4 @@
-{{- if and .Values.central.include .Values.central.initBundle.include .Values.central.initBundle.distributeAuth }}
+{{- if and .Values.central.include .Values.initBundle.include .Values.initBundle.distributeAuth }}
 apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
 metadata:
