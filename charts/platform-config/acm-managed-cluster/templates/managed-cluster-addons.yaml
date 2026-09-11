@@ -9,8 +9,7 @@ metadata:
   namespace: {{ $.Values.cluster.name }}
   annotations:
     argocd.argoproj.io/sync-options: ServerSideApply=true
-spec:
-  installNamespace: open-cluster-management-agent-addon
+spec: {}
 {{- end }}
 {{- end }}
 {{- end }}
