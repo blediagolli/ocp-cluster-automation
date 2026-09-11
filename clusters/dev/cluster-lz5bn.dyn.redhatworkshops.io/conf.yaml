@@ -13,7 +13,7 @@ operatorInstanceCharts:
   - chart: acs-secured-cluster
   - chart: aap-instance
 deployOperators: true
-deployOverlay: true
+deployOverlay: false
 deployImport: true
 teams:
   - team: team-alpha

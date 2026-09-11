@@ -7,7 +7,7 @@ cluster:
   address: ""
 platformCharts: []
 operatorInstanceCharts: []
-deployOperators: false
+deployOperators: true
 deployOverlay: false
 deployImport: true
 teams: []
