@@ -32,14 +32,10 @@ centralConsoleLink:
 securedCluster:
   include: true
   secretMode: "job"
-securedClusterNamespace:
-  include: false
 multiClusterObservability:
   include: true
 observabilityConsoleLink:
   include: true
-quayNamespace:
-  include: false
 quayRegistry:
   include: true
   superUsers:

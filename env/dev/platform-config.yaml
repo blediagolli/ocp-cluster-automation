@@ -1,27 +1,3 @@
 # Environment-level platform config shared by all dev clusters. Overrides
 # chart defaults for platform charts (monitoring, ingress, catalog, etc.).
 # Cluster-level platform-config.yaml can override individual settings.
-catalogSource:
-  include: false
-  rh_catalog_version: v4.22
-
-ingress:
-  service:
-    include: false
-  controller:
-    include: false
-    default:
-      placement: node-role.kubernetes.io/master
-      replicas: 1
-      syslog: true
-    domains:
-      - { name: intranet, http_port: 30400, https_port: 31400, replicas: 1 }
-      - { name: extranet, http_port: 30500, https_port: 31500, replicas: 1 }
-    syslog:
-      address: 10.0.0.1
-
-config:
-  include: false
-
-machineConfig:
-  include: false

@@ -1,6 +1,3 @@
 # Environment-level operator Subscriptions shared by all mgt clusters.
 # Each key under 'operators' becomes an OLM Subscription. Cluster-level
 # operator-deployment.yaml can override or disable individual operators.
-operators:
-  openshift-gitops:
-    include: false

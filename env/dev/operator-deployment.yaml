@@ -8,6 +8,3 @@ operators:
   advanced-cluster-security:
     include: true
     channel: stable
-  compliance-operator:
-    include: false
-    channel: stable

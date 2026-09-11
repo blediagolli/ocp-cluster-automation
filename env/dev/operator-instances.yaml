@@ -7,8 +7,3 @@ securedCluster:
   centralEndpoint: "central-stackrox.apps.cluster-c8444.dyn.redhatworkshops.io:443"
 securedClusterNamespace:
   include: true
-
-scanSetting:
-  include: false
-scanSettingBinding:
-  include: false
