@@ -10,11 +10,15 @@ spec:
   goTemplateOptions:
     - missingkey=error
   generators:
-    - git:
-        repoURL: git@github.com:blediagolli/gitops-for-organizations.git
-        revision: main
-        files:
-          - path: "clusters/**/provision.yaml"
+    - matrix:
+        generators:
+          - git:
+              repoURL: git@github.com:blediagolli/gitops-for-organizations.git
+              revision: main
+              files:
+                - path: "clusters/**/conf.yaml"
+          - list:
+              elementsYaml: "{{ if .deployProvision }}[{}]{{ else }}[]{{ end }}"
   template:
     metadata:
       name: 'provision-{{.cluster.environment}}-{{.cluster.name}}'
@@ -29,11 +33,12 @@ spec:
         targetRevision: main
         path: charts/cluster-provisioning/openshift-provisioning
         helm:
+          ignoreMissingValueFiles: true
           valueFiles:
+            - '/env/{{.cluster.environment}}/provision.yaml'
             - '/{{.path.path}}/provision.yaml'
       destination:
         server: 'https://kubernetes.default.svc'
-        namespace:
       syncPolicy:
         automated:
           selfHeal: true

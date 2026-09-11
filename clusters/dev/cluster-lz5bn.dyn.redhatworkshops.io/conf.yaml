@@ -15,6 +15,7 @@ operatorInstanceCharts:
 deployOperators: true
 deployOverlay: false
 deployImport: true
+deployProvision: false
 teams:
   - team: team-alpha
   - team: team-beta
