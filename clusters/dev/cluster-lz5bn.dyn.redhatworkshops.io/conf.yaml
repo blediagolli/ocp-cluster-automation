@@ -17,3 +17,4 @@ deployOverlay: true
 deployImport: true
 teams:
   - team: team-alpha
+  - team: team-beta
