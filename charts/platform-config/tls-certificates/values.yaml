@@ -2,6 +2,7 @@ cluster:
   baseDomain: ""
 
 provider: manual
+# cert-manager    — cert-manager Certificate CRs (auto-issued + renewed)
 # manual          — raw tls.crt / tls.key in values (or base64-encoded)
 # sealed-secret   — Bitnami SealedSecret resources
 # external-secret — ExternalSecret resources (any backend)
@@ -28,6 +29,16 @@ certificates:
     namespace: openshift-config
 
 # --- Provider-specific configuration ---
+
+certManager:
+  issuerRef:
+    name: ""
+    kind: ClusterIssuer
+  duration: 2160h
+  renewBefore: 360h
+  privateKey:
+    algorithm: ECDSA
+    size: 384
 
 manual:
   # Provide cert data per certificate key (api, ingress, ca)

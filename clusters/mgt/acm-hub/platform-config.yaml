@@ -36,3 +36,20 @@ etcdDefrag:
   include: true
 etcdBackup:
   include: true
+provider: cert-manager
+certManager:
+  issuerRef:
+    name: acme-bifrost-production-ddns
+    kind: ClusterIssuer
+certificates:
+  api:
+    include: true
+    secretName: cert-manager-api-cert
+    dnsNames:
+      - api.cluster-c8444.dyn.redhatworkshops.io
+  ingress:
+    include: true
+    secretName: cert-manager-ingress-cert
+    dnsNames:
+      - "*.apps.cluster-c8444.dyn.redhatworkshops.io"
+      - apps.cluster-c8444.dyn.redhatworkshops.io
