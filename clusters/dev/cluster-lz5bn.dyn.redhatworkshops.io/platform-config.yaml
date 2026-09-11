@@ -1,1 +1,5 @@
+# Cluster-level platform config overrides. Enables and configures platform
+# charts (monitoring, etcd, project config, network policy, etc.) for this
+# cluster. Each top-level key maps to a platform-config Helm chart.
+# Precedence: chart defaults < env/<env>/platform-config.yaml < this file.
 {}

@@ -1,2 +1,4 @@
+# Environment-level cluster defaults shared by all mgt clusters.
+# Merged into each cluster's values; cluster-level conf.yaml takes precedence.
 cluster:
   environment: mgt

@@ -1,3 +1,6 @@
+# Environment-level t-shirt size definitions for team namespace provisioning.
+# Defines ResourceQuota and LimitRange per size (small/medium/large).
+# Cluster-level namespace-sizes.yaml can override individual sizes or limits.
 namespaceSizes:
   small:
     resourceQuota:

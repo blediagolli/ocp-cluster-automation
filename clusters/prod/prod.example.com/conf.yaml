@@ -1,3 +1,6 @@
+# Cluster identity and ApplicationSet config. The git file generators read this
+# file to discover which charts to deploy, how to reach the cluster, and where
+# to find values overrides. Values here are available to all charts as .Values.cluster.*.
 cluster:
   name: prod
   environment: prod

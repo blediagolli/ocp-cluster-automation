@@ -1,3 +1,6 @@
+# Environment-level operator instance overrides shared by all dev clusters.
+# Configures operator CRs (e.g. SecuredCluster, ScanSetting). Cluster-level
+# operator-instances.yaml can override individual settings.
 securedCluster:
   include: true
   secretMode: "generate"

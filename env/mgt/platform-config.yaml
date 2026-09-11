@@ -1,3 +1,6 @@
+# Environment-level platform config shared by all mgt clusters. Overrides
+# chart defaults for platform charts (monitoring, ingress, catalog, etc.).
+# Cluster-level platform-config.yaml can override individual settings.
 catalogSource:
   include: false
 

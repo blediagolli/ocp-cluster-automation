@@ -1,2 +1,4 @@
+# Environment-level cluster defaults shared by all prod clusters.
+# Merged into each cluster's values; cluster-level conf.yaml takes precedence.
 cluster:
   registry: quay-prod.io
