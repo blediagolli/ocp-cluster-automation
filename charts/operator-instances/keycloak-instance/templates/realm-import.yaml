@@ -25,6 +25,10 @@ spec:
           {{- toYaml $client.redirectUris | nindent 10 }}
         webOrigins:
           {{- toYaml $client.webOrigins | nindent 10 }}
+        {{- with $client.protocolMappers }}
+        protocolMappers:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
       {{- end }}
       {{- end }}
 {{- end }}
