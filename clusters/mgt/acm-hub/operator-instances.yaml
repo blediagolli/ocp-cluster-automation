@@ -22,8 +22,7 @@ consolePlugins:
   include: true
 central:
   include: true
-centralNamespace:
-  include: true
+  createNamespace: true
 initBundle:
   include: true
   distributeAuth: true

@@ -1,5 +1,6 @@
 central:
   include: false
+  createNamespace: false
   name: stackrox-central-services
   namespace: stackrox
   exposure:
@@ -59,8 +60,6 @@ central:
       claimName: scanner-v4-db
       persistence:
         size: 50Gi
-centralNamespace:
-  include: false
 initBundle:
   include: false
   # "job" = PostSync job calls Central API to generate init bundle secrets

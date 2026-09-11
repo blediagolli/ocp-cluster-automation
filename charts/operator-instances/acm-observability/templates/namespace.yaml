@@ -1,4 +1,4 @@
-{{- if .Values.observabilityNamespace.include }}
+{{- if .Values.multiClusterObservability.createNamespace }}
 apiVersion: v1
 kind: Namespace
 metadata:

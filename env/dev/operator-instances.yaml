@@ -3,7 +3,6 @@
 # operator-instances.yaml can override individual settings.
 securedCluster:
   include: true
+  createNamespace: true
   secretMode: "generate"
   centralEndpoint: "central-stackrox.apps.cluster-c8444.dyn.redhatworkshops.io:443"
-securedClusterNamespace:
-  include: true

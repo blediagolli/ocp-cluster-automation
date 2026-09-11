@@ -1,8 +1,8 @@
-{{- if .Values.quayNamespace.include }}
+{{- if .Values.quayRegistry.createNamespace }}
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ .Values.quayNamespace.name }}
+  name: {{ .Values.quayRegistry.namespace }}
   labels:
     openshift.io/cluster-monitoring: "true"
 {{- end }}

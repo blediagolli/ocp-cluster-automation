@@ -1,5 +1,6 @@
 multiClusterObservability:
   include: false
+  createNamespace: true
   name: observability
   namespace: open-cluster-management-observability
   enableDownsampling: true
@@ -35,8 +36,6 @@ objectStorage:
     name: observability-obc
     bucketName: observability
     storageClassName: openshift-storage.noobaa.io
-observabilityNamespace:
-  include: true
 observabilityConsoleLink:
   include: false
   name: observability

@@ -1,4 +1,4 @@
-{{- if .Values.securedClusterNamespace.include }}
+{{- if .Values.securedCluster.createNamespace }}
 apiVersion: v1
 kind: Namespace
 metadata:

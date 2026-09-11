@@ -1,5 +1,6 @@
 securedCluster:
   include: false
+  createNamespace: false
   name: stackrox-secured-cluster-services
   namespace: stackrox
   centralEndpoint: ""
@@ -54,5 +55,3 @@ securedCluster:
   monitoring:
     openshift:
       enabled: true
-securedClusterNamespace:
-  include: false

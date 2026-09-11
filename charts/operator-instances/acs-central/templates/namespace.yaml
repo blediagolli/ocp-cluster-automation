@@ -1,4 +1,4 @@
-{{- if .Values.centralNamespace.include }}
+{{- if .Values.central.createNamespace }}
 apiVersion: v1
 kind: Namespace
 metadata:

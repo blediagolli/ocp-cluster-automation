@@ -1,8 +1,6 @@
-quayNamespace:
-  include: false
-  name: quay-enterprise
 quayRegistry:
   include: false
+  createNamespace: false
   name: registry
   namespace: quay-enterprise
   userInitialize: false
