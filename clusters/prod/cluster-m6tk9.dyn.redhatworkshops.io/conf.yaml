@@ -9,5 +9,5 @@ platformCharts: []
 operatorInstanceCharts: []
 deployOperators: false
 deployOverlay: false
-deployImport: false
+deployImport: true
 teams: []
