@@ -5,15 +5,16 @@ cluster:
 ingress:
   controller:
     include: false
+    manageDefault: false
     default:
       placement: node-role.kubernetes.io/infra
       replicas: 2
-      endpointPublishingStrategy: NodePortService
+      endpointPublishingStrategy: HostNetwork
       tolerations:
         - effect: NoSchedule
           operator: Exists
     logging:
-      enabled: true
+      enabled: false
       destination:
         type: Syslog
         syslog:
@@ -39,21 +40,3 @@ ingress:
     defaultCertificate:
       enabled: false
       name: custom-default-cert
-    domains: []
-    # Example domain entry:
-    # - name: custom
-    #   placement: node-role.kubernetes.io/infra
-    #   replicas: 2
-    #   endpointPublishingStrategy: NodePortService
-    #   http_port: 30080
-    #   https_port: 30443
-    #   tolerations:
-    #     - effect: NoSchedule
-    #       operator: Exists
-    #   defaultCertificateName: custom-cert
-  service:
-    include: false
-    type: NodePort
-    externalTrafficPolicy: Local
-    httpPort: 80
-    httpsPort: 443

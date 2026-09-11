@@ -19,7 +19,7 @@ apiServer:
     #   servingCertificate:
     #     name: api-cert-secret
   tlsSecurityProfile:
-    type: Intermediate
+    type: ""
   encryption:
-    type: aescbc
+    type: ""
   additionalCORSAllowedOrigins: []

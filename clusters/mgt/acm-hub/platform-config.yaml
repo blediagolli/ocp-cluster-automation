@@ -36,6 +36,20 @@ etcdDefrag:
   include: true
 etcdBackup:
   include: true
+apiServer:
+  include: true
+ingress:
+  controller:
+    include: true
+    manageDefault: true
+    default:
+      placement: node-role.kubernetes.io/worker
+      replicas: 6
+      endpointPublishingStrategy: HostNetwork
+      tolerations: []
+    defaultCertificate:
+      enabled: true
+      name: cert-manager-ingress-cert
 provider: cert-manager
 certManager:
   issuerRef:

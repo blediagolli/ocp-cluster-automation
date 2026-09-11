@@ -20,9 +20,11 @@ spec:
           name: {{ .servingCertificate.name }}
       {{- end }}
   {{- end }}
+  {{- if .Values.apiServer.tlsSecurityProfile.type }}
   tlsSecurityProfile:
     type: {{ .Values.apiServer.tlsSecurityProfile.type }}
-  {{- if .Values.apiServer.encryption }}
+  {{- end }}
+  {{- if .Values.apiServer.encryption.type }}
   encryption:
     type: {{ .Values.apiServer.encryption.type }}
   {{- end }}
