@@ -15,4 +15,5 @@ deployOperators: true
 deployOverlay: false
 deployImport: true
 deployProvision: false
-teams: []
+teams:
+  - team: team-charlie
