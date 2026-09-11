@@ -1,17 +1,6 @@
 {{- if and .Values.managedCluster.include .Values.managedCluster.addons.include }}
-{{- $addons := dict
-  "config-policy-controller" .Values.managedCluster.addons.configPolicyController
-  "governance-policy-framework" .Values.managedCluster.addons.governancePolicyFramework
-  "work-manager" .Values.managedCluster.addons.workManager
-  "application-manager" .Values.managedCluster.addons.applicationManager
-  "cert-policy-controller" .Values.managedCluster.addons.certPolicyController
-  "policy-controller" .Values.managedCluster.addons.policyController
-  "search-collector" .Values.managedCluster.addons.searchCollector
-  "cluster-proxy" .Values.managedCluster.addons.clusterProxy
-  "managed-serviceaccount" .Values.managedCluster.addons.managedServiceAccount
-}}
-{{- range $name, $enabled := $addons }}
-{{- if $enabled }}
+{{- range $name, $enabled := .Values.managedCluster.addons }}
+{{- if and (ne $name "include") $enabled }}
 ---
 apiVersion: addon.open-cluster-management.io/v1beta1
 kind: ManagedClusterAddOn

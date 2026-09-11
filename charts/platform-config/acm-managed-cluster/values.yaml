@@ -18,12 +18,12 @@ managedCluster:
 
   addons:
     include: true
-    configPolicyController: true
-    governancePolicyFramework: true
-    workManager: true
-    applicationManager: true
-    certPolicyController: true
-    policyController: true
-    searchCollector: true
-    clusterProxy: false
-    managedServiceAccount: false
+    config-policy-controller: true
+    governance-policy-framework: true
+    work-manager: true
+    application-manager: true
+    cert-policy-controller: true
+    policy-controller: true
+    search-collector: true
+    cluster-proxy: false
+    managed-serviceaccount: false
