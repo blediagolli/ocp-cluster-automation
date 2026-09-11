@@ -1,15 +1,14 @@
 # acs-central — Handoff
 
-**Modified:** 2026-09-08
+**Modified:** 2026-09-10
 
 ## What it does
 Deploys ACS Central Services (Central, Scanner, ScannerV4, DB) with route/LB/nodePort exposure options. Includes optional init-bundle Job (generates TLS secrets for SecuredCluster), ConsoleLink, namespace creation, and ACM Policy for distributing Central credentials to managed clusters.
 
 ## What changed this session
-- Fixed init-bundle Job empty-secret bug: checks for non-empty `ca.pem` data, deletes stale empty secrets
-- Fixed password lookup: switched from go-template `base64decode` to jsonpath + `base64 -d`
-- Added `delete` verb to init-bundle RBAC Role for stale secret cleanup
-- Added `distributeAuth` option: creates an ACM Policy that distributes `central-auth` secret (Central admin password) to managed clusters via hub-templates. Targets clusters by environment label.
+- `centralUrl` auto-derived from `cluster.baseDomain` — no longer needs explicit override
+- Flattened values: `central.initBundle` → top-level `initBundle`, `central.consoleLink` → top-level `centralConsoleLink`
+- `centralNamespace.include` → `central.createNamespace` (namespace toggle nested under parent key)
 
 ## Current state
 - **Enabled** on hub with init-bundle and credential distribution
@@ -18,6 +17,6 @@ Deploys ACS Central Services (Central, Scanner, ScannerV4, DB) with route/LB/nod
 
 ## Gotchas
 - Init-bundle Job requires Central to be healthy — uses a PostSync hook
-- The `centralUrl` in consoleLink must match the actual route
+- `centralUrl` is auto-derived from `cluster.baseDomain` — override in operator-instances.yaml only if the route hostname differs
 - `distributeAuth` uses ACM hub-templates to read `central-htpasswd` secret — if the secret name changes, update the Policy template
 - `targetEnvironments` controls which clusters receive the credential (default: dev, prod)

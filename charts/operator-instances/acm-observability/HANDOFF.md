@@ -1,6 +1,6 @@
 # acm-observability — Handoff
 
-**Modified:** 2026-09-04
+**Modified:** 2026-09-10
 **Last tested:** 2026-09-04 on hub (mgt/acm-hub)
 
 ## What it does
@@ -15,13 +15,10 @@ Deploys ACM MultiClusterObservability with Thanos-based multi-cluster metrics ag
 
 ## What changed this session
 
-- Replaced broken `fromSecret` pull-secret template with a Sync hook Job
-- Added OBC auto-wiring — Thanos secret is built from OBC-generated credentials automatically
-- Added setup RBAC (ServiceAccount, ClusterRole, ClusterRoleBinding)
-- Added sync-wave ordering: Namespace(-2) → RBAC(-1) → OBC+pull-secret(0) → thanos-secret(1) → MCO CR(2)
-- Added retention config (raw 14d, 5m resolution 180d, 1h resolution 365d)
-- Fixed ConsoleLink to use parameterized `href` instead of broken `lookup`
-- Updated storageClass default to `ocs-external-storagecluster-ceph-rbd`
+- `consoleLink` → `observabilityConsoleLink`; `href` auto-derived from `cluster.baseDomain`
+- `storageClass` uses `cluster.storageClass` from conf.yaml (no longer hardcoded)
+- OBC namespace uses `multiClusterObservability.namespace`
+- `observabilityNamespace.include` → `multiClusterObservability.createNamespace` (namespace toggle nested under parent key)
 
 ## Current state
 

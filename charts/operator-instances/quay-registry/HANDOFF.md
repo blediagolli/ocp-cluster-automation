@@ -20,11 +20,16 @@ Deploys a Red Hat Quay registry instance via the `QuayRegistry` CR with Keycloak
 - `quay-bridge.yaml` — QuayIntegration CR + OAuth token secret, comprehensive namespace denylist
 - `namespace.yaml` — quay-enterprise namespace (disabled on hub — operators app owns it)
 
+## What changed this session
+- Flattened values: `quayRegistry.bridge` → top-level `quayBridge`, `quayRegistry.keycloak` → top-level `quayKeycloak`
+- `quayHostname` auto-derived from `cluster.baseDomain`
+- `quayNamespace.include` → `quayRegistry.createNamespace`, `quayNamespace.name` → `quayRegistry.namespace`
+
 ## Key values
-- `quayRegistry.bridge.oauthToken` — OAuth app token with super:user scope (NOT a robot account)
-- `quayRegistry.bridge.namespaceCreationDefault` — auto-create Quay orgs for all non-denylisted namespaces
+- `quayBridge.oauthToken` — OAuth app token with super:user scope (NOT a robot account)
+- `quayBridge.namespaceCreationDefault` — auto-create Quay orgs for all non-denylisted namespaces
 - `quayRegistry.actionLogRotation.include` — enable action log rotation with archive path
-- `quayRegistry.keycloak.*` — OIDC server URL must end with trailing `/`
+- `quayKeycloak.*` — OIDC server URL must end with trailing `/`
 - `quayRegistry.superUsers` — list of super user usernames
 
 ## Verified (2026-09-09)

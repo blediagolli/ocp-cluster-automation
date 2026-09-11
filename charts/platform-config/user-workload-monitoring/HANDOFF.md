@@ -11,11 +11,7 @@ Enables user workload monitoring via two ConfigMaps:
 
 ## What changed this session
 
-- Expanded from a bare-minimum ConfigMap to full parameterization
-- Added Prometheus resources, retention, persistent storage toggle
-- Added Thanos Ruler, AlertManager, and remote write toggles
-- Removed invalid `prometheus.replicas` field — rejected by the `monitoringconfigmaps.openshift.io` admission webhook
-- Configured hub with 48h retention, 50Gi persistent storage on ODF ceph-rbd, production resource limits
+- `storageClass` falls back to `cluster.storageClass` from conf.yaml — no longer needs explicit override per cluster
 
 ## Current state
 

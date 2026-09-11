@@ -43,6 +43,13 @@
 - `managedCluster.name` and `managedCluster.environment` removed from chart values — all 5 template files now reference `cluster.name` and `cluster.environment` (single source of truth from conf.yaml)
 - `deployImport` boolean in `conf.yaml` controls whether the cluster-import ApplicationSet generates an Application (replaces old `managedCluster.deploy`)
 
+### 7. Environment-scoped team namespaces
+- `team.namespaces` changed from flat list to environment-keyed map (`team.namespaces.dev`, `team.namespaces.prod`)
+- Charts select the right list using `cluster.environment` — each cluster only provisions namespaces for its own environment
+- Auto-prune enabled on both onboarding ApplicationSets — removing a namespace from the list deletes it from the cluster
+- team-beta onboarded to dev cluster — both gitops and namespace apps Synced/Healthy
+- Tested end-to-end: team-alpha dev namespaces correct, stale preprod namespace auto-pruned
+
 ## Previous session changes
 
 1. **Fixed OutOfSync bootstrap resources** — ArgoCD CR includes all operator-injected defaults; MultiClusterHub CR aligned
@@ -145,8 +152,11 @@ platform-root (Application)
 ├── config-dev-cluster-lz5bn-* (platform-config + operator-instances)
 │   └── 9 config/instance Applications for dev cluster
 │
-└── onboarding-gitops-dev-cluster-lz5bn-team-alpha
-    └── team-alpha ArgoCD instance on dev cluster
+├── onboarding-*-dev-cluster-lz5bn-team-alpha
+│   └── team-alpha ArgoCD instance + namespaces (dev, stage)
+│
+└── onboarding-*-dev-cluster-lz5bn-team-beta
+    └── team-beta ArgoCD instance + namespaces (dev, stage)
 ```
 
 ### Bootstrap flow (new cluster setup)
