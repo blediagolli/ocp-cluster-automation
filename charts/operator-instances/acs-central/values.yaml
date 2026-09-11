@@ -77,8 +77,8 @@ oidc:
   issuer: ""
   clientId: stackrox
   clientSecret: ""
-  # "fragment", "post", or "query" — must match Keycloak client settings
-  mode: post
+  # "auto", "fragment", "post", or "query"
+  mode: auto
   realm: sso
   # Map Keycloak groups/roles to ACS roles
   groupMappings:
