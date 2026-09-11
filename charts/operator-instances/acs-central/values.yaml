@@ -71,6 +71,29 @@ initBundle:
   targetEnvironments:
     - dev
     - prod
+oidc:
+  include: false
+  name: "Keycloak SSO"
+  issuer: ""
+  clientId: stackrox
+  clientSecret: ""
+  # "fragment", "post", or "query" — must match Keycloak client settings
+  mode: post
+  # Map Keycloak groups/roles to ACS roles
+  groupMappings:
+    - key: groups
+      value: admins
+      role: Admin
+    - key: groups
+      value: users
+      role: Analyst
+  # Create the Keycloak client declaratively via KeycloakRealmImport
+  keycloakClient:
+    include: false
+    realmImportName: ""
+    realm: sso
+    namespace: keycloak
+
 centralConsoleLink:
   include: false
   centralUrl: ""

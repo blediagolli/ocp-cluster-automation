@@ -1,0 +1,26 @@
+{{- if and .Values.central.include .Values.oidc.include }}
+{{- $issuer := .Values.oidc.issuer | default (printf "https://sso.%s/realms/%s" .Values.cluster.baseDomain .Values.oidc.keycloakClient.realm) }}
+{{- $uiEndpoint := printf "central-%s.%s" .Values.central.namespace .Values.cluster.baseDomain }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: acs-oidc-auth-provider
+  namespace: {{ .Values.central.namespace }}
+type: Opaque
+stringData:
+  auth-provider.yaml: |
+    name: {{ .Values.oidc.name }}
+    minimumRole: None
+    uiEndpoint: {{ $uiEndpoint }}
+    groups:
+      {{- range .Values.oidc.groupMappings }}
+      - key: {{ .key }}
+        value: {{ .value }}
+        role: {{ .role }}
+      {{- end }}
+    oidc:
+      issuer: {{ $issuer }}
+      mode: {{ .Values.oidc.mode }}
+      clientID: {{ .Values.oidc.clientId }}
+      clientSecret: {{ .Values.oidc.clientSecret }}
+{{- end }}

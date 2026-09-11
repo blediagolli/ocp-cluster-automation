@@ -31,6 +31,11 @@ spec:
           memory: {{ .Values.central.db.resources.limits.memory }}
     telemetry:
       enabled: {{ .Values.central.telemetry.enabled }}
+    {{- if .Values.oidc.include }}
+    declarativeConfiguration:
+      secrets:
+        - name: acs-oidc-auth-provider
+    {{- end }}
   monitoring:
     openshift:
       enabled: {{ .Values.central.monitoring.openshift.enabled }}
