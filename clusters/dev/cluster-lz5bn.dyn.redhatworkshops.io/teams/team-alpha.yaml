@@ -1,3 +1,8 @@
+# Team definition for onboarding. The git file generators in onboarding-gitops
+# and onboarding-namespaces ApplicationSets read this file. Each team gets its
+# own ArgoCD instance and namespaces sized by t-shirt definitions from
+# namespace-sizes.yaml. cluster.* must be duplicated here because the generator
+# reads a single file and cannot merge with conf.yaml.
 cluster:
   name: cluster-lz5bn
   environment: dev
