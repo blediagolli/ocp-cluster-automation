@@ -1,5 +1,6 @@
 managedCluster:
   include: false
+  registerArgoCD: false
   vendor: OpenShift
   cloudProvider: auto-detect
   clusterSet: default
