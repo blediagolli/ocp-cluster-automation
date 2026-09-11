@@ -1,0 +1,18 @@
+# Central team definition. Onboarding ApplicationSets deploy this team to every
+# cluster that lists it in conf.yaml under 'teams'. Environment- and cluster-level
+# overrides (env/<env>/teams/<team>.yaml, clusters/.../<team>.yaml) are optional.
+team:
+  name: team-charlie
+  admins: team-charlie-admins
+  repo: git@github.com:blediagolli/team-charlie-apps.git
+  namespaces:
+    dev:
+      - name: team-charlie-dev
+        size: small
+      - name: team-charlie-stage
+        size: medium
+    prod:
+      - name: team-charlie-preprod
+        size: large
+      - name: team-charlie-prod
+        size: large
