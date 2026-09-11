@@ -1,3 +1,10 @@
 # Environment-level operator Subscriptions shared by all prod clusters.
 # Each key under 'operators' becomes an OLM Subscription. Cluster-level
 # operator-deployment.yaml can override or disable individual operators.
+operators:
+  openshift-gitops:
+    include: true
+    channel: gitops-1.21
+  advanced-cluster-security:
+    include: true
+    channel: stable
