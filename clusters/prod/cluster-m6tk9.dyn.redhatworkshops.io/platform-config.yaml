@@ -9,8 +9,6 @@ managedCluster:
     mode: kubeconfig
     kubeconfig:
       secretName: m6tk9-kubeconfig
-  klusterletAddonConfig:
-    include: true
   addons:
     include: true
 

@@ -1,81 +1,25 @@
 {{- if and .Values.managedCluster.include .Values.managedCluster.addons.include }}
-{{- if .Values.managedCluster.addons.configPolicyController }}
-apiVersion: addon.open-cluster-management.io/v1beta1
-kind: ManagedClusterAddOn
-metadata:
-  name: config-policy-controller
-  namespace: {{ .Values.cluster.name }}
-spec:
-  installNamespace: open-cluster-management-agent-addon
+{{- $addons := dict
+  "config-policy-controller" .Values.managedCluster.addons.configPolicyController
+  "governance-policy-framework" .Values.managedCluster.addons.governancePolicyFramework
+  "work-manager" .Values.managedCluster.addons.workManager
+  "application-manager" .Values.managedCluster.addons.applicationManager
+  "cert-policy-controller" .Values.managedCluster.addons.certPolicyController
+  "policy-controller" .Values.managedCluster.addons.policyController
+  "search-collector" .Values.managedCluster.addons.searchCollector
+  "cluster-proxy" .Values.managedCluster.addons.clusterProxy
+  "managed-serviceaccount" .Values.managedCluster.addons.managedServiceAccount
+}}
+{{- range $name, $enabled := $addons }}
+{{- if $enabled }}
 ---
-{{- end }}
-{{- if .Values.managedCluster.addons.governancePolicyFramework }}
 apiVersion: addon.open-cluster-management.io/v1beta1
 kind: ManagedClusterAddOn
 metadata:
-  name: governance-policy-framework
-  namespace: {{ .Values.cluster.name }}
+  name: {{ $name }}
+  namespace: {{ $.Values.cluster.name }}
 spec:
   installNamespace: open-cluster-management-agent-addon
----
 {{- end }}
-{{- if .Values.managedCluster.addons.workManager }}
-apiVersion: addon.open-cluster-management.io/v1beta1
-kind: ManagedClusterAddOn
-metadata:
-  name: work-manager
-  namespace: {{ .Values.cluster.name }}
-spec:
-  installNamespace: open-cluster-management-agent-addon
----
-{{- end }}
-{{- if .Values.managedCluster.addons.clusterProxy }}
-apiVersion: addon.open-cluster-management.io/v1beta1
-kind: ManagedClusterAddOn
-metadata:
-  name: cluster-proxy
-  namespace: {{ .Values.cluster.name }}
-spec:
-  installNamespace: open-cluster-management-agent-addon
----
-{{- end }}
-{{- if .Values.managedCluster.addons.managedServiceAccount }}
-apiVersion: addon.open-cluster-management.io/v1beta1
-kind: ManagedClusterAddOn
-metadata:
-  name: managed-serviceaccount
-  namespace: {{ .Values.cluster.name }}
-spec:
-  installNamespace: open-cluster-management-agent-addon
----
-{{- end }}
-{{- if .Values.managedCluster.addons.applicationManager }}
-apiVersion: addon.open-cluster-management.io/v1beta1
-kind: ManagedClusterAddOn
-metadata:
-  name: application-manager
-  namespace: {{ .Values.cluster.name }}
-spec:
-  installNamespace: open-cluster-management-agent-addon
----
-{{- end }}
-{{- if .Values.managedCluster.addons.certPolicyController }}
-apiVersion: addon.open-cluster-management.io/v1beta1
-kind: ManagedClusterAddOn
-metadata:
-  name: cert-policy-controller
-  namespace: {{ .Values.cluster.name }}
-spec:
-  installNamespace: open-cluster-management-agent-addon
----
-{{- end }}
-{{- if .Values.managedCluster.addons.searchCollector }}
-apiVersion: addon.open-cluster-management.io/v1beta1
-kind: ManagedClusterAddOn
-metadata:
-  name: search-collector
-  namespace: {{ .Values.cluster.name }}
-spec:
-  installNamespace: open-cluster-management-agent-addon
 {{- end }}
 {{- end }}

@@ -9,3 +9,5 @@ managedCluster:
     mode: kubeconfig
     kubeconfig:
       secretName: lz5bn-kubeconfig
+  addons:
+    include: true

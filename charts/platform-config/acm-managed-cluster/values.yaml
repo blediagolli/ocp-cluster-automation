@@ -16,20 +16,14 @@ managedCluster:
       server: ""
       value: ""
 
-  klusterletAddonConfig:
+  addons:
     include: true
+    configPolicyController: true
+    governancePolicyFramework: true
+    workManager: true
     applicationManager: true
     certPolicyController: true
     policyController: true
     searchCollector: true
-
-  addons:
-    include: false
-    configPolicyController: true
-    governancePolicyFramework: true
-    workManager: true
     clusterProxy: false
     managedServiceAccount: false
-    applicationManager: false
-    certPolicyController: false
-    searchCollector: false
