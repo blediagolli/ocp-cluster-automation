@@ -10,11 +10,18 @@ spec:
   goTemplateOptions:
     - missingkey=error
   generators:
-    - git:
-        repoURL: git@github.com:blediagolli/gitops-for-organizations.git
-        revision: main
-        files:
-          - path: "clusters/**/teams/*.yaml"
+    - matrix:
+        generators:
+          - git:
+              repoURL: git@github.com:blediagolli/gitops-for-organizations.git
+              revision: main
+              files:
+                - path: "clusters/**/conf.yaml"
+          - git:
+              repoURL: git@github.com:blediagolli/gitops-for-organizations.git
+              revision: main
+              files:
+                - path: "{{.path.path}}/teams/*.yaml"
   template:
     metadata:
       name: 'onboarding-ns-{{.cluster.environment}}-{{.cluster.name}}-{{.team.name}}'

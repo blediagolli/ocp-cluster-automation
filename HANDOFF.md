@@ -136,7 +136,7 @@ platform-root (Application)
 - `deployOperators` must be top-level in conf.yaml, NOT inside the `operators` map — the chart iterates all keys in `operators` as Subscriptions
 - `managedCluster.deploy` is safe inside the map because the import chart only ranges over `managedCluster.labels`, not top-level keys
 - `missingkey=error` means you can't use `.foo` dot notation on keys that might not exist — use `index . "foo"` instead
-- Team files duplicate `cluster.*` (3 lines) because the git file generator reads one file — it can't merge with conf.yaml
+- Onboarding ApplicationSets use a matrix generator to pair `conf.yaml` with team files — team files only define `team.*`, no `cluster.*` duplication needed
 - `ignoreMissingValueFiles: true` on all ApplicationSets — files at any level are optional
 - Renaming an ApplicationSet resource causes ArgoCD to delete the old and create the new — Applications with unchanged names are adopted
 - `platform-root` is self-managing — changes to `applications/app-argocd.yaml` sync automatically, but if it breaks, manual `oc apply` is the recovery path

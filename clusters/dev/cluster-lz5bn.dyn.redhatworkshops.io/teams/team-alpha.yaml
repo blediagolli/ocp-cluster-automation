@@ -1,13 +1,6 @@
-# Team definition for onboarding. The git file generators in onboarding-gitops
-# and onboarding-namespaces ApplicationSets read this file. Each team gets its
-# own ArgoCD instance and namespaces sized by t-shirt definitions from
-# namespace-sizes.yaml. cluster.* must be duplicated here because the generator
-# reads a single file and cannot merge with conf.yaml.
-cluster:
-  name: cluster-lz5bn
-  environment: dev
-  address: "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/cluster-lz5bn"
-
+# Team definition for onboarding. The onboarding ApplicationSets use a matrix
+# generator that pairs this file with the cluster's conf.yaml, so cluster.*
+# values are inherited automatically — only team.* needs to be defined here.
 team:
   name: team-alpha
   admins: team-alpha-admins
