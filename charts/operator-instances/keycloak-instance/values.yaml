@@ -19,6 +19,8 @@ keycloak:
 realm:
   include: false
   name: sso
+  groups: []
+  users: []
   clients:
     quay:
       include: false

@@ -59,6 +59,34 @@ keycloak:
   instances: 1
 realm:
   include: true
+  groups:
+    - name: admins
+    - name: users
+  users:
+    - username: admin
+      email: admin@demo.redhat.com
+      firstName: Admin
+      lastName: Demo
+      realmRoles:
+        - admin
+      groups:
+        - admins
+      credentials:
+        - type: password
+          value: FqfbV37qhS3tp8Ud
+          temporary: false
+    - username: user1
+      email: user1@demo.redhat.com
+      firstName: User1
+      lastName: Demo
+      realmRoles:
+        - user
+      groups:
+        - users
+      credentials:
+        - type: password
+          value: JNNSxskZxNPg87xD
+          temporary: false
   clients:
     quay:
       include: true

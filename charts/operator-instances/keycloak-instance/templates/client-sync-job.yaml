@@ -19,10 +19,17 @@
 {{- end }}
 {{- end }}
 {{- $payload := dict "ifResourceExists" "OVERWRITE" "clients" $clientList }}
+{{- $userGroups := dict }}
+{{- range .Values.realm.users }}
+{{- if .groups }}
+{{- $_ := set $userGroups .username .groups }}
+{{- end }}
+{{- end }}
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: keycloak-client-sync-{{ $payload | toJson | sha256sum | trunc 8 }}
+  {{- $jobHash := dict "clients" $payload "userGroups" $userGroups }}
+  name: keycloak-realm-sync-{{ $jobHash | toJson | sha256sum | trunc 8 }}
   namespace: {{ .Values.keycloak.namespace }}
   annotations:
     argocd.argoproj.io/sync-wave: "10"
@@ -82,4 +89,28 @@ spec:
                 echo "Client sync failed"
                 exit 1
               fi
+
+              {{- if $userGroups }}
+              echo ""
+              echo "=== Syncing user-group memberships ==="
+              {{- range $username, $groups := $userGroups }}
+
+              USER_ID=$(curl -skf "$KC_URL/admin/realms/$REALM/users?username={{ $username }}&exact=true" \
+                -H "Authorization: Bearer $TOKEN" | python3 -c "import sys,json; u=json.load(sys.stdin); print(u[0]['id'] if u else '')")
+
+              if [ -n "$USER_ID" ]; then
+                {{- range $groups }}
+                GROUP_ID=$(curl -skf "$KC_URL/admin/realms/$REALM/groups?search={{ . }}&exact=true" \
+                  -H "Authorization: Bearer $TOKEN" | python3 -c "import sys,json; g=json.load(sys.stdin); print(g[0]['id'] if g else '')")
+                if [ -n "$GROUP_ID" ]; then
+                  curl -sk -o /dev/null -w "{{ $username }} -> {{ . }}: HTTP %{http_code}\n" -X PUT \
+                    "$KC_URL/admin/realms/$REALM/users/$USER_ID/groups/$GROUP_ID" \
+                    -H "Authorization: Bearer $TOKEN"
+                fi
+                {{- end }}
+              else
+                echo "User {{ $username }} not found, skipping"
+              fi
+              {{- end }}
+              {{- end }}
 {{- end }}

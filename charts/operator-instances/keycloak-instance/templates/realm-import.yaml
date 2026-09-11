@@ -10,6 +10,41 @@ spec:
     id: {{ .Values.realm.name }}
     realm: {{ .Values.realm.name }}
     enabled: true
+    {{- with .Values.realm.groups }}
+    groups:
+      {{- range . }}
+      - name: {{ .name }}
+      {{- end }}
+    {{- end }}
+    {{- with .Values.realm.users }}
+    users:
+      {{- range . }}
+      - username: {{ .username }}
+        enabled: true
+        {{- with .email }}
+        email: {{ . }}
+        emailVerified: true
+        {{- end }}
+        {{- with .firstName }}
+        firstName: {{ . }}
+        {{- end }}
+        {{- with .lastName }}
+        lastName: {{ . }}
+        {{- end }}
+        {{- with .credentials }}
+        credentials:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .realmRoles }}
+        realmRoles:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .groups }}
+        groups:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
     clients:
       {{- range $name, $client := .Values.realm.clients }}
       {{- if $client.include }}
