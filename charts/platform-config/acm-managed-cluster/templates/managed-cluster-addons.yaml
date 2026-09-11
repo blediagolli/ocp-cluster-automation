@@ -7,6 +7,8 @@ kind: ManagedClusterAddOn
 metadata:
   name: {{ $name }}
   namespace: {{ $.Values.cluster.name }}
+  annotations:
+    argocd.argoproj.io/sync-options: ServerSideApply=true
 {{- end }}
 {{- end }}
 {{- end }}
