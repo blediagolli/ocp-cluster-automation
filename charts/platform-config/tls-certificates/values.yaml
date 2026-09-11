@@ -1,0 +1,86 @@
+cluster:
+  baseDomain: ""
+
+provider: manual
+# manual          — raw tls.crt / tls.key in values (or base64-encoded)
+# sealed-secret   — Bitnami SealedSecret resources
+# external-secret — ExternalSecret resources (any backend)
+# vault           — ExternalSecret with HashiCorp Vault backend
+
+certificates:
+  api:
+    include: false
+    secretName: api-cert-tls
+    namespace: openshift-config
+    # dnsNames auto-derived from cluster.baseDomain when empty
+    dnsNames: []
+    # provider: ""  # override global provider for this cert
+
+  ingress:
+    include: false
+    secretName: ingress-cert-tls
+    namespace: openshift-ingress
+    dnsNames: []
+
+  ca:
+    include: false
+    configMapName: custom-ca-bundle
+    namespace: openshift-config
+
+# --- Provider-specific configuration ---
+
+manual:
+  # Provide cert data per certificate key (api, ingress, ca)
+  # api:
+  #   tls.crt: |
+  #     -----BEGIN CERTIFICATE-----
+  #     ...
+  #   tls.key: |
+  #     -----BEGIN PRIVATE KEY-----
+  #     ...
+  # ingress:
+  #   tls.crt: ""
+  #   tls.key: ""
+  # ca:
+  #   ca-bundle.crt: ""
+
+sealedSecret:
+  # Provide encrypted data per certificate key
+  # api:
+  #   tls.crt: "AgBy3i4OJSWK+..."
+  #   tls.key: "AgBy3i4OJSWK+..."
+  # ingress:
+  #   tls.crt: ""
+  #   tls.key: ""
+  # ca:
+  #   ca-bundle.crt: ""
+
+externalSecret:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: ""
+    kind: ClusterSecretStore
+  # Per-certificate remote keys
+  # api:
+  #   - secretKey: tls.crt
+  #     remoteRef:
+  #       key: openshift/api-cert
+  #       property: tls.crt
+  #   - secretKey: tls.key
+  #     remoteRef:
+  #       key: openshift/api-cert
+  #       property: tls.key
+
+vault:
+  secretStoreRef:
+    name: ""
+    kind: ClusterSecretStore
+  refreshInterval: 1h
+  # Per-certificate Vault paths
+  # api:
+  #   path: secret/data/openshift/api-cert
+  #   properties:
+  #     - secretKey: tls.crt
+  #       property: tls.crt
+  #     - secretKey: tls.key
+  #       property: tls.key

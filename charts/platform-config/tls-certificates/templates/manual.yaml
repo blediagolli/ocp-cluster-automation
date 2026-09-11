@@ -1,0 +1,51 @@
+{{- $provider := .Values.provider -}}
+{{- if .Values.certificates.api.include }}
+{{- $p := include "tls-certificates.provider" (list .Values.certificates.api.provider $provider) }}
+{{- if eq $p "manual" }}
+{{- $data := index .Values.manual "api" | default dict }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.certificates.api.secretName }}
+  namespace: {{ .Values.certificates.api.namespace }}
+type: kubernetes.io/tls
+stringData:
+  tls.crt: |
+    {{- index $data "tls.crt" | nindent 4 }}
+  tls.key: |
+    {{- index $data "tls.key" | nindent 4 }}
+---
+{{- end }}
+{{- end }}
+{{- if .Values.certificates.ingress.include }}
+{{- $p := include "tls-certificates.provider" (list .Values.certificates.ingress.provider $provider) }}
+{{- if eq $p "manual" }}
+{{- $data := index .Values.manual "ingress" | default dict }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.certificates.ingress.secretName }}
+  namespace: {{ .Values.certificates.ingress.namespace }}
+type: kubernetes.io/tls
+stringData:
+  tls.crt: |
+    {{- index $data "tls.crt" | nindent 4 }}
+  tls.key: |
+    {{- index $data "tls.key" | nindent 4 }}
+---
+{{- end }}
+{{- end }}
+{{- if .Values.certificates.ca.include }}
+{{- $p := include "tls-certificates.provider" (list .Values.certificates.ca.provider $provider) }}
+{{- if eq $p "manual" }}
+{{- $data := index .Values.manual "ca" | default dict }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.certificates.ca.configMapName }}
+  namespace: {{ .Values.certificates.ca.namespace }}
+data:
+  ca-bundle.crt: |
+    {{- index $data "ca-bundle.crt" | nindent 4 }}
+{{- end }}
+{{- end }}

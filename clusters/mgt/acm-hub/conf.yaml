@@ -12,6 +12,7 @@ platformCharts:
   - chart: project-request-template
   - chart: etcd-defrag
   - chart: etcd-backup
+  - chart: tls-certificates
 operatorInstanceCharts:
   - chart: openshift-gitops-instance
   - chart: acm-multiclusterhub
