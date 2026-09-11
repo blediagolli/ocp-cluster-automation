@@ -40,7 +40,7 @@ spec:
             - '/{{.path.path}}/conf.yaml'
             - '/{{.path.path}}/operator-deployment.yaml'
       destination:
-        server: '{{.cluster.address}}'
+        server: '{{ or .cluster.address (printf "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/%s" .cluster.name) }}'
       syncPolicy:
         automated:
           prune: true
