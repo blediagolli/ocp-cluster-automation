@@ -1,0 +1,30 @@
+{{- if .Values.realm.include }}
+apiVersion: k8s.keycloak.org/v2alpha1
+kind: KeycloakRealmImport
+metadata:
+  name: {{ .Values.realm.name }}
+  namespace: {{ .Values.keycloak.namespace }}
+spec:
+  keycloakCRName: {{ .Values.keycloak.name }}
+  realm:
+    id: {{ .Values.realm.name }}
+    realm: {{ .Values.realm.name }}
+    enabled: true
+    clients:
+      {{- range $name, $client := .Values.realm.clients }}
+      {{- if $client.include }}
+      - clientId: {{ $client.clientId }}
+        enabled: true
+        protocol: openid-connect
+        clientAuthenticatorType: client-secret
+        secret: {{ $client.clientSecret }}
+        publicClient: {{ $client.publicClient }}
+        standardFlowEnabled: {{ $client.standardFlowEnabled }}
+        directAccessGrantsEnabled: {{ $client.directAccessGrantsEnabled }}
+        redirectUris:
+          {{- toYaml $client.redirectUris | nindent 10 }}
+        webOrigins:
+          {{- toYaml $client.webOrigins | nindent 10 }}
+      {{- end }}
+      {{- end }}
+{{- end }}

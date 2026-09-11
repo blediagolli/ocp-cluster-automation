@@ -1,5 +1,5 @@
 {{- if and .Values.central.include .Values.oidc.include }}
-{{- $issuer := .Values.oidc.issuer | default (printf "https://sso.%s/realms/%s" .Values.cluster.baseDomain .Values.oidc.keycloakClient.realm) }}
+{{- $issuer := .Values.oidc.issuer | default (printf "https://sso.%s/realms/%s" .Values.cluster.baseDomain .Values.oidc.realm) }}
 {{- $uiEndpoint := printf "central-%s.%s" .Values.central.namespace .Values.cluster.baseDomain }}
 apiVersion: v1
 kind: Secret

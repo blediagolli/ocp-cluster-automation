@@ -24,6 +24,9 @@ operators:
   openshift-logging:
     include: true
     channel: stable-6.6
+  keycloak:
+    include: true
+    channel: stable-v26
   quay:
     include: true
     channel: stable-3.17

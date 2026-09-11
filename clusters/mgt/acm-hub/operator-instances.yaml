@@ -29,8 +29,6 @@ initBundle:
 oidc:
   include: true
   clientSecret: "c83d33ea01afb1df37482cfd96ea7c81"
-  keycloakClient:
-    include: true
 centralConsoleLink:
   include: true
 securedCluster:
@@ -55,5 +53,26 @@ quayKeycloak:
   oidcServer: "https://sso.apps.cluster-c8444.dyn.redhatworkshops.io/realms/sso/"
   clientId: "quay"
   clientSecret: "5QU2ntb5V1CSU6WaZx9ZoaEb0JpxdMqi"
+keycloak:
+  include: true
+  createNamespace: true
+  instances: 1
+realm:
+  include: true
+  clients:
+    quay:
+      include: true
+      clientSecret: "5QU2ntb5V1CSU6WaZx9ZoaEb0JpxdMqi"
+      redirectUris:
+        - "https://registry-quay-quay-enterprise.apps.cluster-c8444.dyn.redhatworkshops.io/oauth2/callback"
+      webOrigins:
+        - "https://registry-quay-quay-enterprise.apps.cluster-c8444.dyn.redhatworkshops.io"
+    stackrox:
+      include: true
+      clientSecret: "c83d33ea01afb1df37482cfd96ea7c81"
+      redirectUris:
+        - "https://central-stackrox.apps.cluster-c8444.dyn.redhatworkshops.io/sso/providers/oidc/callback"
+      webOrigins:
+        - "https://central-stackrox.apps.cluster-c8444.dyn.redhatworkshops.io"
 aap:
   include: true

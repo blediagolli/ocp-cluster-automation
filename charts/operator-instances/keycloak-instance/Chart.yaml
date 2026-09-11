@@ -1,0 +1,4 @@
+apiVersion: v2
+name: keycloak-instance
+description: Keycloak instance and realm configuration
+version: 0.1.0

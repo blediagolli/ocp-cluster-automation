@@ -1,0 +1,6 @@
+{{- if .Values.keycloak.createNamespace }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.keycloak.namespace }}
+{{- end }}

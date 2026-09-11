@@ -79,6 +79,7 @@ oidc:
   clientSecret: ""
   # "fragment", "post", or "query" — must match Keycloak client settings
   mode: post
+  realm: sso
   # Map Keycloak groups/roles to ACS roles
   groupMappings:
     - key: groups
@@ -87,12 +88,6 @@ oidc:
     - key: groups
       value: users
       role: Analyst
-  # Create the Keycloak client declaratively via KeycloakRealmImport
-  keycloakClient:
-    include: false
-    realmImportName: ""
-    realm: sso
-    namespace: keycloak
 
 centralConsoleLink:
   include: false

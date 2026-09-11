@@ -19,6 +19,7 @@ operatorInstanceCharts:
   - chart: aap-instance
   - chart: acs-central
   - chart: acm-observability
+  - chart: keycloak-instance
   - chart: quay-registry
 deployOperators: true
 deployOverlay: true

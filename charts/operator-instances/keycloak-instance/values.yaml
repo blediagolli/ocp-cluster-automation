@@ -1,0 +1,40 @@
+keycloak:
+  include: false
+  createNamespace: false
+  name: keycloak
+  namespace: keycloak
+  instances: 1
+  hostname: ""
+  db:
+    vendor: postgres
+    host: ""
+    database: keycloak
+    usernameSecret:
+      name: ""
+      key: username
+    passwordSecret:
+      name: ""
+      key: password
+
+realm:
+  include: false
+  name: sso
+  clients:
+    quay:
+      include: false
+      clientId: quay
+      clientSecret: ""
+      publicClient: false
+      standardFlowEnabled: true
+      directAccessGrantsEnabled: false
+      redirectUris: []
+      webOrigins: []
+    stackrox:
+      include: false
+      clientId: stackrox
+      clientSecret: ""
+      publicClient: false
+      standardFlowEnabled: true
+      directAccessGrantsEnabled: false
+      redirectUris: []
+      webOrigins: []

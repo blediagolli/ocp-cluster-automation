@@ -311,3 +311,12 @@ operators:
     sourceNamespace: openshift-marketplace
     skipNamespace: true
     skipOperatorGroup: true
+  keycloak:
+    include: false
+    namespace: openshift-operators
+    package: rhbk-operator
+    channel: stable-v26
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+    skipNamespace: true
+    skipOperatorGroup: true
