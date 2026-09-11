@@ -13,7 +13,7 @@ platformCharts:
   - chart: etcd-defrag
   - chart: etcd-backup
   - chart: tls-certificates
-  - chart: openshift-apiserver-audit
+  - chart: openshift-apiserver
   - chart: openshift-ingress
 operatorInstanceCharts:
   - chart: openshift-gitops-instance

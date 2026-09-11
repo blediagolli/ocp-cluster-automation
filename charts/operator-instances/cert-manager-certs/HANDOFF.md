@@ -14,5 +14,5 @@ Creates cert-manager ClusterIssuers (self-signed and CA) and Certificate resourc
 - **Missing commonName** — Leaf certificates don't set `commonName`
 - **Hardcoded secret names** — `api-cert-tls` and `ingress-cert-tls` are hardcoded in templates; should be parameterized
 - **No ACME/Let's Encrypt issuer** — Only self-signed and internal CA; add ACME ClusterIssuer option for production use
-- **No APIServer/IngressController patching** — After creating certs, the API server and ingress controller need to be configured to use them (via openshift-apiserver-audit and openshift-ingress charts)
+- **No APIServer/IngressController patching** — After creating certs, the API server and ingress controller need to be configured to use them (via openshift-apiserver and openshift-ingress charts)
 - **Needs testing** — Deploy with cert-manager operator installed

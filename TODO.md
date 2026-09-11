@@ -67,7 +67,7 @@
 | image-mirror-config      | Replace example mirror URLs with real registry              |
 | image-pruner             | Ready to enable — good baseline hygiene                     |
 | machine-health-checks    | Ready to enable and test                                    |
-| openshift-apiserver-audit| Needs TLS secrets for named certificates                    |
+| openshift-apiserver      | Needs TLS secrets for named certificates                    |
 | openshift-build          | Useful for air-gapped/proxied environments                  |
 | openshift-console        | Ready to enable with branding/notification values           |
 | openshift-dns            | Minimal — missing upstream forwarders                       |

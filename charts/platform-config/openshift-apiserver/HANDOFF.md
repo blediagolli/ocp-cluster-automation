@@ -1,4 +1,4 @@
-# openshift-apiserver-audit — Handoff
+# openshift-apiserver — Handoff
 
 **Date:** 2026-09-04
 
