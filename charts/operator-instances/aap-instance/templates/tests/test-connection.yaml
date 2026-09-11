@@ -1,0 +1,38 @@
+{{- if .Values.aap.include }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  containers:
+    - name: test
+      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "--- Checking AAP CR ---"
+          TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+          APISERVER=https://kubernetes.default.svc
+          CA=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+
+          STATUS=$(curl -s --cacert $CA -H "Authorization: Bearer $TOKEN" \
+            "$APISERVER/apis/aap.ansible.com/v1alpha1/namespaces/{{ .Values.aap.namespace }}/ansibleautomationplatforms/{{ .Values.aap.name }}" \
+            | grep -o '"phase":"[^"]*"' | head -1)
+          echo "  AAP status: $STATUS"
+
+          {{- if .Values.aap.controller.enabled }}
+          echo "--- Checking controller pods ---"
+          PODS=$(curl -s --cacert $CA -H "Authorization: Bearer $TOKEN" \
+            "$APISERVER/api/v1/namespaces/{{ .Values.aap.namespace }}/pods?labelSelector=app.kubernetes.io/component%3Dautomation-controller" \
+            | grep -c '"phase":"Running"' || true)
+          echo "  Controller pods running: $PODS"
+          if [ "$PODS" -lt 1 ]; then echo "FAIL: No controller pods running"; exit 1; fi
+          {{- end }}
+
+          echo "PASS: AAP instance is running"
+{{- end }}

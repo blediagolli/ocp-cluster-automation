@@ -1,0 +1,31 @@
+{{- if .Values.etcdDefrag.include }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  namespace: {{ .Values.etcdDefrag.namespace }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  serviceAccountName: etcd-defrag
+  containers:
+    - name: test
+      image: {{ .Values.etcdDefrag.image }}
+      command:
+        - /bin/bash
+        - -c
+        - |
+          set -euo pipefail
+          echo "--- Checking CronJob exists ---"
+          oc get cronjob etcd-defrag -n {{ .Values.etcdDefrag.namespace }}
+          echo "--- Checking ServiceAccount exists ---"
+          oc get serviceaccount etcd-defrag -n {{ .Values.etcdDefrag.namespace }}
+          echo "--- Checking ConfigMap exists ---"
+          oc get configmap etcd-defrag-script -n {{ .Values.etcdDefrag.namespace }}
+          {{- if .Values.etcdDefrag.alert.include }}
+          echo "--- Checking PrometheusRule exists ---"
+          oc get prometheusrule etcd-defrag-alerts -n {{ .Values.etcdDefrag.namespace }}
+          {{- end }}
+          echo "PASSED"
+{{- end }}

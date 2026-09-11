@@ -27,3 +27,11 @@ Each catalog is configurable with image repository, tag, poll interval, and publ
 - Update `imageTag` defaults to `v4.22` or make dynamic per-cluster
 - Configure `cluster.registry` for disconnected environments
 - Enable when using mirrored operator catalogs
+
+## Testing
+
+**Helm test** (`helm test <release>`): Checks CatalogSource resources exist and are ready. ArgoCD does not run Helm test hooks — use for local validation only.
+
+**E2E script** (`tests/e2e-test.sh`):
+- Validates CatalogSource pods are running in openshift-marketplace
+- Checks package manifests are available from each enabled catalog

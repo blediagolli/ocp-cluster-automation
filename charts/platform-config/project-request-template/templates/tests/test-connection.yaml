@@ -1,0 +1,26 @@
+{{- if .Values.template.include }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  namespace: {{ .Values.template.namespace }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  containers:
+    - name: test
+      image: registry.redhat.io/openshift4/ose-cli:latest
+      command:
+        - /bin/bash
+        - -c
+        - |
+          set -euo pipefail
+          echo "--- Checking Template exists ---"
+          oc get template {{ .Values.template.name }} -n {{ .Values.template.namespace }}
+          {{- if .Values.projectConfig.include }}
+          echo "--- Checking Project config ---"
+          oc get project.config.openshift.io cluster -o jsonpath='{.spec.projectRequestTemplate.name}' | grep -q {{ .Values.template.name }}
+          {{- end }}
+          echo "PASSED"
+{{- end }}

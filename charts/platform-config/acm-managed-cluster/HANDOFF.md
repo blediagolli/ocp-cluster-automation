@@ -23,3 +23,12 @@ Registers a managed cluster with ACM hub. Creates: ManagedCluster, KlusterletAdd
 ## Gotchas
 - Do NOT add `name` or `environment` under `managedCluster` in values — templates use `cluster.name` and `cluster.environment` from conf.yaml
 - `managedCluster` config belongs in `platform-config.yaml`, not `conf.yaml`
+
+## Testing
+
+**Helm test** (`helm test <release>`): Checks ManagedCluster is joined and ManagedClusterAddOns exist. ArgoCD does not run Helm test hooks — use for local validation only.
+
+**E2E script** (`tests/e2e-test.sh <cluster-name>`):
+- Validates ManagedCluster joined and available conditions
+- Checks per-addon status (Available=True)
+- Verifies ArgoCD cluster secret exists in openshift-gitops

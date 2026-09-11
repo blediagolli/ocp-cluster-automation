@@ -41,3 +41,12 @@
 - Add PrometheusRule alerts (EtcdBackupJobFailed, EtcdBackupNotRunRecently) — the etcd-defrag chart has these as a reference pattern
 - Add `etcdctl snapshot status` verification after upload for integrity checking
 - Test switching back to PVC mode (just set `storage.type: pvc` in conf.yaml)
+
+## Testing
+
+**Helm test** (`helm test <release>`): Checks CronJob, ServiceAccount, and ConfigMap exist in openshift-etcd. ArgoCD does not run Helm test hooks — use for local validation only.
+
+**E2E script** (`tests/e2e-test.sh`):
+- Validates CronJob schedule and RBAC (ServiceAccount, ClusterRoleBinding)
+- Checks last Job completion status
+- Verifies storage binding (PVC or OBC depending on mode)

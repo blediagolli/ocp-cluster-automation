@@ -23,3 +23,12 @@ Deploys the ACS SecuredCluster CR with sensor, collector, admission control, and
 - `centralEndpoint` is auto-derived from hub's `cluster.baseDomain` — managed clusters must override it in operator-instances.yaml to point to the hub's Central route
 - `secretMode: "generate"` requires `central-auth` secret — distributed automatically via ACM Policy when `initBundle.distributeAuth: true` is set on the hub
 - Do NOT use `secretMode: "preExisting"` with empty cert values — creates empty secrets that block init-bundle
+
+## Testing
+
+**Helm test** (`helm test <release>`): Checks SecuredCluster CR conditions (Deployed, Initialized). ArgoCD does not run Helm test hooks — use for local validation only.
+
+**E2E script** (`tests/e2e-test.sh [namespace]`): defaults to `stackrox`
+- Validates sensor, collector, and admission-control pods running
+- Checks SecuredCluster CR status conditions
+- Verifies connection to Central endpoint

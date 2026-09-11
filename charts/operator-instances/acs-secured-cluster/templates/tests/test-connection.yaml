@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  serviceAccountName: default
+  containers:
+    - name: test
+      image: registry.redhat.io/openshift4/ose-cli:latest
+      command:
+        - /bin/bash
+        - -c
+        - |
+          FAILED=0
+          {{- if .Values.securedCluster.include }}
+          echo "--- Checking SecuredCluster CR ---"
+          CONDITIONS=$(oc get securedcluster {{ .Values.securedCluster.name }} -n {{ .Values.securedCluster.namespace }} -o jsonpath='{.status.conditions[?(@.type=="Deployed")].status}' 2>/dev/null)
+          if [ "$CONDITIONS" = "True" ]; then
+            echo "  PASS: SecuredCluster Deployed=True"
+          else
+            echo "  FAIL: SecuredCluster Deployed=$CONDITIONS (expected True)"
+            FAILED=1
+          fi
+          echo "--- Checking sensor pod ---"
+          NOT_READY=$(oc get pods -n {{ .Values.securedCluster.namespace }} -l app=sensor --no-headers 2>/dev/null | grep -cv "Running" || true)
+          if [ "$NOT_READY" -eq 0 ]; then
+            echo "  PASS: Sensor pods running"
+          else
+            echo "  FAIL: $NOT_READY sensor pods not running"
+            FAILED=1
+          fi
+          {{- end }}
+          exit $FAILED

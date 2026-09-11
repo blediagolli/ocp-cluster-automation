@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  serviceAccountName: default
+  containers:
+    - name: test
+      image: registry.redhat.io/openshift4/ose-cli:latest
+      command:
+        - /bin/bash
+        - -c
+        - |
+          FAILED=0
+          {{- if .Values.central.include }}
+          echo "--- Checking Central CR ---"
+          CONDITIONS=$(oc get central {{ .Values.central.name }} -n {{ .Values.central.namespace }} -o jsonpath='{.status.conditions[?(@.type=="Deployed")].status}' 2>/dev/null)
+          if [ "$CONDITIONS" = "True" ]; then
+            echo "  PASS: Central {{ .Values.central.name }} Deployed=True"
+          else
+            echo "  FAIL: Central {{ .Values.central.name }} Deployed=$CONDITIONS (expected True)"
+            FAILED=1
+          fi
+          echo "--- Checking Central pods ---"
+          NOT_READY=$(oc get pods -n {{ .Values.central.namespace }} -l app=central --no-headers 2>/dev/null | grep -cv "Running" || true)
+          if [ "$NOT_READY" -eq 0 ]; then
+            echo "  PASS: Central pods running"
+          else
+            echo "  FAIL: $NOT_READY Central pods not running"
+            FAILED=1
+          fi
+          {{- end }}
+          exit $FAILED

@@ -23,3 +23,12 @@ Also manages `projectConfig` (sets the custom project request template on the cl
 - **No resource quota for services/configmaps/secrets** — only CPU, memory, pods, PVCs, and storage are quotaed
 - **No annotation-based overrides** — no way for project owners to request non-default quotas via annotations
 - Generally production-ready as-is; test with a project creation to verify the template renders correctly
+
+## Testing
+
+**Helm test** (`helm test <release>`): Checks Template exists in openshift-config and project config is applied. ArgoCD does not run Helm test hooks — use for local validation only.
+
+**E2E script** (`tests/e2e-test.sh`):
+- Validates Template resource exists in openshift-config
+- Creates a test project and verifies NetworkPolicy, ResourceQuota, LimitRange are injected
+- Cleans up the test project on exit

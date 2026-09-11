@@ -112,6 +112,7 @@ operatorInstanceCharts: [] # or list of {chart: <name>}
 deployOperators: false   # or true
 deployOverlay: false     # or true
 deployImport: false      # or true
+deployProvision: false   # or true
 teams: []                # or list of {team: <name>}
 ```
 
@@ -123,7 +124,7 @@ teams: []                # or list of {team: <name>}
 | cluster-operator-instances | `conf.yaml` + `operatorInstanceCharts` | operator-instances |
 | cluster-config-overlays | `conf.yaml` + `deployOverlay` | config-overlay |
 | cluster-import | `conf.yaml` + `deployImport` | import |
-| cluster-provisioning | `provision.yaml` | provisioning |
+| cluster-provisioning | `conf.yaml` + `deployProvision` | provisioning |
 | onboarding-gitops | `conf.yaml` + `teams` | onboarding-gitops |
 | onboarding-namespaces | `conf.yaml` + `teams` | onboarding-namespaces |
 
@@ -198,6 +199,31 @@ chart defaults < teams/<team>.yaml < env conf < env teams override < cluster con
 - `platform-root` is self-managing — changes to `applications/app-argocd.yaml` sync automatically, but if it breaks, manual `oc apply` is the recovery path
 - ArgoCD hook resources (sync-wave Jobs) don't get pruned automatically — delete manually if they become stale after restructuring
 - The ArgoCD CR has many operator-injected defaults (grafana, sso, monitoring, etc.) — the `openshift-gitops-instance` chart includes all of them to stay in sync
+
+## E2E Testing
+
+Every active chart has both a Helm test template (`templates/tests/test-connection.yaml`) and a shell script (`tests/e2e-test.sh`). Helm tests validate basic resource existence; shell scripts do deeper e2e validation.
+
+**Note:** ArgoCD does not run Helm test hooks — use `helm test` for local validation only. Shell scripts are the primary e2e mechanism.
+
+| Chart | Shell script usage |
+|---|---|
+| operator-deployment | `./tests/e2e-test.sh` |
+| openshift-gitops-instance | `./tests/e2e-test.sh` |
+| acm-multiclusterhub | `./tests/e2e-test.sh` |
+| acs-central | `./tests/e2e-test.sh [namespace]` |
+| acs-secured-cluster | `./tests/e2e-test.sh [namespace]` |
+| aap-instance | `./tests/e2e-test.sh [namespace]` |
+| acm-observability | `./tests/e2e-test.sh` |
+| quay-registry | `./tests/e2e-bridge-test.sh <quay-host> <token>` |
+| acm-managed-cluster | `./tests/e2e-test.sh <cluster-name>` |
+| user-workload-monitoring | `./tests/e2e-test.sh` |
+| etcd-backup | `./tests/e2e-test.sh` |
+| etcd-defrag | `./tests/e2e-test.sh` |
+| project-request-template | `./tests/e2e-test.sh` |
+| openshift-marketplace | `./tests/e2e-test.sh` |
+| application-gitops | `./tests/e2e-test.sh <team-name>` |
+| namespace-config | `./tests/e2e-test.sh <team-name> <environment>` |
 
 ## Outstanding
 - No NetworkPolicy template in namespace-config yet

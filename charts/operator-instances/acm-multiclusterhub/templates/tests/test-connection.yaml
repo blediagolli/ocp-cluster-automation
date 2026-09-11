@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  serviceAccountName: default
+  containers:
+    - name: test
+      image: registry.redhat.io/openshift4/ose-cli:latest
+      command:
+        - /bin/bash
+        - -c
+        - |
+          FAILED=0
+          {{- if .Values.multiClusterHub.include }}
+          echo "--- Checking MultiClusterHub ---"
+          PHASE=$(oc get multiclusterhub {{ .Values.multiClusterHub.name }} -n {{ .Values.multiClusterHub.namespace }} -o jsonpath='{.status.phase}' 2>/dev/null)
+          if [ "$PHASE" = "Running" ]; then
+            echo "  PASS: MCH {{ .Values.multiClusterHub.name }} phase=Running"
+          else
+            echo "  FAIL: MCH {{ .Values.multiClusterHub.name }} phase=$PHASE (expected Running)"
+            FAILED=1
+          fi
+          {{- end }}
+          {{- if .Values.gitopsCluster.include }}
+          echo "--- Checking GitOpsCluster ---"
+          if oc get gitopscluster {{ .Values.gitopsCluster.name }} -n {{ .Values.gitopsCluster.argoNamespace }} &>/dev/null; then
+            echo "  PASS: GitOpsCluster {{ .Values.gitopsCluster.name }} exists"
+          else
+            echo "  FAIL: GitOpsCluster {{ .Values.gitopsCluster.name }} not found"
+            FAILED=1
+          fi
+          {{- end }}
+          exit $FAILED

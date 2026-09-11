@@ -31,3 +31,12 @@ Deploys ACM MultiClusterObservability with Thanos-based multi-cluster metrics ag
 
 - S3 credentials still in plaintext for manual (non-OBC) mode — use external-secrets if needed
 - Verify metrics are flowing from managed clusters via the metrics-collector
+
+## Testing
+
+**Helm test** (`helm test <release>`): Checks MCO CR exists, Thanos pods running, and storage secret present. ArgoCD does not run Helm test hooks — use for local validation only.
+
+**E2E script** (`tests/e2e-test.sh`):
+- Validates all Thanos components (query, receive, compact, store, rule)
+- Checks OBC is bound and Grafana route is accessible
+- Verifies observability addon status on managed clusters

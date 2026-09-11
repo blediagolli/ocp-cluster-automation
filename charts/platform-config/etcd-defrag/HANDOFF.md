@@ -19,3 +19,12 @@ CronJob that checks etcd fragmentation on each cluster member and defragments th
 - `hostNetwork: true` is required — `openshift-etcd` has a default-deny NetworkPolicy
 - Must unset `ETCDCTL_ENDPOINTS` env var in all etcdctl calls for etcd 3.6+ compatibility
 - `snapshot save` requires exactly one endpoint (split with `cut -d',' -f1`)
+
+## Testing
+
+**Helm test** (`helm test <release>`): Checks CronJob exists in openshift-etcd. ArgoCD does not run Helm test hooks — use for local validation only.
+
+**E2E script** (`tests/e2e-test.sh`):
+- Validates CronJob schedule matches configured value
+- Checks last Job completion status
+- Verifies PrometheusRule alert is configured if `alert.include` is true

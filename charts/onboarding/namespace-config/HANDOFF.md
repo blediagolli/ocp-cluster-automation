@@ -23,3 +23,12 @@ Provisions team namespaces with t-shirt sized ResourceQuotas and LimitRanges. Cr
 ## Gotchas
 - PreSync cleanup Job deletes quotas/limits named `default`, `small`, `medium`, `large` — prevents conflicts when resizing
 - `managed-by` label on namespaces grants the team's ArgoCD instance permission to deploy into them
+
+## Testing
+
+**Helm test** (`helm test <release>`): Checks namespaces exist with correct ResourceQuota and LimitRange. ArgoCD does not run Helm test hooks — use for local validation only.
+
+**E2E script** (`tests/e2e-test.sh <team-name> <environment>`):
+- Validates namespaces created with `managed-by` label
+- Checks ResourceQuota matches the configured size tier
+- Verifies LimitRange is applied with correct defaults

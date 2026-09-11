@@ -1,0 +1,43 @@
+{{- if .Values.multiClusterObservability.include }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  containers:
+    - name: test
+      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+          APISERVER=https://kubernetes.default.svc
+          CA=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          NS="{{ .Values.multiClusterObservability.namespace }}"
+
+          echo "--- Checking MultiClusterObservability CR ---"
+          MCO=$(curl -s --cacert $CA -H "Authorization: Bearer $TOKEN" \
+            "$APISERVER/apis/observability.open-cluster-management.io/v1beta2/multiclusterobservabilities/{{ .Values.multiClusterObservability.name }}")
+          PHASE=$(echo "$MCO" | grep -o '"phase":"[^"]*"' | head -1)
+          echo "  MCO status: $PHASE"
+
+          echo "--- Checking Thanos pods ---"
+          PODS=$(curl -s --cacert $CA -H "Authorization: Bearer $TOKEN" \
+            "$APISERVER/api/v1/namespaces/$NS/pods" \
+            | grep -c '"phase":"Running"' || true)
+          echo "  Running pods in $NS: $PODS"
+          if [ "$PODS" -lt 5 ]; then echo "FAIL: Expected at least 5 pods"; exit 1; fi
+
+          echo "--- Checking object storage secret ---"
+          SECRET=$(curl -s -o /dev/null -w '%{http_code}' --cacert $CA -H "Authorization: Bearer $TOKEN" \
+            "$APISERVER/api/v1/namespaces/$NS/secrets/{{ .Values.objectStorage.secretName }}")
+          echo "  Object storage secret: HTTP $SECRET"
+          if [ "$SECRET" != "200" ]; then echo "FAIL: Object storage secret not found"; exit 1; fi
+
+          echo "PASS: ACM Observability is running"
+{{- end }}

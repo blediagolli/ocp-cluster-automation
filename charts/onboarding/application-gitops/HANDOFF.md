@@ -22,3 +22,13 @@ Provisions a team's ArgoCD instance on a target cluster. Creates:
 
 ## Values precedence
 `teams/<team>.yaml` < `env/<env>/conf.yaml` < `env/<env>/teams/<team>.yaml` < `clusters/.../conf.yaml` < `clusters/.../teams/<team>.yaml`
+
+## Testing
+
+**Helm test** (`helm test <release>`): Checks ArgoCD instance and AppProject exist in team's gitops namespace. ArgoCD does not run Helm test hooks — use for local validation only.
+
+**E2E script** (`tests/e2e-test.sh <team-name>`):
+- Validates `<team>-gitops` namespace exists
+- Checks ArgoCD CR is Available with running pods
+- Verifies AppProject has correct source repos and namespace destinations
+- Confirms RoleBinding grants admin to team admins group

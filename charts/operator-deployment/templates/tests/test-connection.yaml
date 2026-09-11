@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  serviceAccountName: default
+  containers:
+    - name: test
+      image: registry.redhat.io/openshift4/ose-cli:latest
+      command:
+        - /bin/bash
+        - -c
+        - |
+          FAILED=0
+          {{- range $name, $operator := .Values.operators }}
+          {{- if $operator.include }}
+          echo "--- Checking operator: {{ $name }} ---"
+          SUB=$(oc get subscription {{ $operator.package }} -n {{ $operator.namespace }} -o jsonpath='{.status.currentCSV}' 2>/dev/null)
+          if [ -z "$SUB" ]; then
+            echo "  FAIL: Subscription {{ $operator.package }} not found or has no currentCSV"
+            FAILED=1
+          else
+            PHASE=$(oc get csv "$SUB" -n {{ $operator.namespace }} -o jsonpath='{.status.phase}' 2>/dev/null)
+            if [ "$PHASE" = "Succeeded" ]; then
+              echo "  PASS: $SUB phase=$PHASE"
+            else
+              echo "  FAIL: $SUB phase=$PHASE (expected Succeeded)"
+              FAILED=1
+            fi
+          fi
+          {{- end }}
+          {{- end }}
+          exit $FAILED

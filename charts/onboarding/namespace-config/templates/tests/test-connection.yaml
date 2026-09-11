@@ -1,0 +1,27 @@
+{{- $namespaces := index .Values.team.namespaces .Values.cluster.environment | default list }}
+{{- if $namespaces }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  namespace: {{ (index $namespaces 0).name }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  containers:
+    - name: test
+      image: registry.redhat.io/openshift4/ose-cli:latest
+      command:
+        - /bin/bash
+        - -c
+        - |
+          set -euo pipefail
+          {{- range $namespaces }}
+          echo "--- Checking namespace {{ .name }} ---"
+          oc get namespace {{ .name }}
+          oc get resourcequota team-quota -n {{ .name }}
+          oc get limitrange team-limits -n {{ .name }}
+          {{- end }}
+          echo "PASSED"
+{{- end }}

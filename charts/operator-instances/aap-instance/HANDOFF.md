@@ -15,3 +15,12 @@ Deploys an `AnsibleAutomationPlatform` CR to install AAP components (Controller,
 - **No storage config** — Controller and Hub need persistent storage for database; not exposed
 - **No admin secret** — Initial admin password secret not templated
 - **Needs testing** — Deploy on a cluster with the AAP operator installed to validate the CR is accepted
+
+## Testing
+
+**Helm test** (`helm test <release>`): Checks AAP CR exists and controller deployment is available. ArgoCD does not run Helm test hooks — use for local validation only.
+
+**E2E script** (`tests/e2e-test.sh [namespace]`): defaults to `ansible-automation-platform`
+- Validates AAP CR phase and controller pods running
+- Checks controller route is accessible
+- Reports EDA/Hub status if enabled

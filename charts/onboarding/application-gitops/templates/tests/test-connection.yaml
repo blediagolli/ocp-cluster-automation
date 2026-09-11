@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  namespace: {{ .Values.team.name }}-gitops
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  containers:
+    - name: test
+      image: registry.redhat.io/openshift4/ose-cli:latest
+      command:
+        - /bin/bash
+        - -c
+        - |
+          set -euo pipefail
+          echo "--- Checking ArgoCD instance ---"
+          oc get argocd {{ .Values.team.name }} -n {{ .Values.team.name }}-gitops
+          echo "--- Checking AppProject ---"
+          oc get appproject {{ .Values.team.name }} -n {{ .Values.team.name }}-gitops
+          echo "--- Checking RoleBinding ---"
+          oc get rolebinding {{ .Values.team.name }}-admin -n {{ .Values.team.name }}-gitops
+          echo "PASSED"

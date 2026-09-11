@@ -18,3 +18,12 @@ Deploys the ACM MultiClusterHub CR with configurable component toggles (console,
 ## Gotchas
 - The `overrides.components` list must match what the MCH operator expects — invalid component names silently ignored
 - `disableHubSelfManagement: true` prevents the hub from managing itself — only set if using a separate management cluster
+
+## Testing
+
+**Helm test** (`helm test <release>`): Checks MCH CR status is Running. ArgoCD does not run Helm test hooks — use for local validation only.
+
+**E2E script** (`tests/e2e-test.sh`):
+- Validates MCH phase is Running and all components report healthy
+- Checks assisted-service, hive, and GitOpsCluster if enabled
+- Reports per-component status with pass/fail summary

@@ -20,3 +20,12 @@ Deploys ACS Central Services (Central, Scanner, ScannerV4, DB) with route/LB/nod
 - `centralUrl` is auto-derived from `cluster.baseDomain` — override in operator-instances.yaml only if the route hostname differs
 - `distributeAuth` uses ACM hub-templates to read `central-htpasswd` secret — if the secret name changes, update the Policy template
 - `targetEnvironments` controls which clusters receive the credential (default: dev, prod)
+
+## Testing
+
+**Helm test** (`helm test <release>`): Checks Central CR has Deployed=True condition. ArgoCD does not run Helm test hooks — use for local validation only.
+
+**E2E script** (`tests/e2e-test.sh [namespace]`): defaults to `stackrox`
+- Validates Central CR status, pods running, and route accessible via `/v1/ping`
+- Checks init-bundle job completed and scanner pods running
+- Reports 5-step pass/fail summary
