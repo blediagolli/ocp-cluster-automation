@@ -2,11 +2,11 @@
 apiVersion: agent.open-cluster-management.io/v1
 kind: KlusterletAddonConfig
 metadata:
-  name: {{ .Values.managedCluster.name }}
-  namespace: {{ .Values.managedCluster.name }}
+  name: {{ .Values.cluster.name }}
+  namespace: {{ .Values.cluster.name }}
 spec:
-  clusterName: {{ .Values.managedCluster.name }}
-  clusterNamespace: {{ .Values.managedCluster.name }}
+  clusterName: {{ .Values.cluster.name }}
+  clusterNamespace: {{ .Values.cluster.name }}
   applicationManager:
     enabled: {{ .Values.managedCluster.klusterletAddonConfig.applicationManager }}
   certPolicyController:

@@ -4,8 +4,6 @@
 # Precedence: chart defaults < env/<env>/platform-config.yaml < this file.
 managedCluster:
   include: true
-  name: "cluster-lz5bn"
-  environment: dev
   autoImport:
     include: true
     mode: kubeconfig

@@ -2,10 +2,10 @@
 apiVersion: cluster.open-cluster-management.io/v1
 kind: ManagedCluster
 metadata:
-  name: {{ .Values.managedCluster.name }}
+  name: {{ .Values.cluster.name }}
   labels:
-    name: {{ .Values.managedCluster.name }}
-    environment: {{ .Values.managedCluster.environment }}
+    name: {{ .Values.cluster.name }}
+    environment: {{ .Values.cluster.environment }}
     vendor: {{ .Values.managedCluster.vendor }}
     cloud: {{ .Values.managedCluster.cloudProvider | default "auto-detect" }}
     cluster.open-cluster-management.io/clusterset: {{ .Values.managedCluster.clusterSet }}

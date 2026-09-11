@@ -1,7 +1,5 @@
 managedCluster:
   include: false
-  name: ""
-  environment: ""
   vendor: OpenShift
   cloudProvider: auto-detect
   clusterSet: default

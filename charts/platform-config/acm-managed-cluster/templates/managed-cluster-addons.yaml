@@ -4,7 +4,7 @@ apiVersion: addon.open-cluster-management.io/v1beta1
 kind: ManagedClusterAddOn
 metadata:
   name: config-policy-controller
-  namespace: {{ .Values.managedCluster.name }}
+  namespace: {{ .Values.cluster.name }}
 spec:
   installNamespace: open-cluster-management-agent-addon
 ---
@@ -14,7 +14,7 @@ apiVersion: addon.open-cluster-management.io/v1beta1
 kind: ManagedClusterAddOn
 metadata:
   name: governance-policy-framework
-  namespace: {{ .Values.managedCluster.name }}
+  namespace: {{ .Values.cluster.name }}
 spec:
   installNamespace: open-cluster-management-agent-addon
 ---
@@ -24,7 +24,7 @@ apiVersion: addon.open-cluster-management.io/v1beta1
 kind: ManagedClusterAddOn
 metadata:
   name: work-manager
-  namespace: {{ .Values.managedCluster.name }}
+  namespace: {{ .Values.cluster.name }}
 spec:
   installNamespace: open-cluster-management-agent-addon
 ---
@@ -34,7 +34,7 @@ apiVersion: addon.open-cluster-management.io/v1beta1
 kind: ManagedClusterAddOn
 metadata:
   name: cluster-proxy
-  namespace: {{ .Values.managedCluster.name }}
+  namespace: {{ .Values.cluster.name }}
 spec:
   installNamespace: open-cluster-management-agent-addon
 ---
@@ -44,7 +44,7 @@ apiVersion: addon.open-cluster-management.io/v1beta1
 kind: ManagedClusterAddOn
 metadata:
   name: managed-serviceaccount
-  namespace: {{ .Values.managedCluster.name }}
+  namespace: {{ .Values.cluster.name }}
 spec:
   installNamespace: open-cluster-management-agent-addon
 ---
@@ -54,7 +54,7 @@ apiVersion: addon.open-cluster-management.io/v1beta1
 kind: ManagedClusterAddOn
 metadata:
   name: application-manager
-  namespace: {{ .Values.managedCluster.name }}
+  namespace: {{ .Values.cluster.name }}
 spec:
   installNamespace: open-cluster-management-agent-addon
 ---
@@ -64,7 +64,7 @@ apiVersion: addon.open-cluster-management.io/v1beta1
 kind: ManagedClusterAddOn
 metadata:
   name: cert-policy-controller
-  namespace: {{ .Values.managedCluster.name }}
+  namespace: {{ .Values.cluster.name }}
 spec:
   installNamespace: open-cluster-management-agent-addon
 ---
@@ -74,7 +74,7 @@ apiVersion: addon.open-cluster-management.io/v1beta1
 kind: ManagedClusterAddOn
 metadata:
   name: search-collector
-  namespace: {{ .Values.managedCluster.name }}
+  namespace: {{ .Values.cluster.name }}
 spec:
   installNamespace: open-cluster-management-agent-addon
 {{- end }}

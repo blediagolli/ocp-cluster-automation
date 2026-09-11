@@ -3,8 +3,8 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .Values.managedCluster.name }}-auto-import
-  namespace: {{ .Values.managedCluster.name }}
+  name: {{ .Values.cluster.name }}-auto-import
+  namespace: {{ .Values.cluster.name }}
   annotations:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
@@ -12,13 +12,13 @@ spec:
   template:
     spec:
       restartPolicy: OnFailure
-      serviceAccountName: {{ .Values.managedCluster.name }}-auto-import
+      serviceAccountName: {{ .Values.cluster.name }}-auto-import
       containers:
         - name: auto-import
           image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
           env:
             - name: CLUSTER_NAME
-              value: {{ .Values.managedCluster.name }}
+              value: {{ .Values.cluster.name }}
             - name: SECRET_NAME
               value: {{ .Values.managedCluster.autoImport.kubeconfig.secretName }}
           command:
@@ -43,8 +43,8 @@ spec:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ .Values.managedCluster.name }}-auto-import
-  namespace: {{ .Values.managedCluster.name }}
+  name: {{ .Values.cluster.name }}-auto-import
+  namespace: {{ .Values.cluster.name }}
   annotations:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
@@ -52,8 +52,8 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: {{ .Values.managedCluster.name }}-auto-import
-  namespace: {{ .Values.managedCluster.name }}
+  name: {{ .Values.cluster.name }}-auto-import
+  namespace: {{ .Values.cluster.name }}
   annotations:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
@@ -65,26 +65,26 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ .Values.managedCluster.name }}-auto-import
-  namespace: {{ .Values.managedCluster.name }}
+  name: {{ .Values.cluster.name }}-auto-import
+  namespace: {{ .Values.cluster.name }}
   annotations:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: {{ .Values.managedCluster.name }}-auto-import
+  name: {{ .Values.cluster.name }}-auto-import
 subjects:
   - kind: ServiceAccount
-    name: {{ .Values.managedCluster.name }}-auto-import
-    namespace: {{ .Values.managedCluster.name }}
+    name: {{ .Values.cluster.name }}-auto-import
+    namespace: {{ .Values.cluster.name }}
 {{- end }}
 {{- if eq .Values.managedCluster.autoImport.mode "token" }}
 apiVersion: v1
 kind: Secret
 metadata:
   name: auto-import-secret
-  namespace: {{ .Values.managedCluster.name }}
+  namespace: {{ .Values.cluster.name }}
   annotations:
     managedcluster-import-controller.open-cluster-management.io/autoImportRetry: "5"
     argocd.argoproj.io/sync-wave: "1"
