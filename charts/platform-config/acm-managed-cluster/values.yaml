@@ -23,7 +23,6 @@ managedCluster:
     work-manager: true
     application-manager: true
     cert-policy-controller: true
-    policy-controller: true
     search-collector: true
     cluster-proxy: false
     managed-serviceaccount: false
