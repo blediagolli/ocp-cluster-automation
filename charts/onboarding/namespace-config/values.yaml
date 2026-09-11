@@ -5,7 +5,7 @@ cluster:
 
 team:
   name: ""
-  namespaces: []
+  namespaces: {}
 
 namespaceSizes:
   small:

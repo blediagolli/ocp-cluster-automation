@@ -1,4 +1,5 @@
-{{- range .Values.team.namespaces }}
+{{- $namespaces := index .Values.team.namespaces .Values.cluster.environment | default list }}
+{{- range $namespaces }}
 ---
 apiVersion: v1
 kind: ServiceAccount

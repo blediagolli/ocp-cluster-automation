@@ -7,4 +7,4 @@ team:
   name: ""
   admins: ""
   repo: ""
-  namespaces: []
+  namespaces: {}

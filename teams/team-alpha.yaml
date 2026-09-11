@@ -6,9 +6,13 @@ team:
   admins: team-alpha-admins
   repo: git@github.com:blediagolli/team-alpha-apps.git
   namespaces:
-    - name: team-alpha-dev
-      size: small
-    - name: team-alpha-stage
-      size: medium
-    - name: team-alpha-preprod
-      size: large
+    dev:
+      - name: team-alpha-dev
+        size: small
+      - name: team-alpha-stage
+        size: medium
+    prod:
+      - name: team-alpha-preprod
+        size: large
+      - name: team-alpha-prod
+        size: large
