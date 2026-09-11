@@ -36,8 +36,19 @@ realm:
       publicClient: false
       standardFlowEnabled: true
       directAccessGrantsEnabled: false
+      serviceAccountsEnabled: true
       redirectUris: []
       webOrigins: []
+      defaultClientScopes:
+        - web-origins
+        - acr
+        - profile
+        - email
+      optionalClientScopes:
+        - offline_access
+        - address
+        - phone
+        - microprofile-jwt
       protocolMappers:
         - name: groups
           protocol: openid-connect

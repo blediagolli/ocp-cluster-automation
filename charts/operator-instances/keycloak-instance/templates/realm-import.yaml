@@ -21,10 +21,21 @@ spec:
         publicClient: {{ $client.publicClient }}
         standardFlowEnabled: {{ $client.standardFlowEnabled }}
         directAccessGrantsEnabled: {{ $client.directAccessGrantsEnabled }}
+        {{- with $client.serviceAccountsEnabled }}
+        serviceAccountsEnabled: {{ . }}
+        {{- end }}
         redirectUris:
           {{- toYaml $client.redirectUris | nindent 10 }}
         webOrigins:
           {{- toYaml $client.webOrigins | nindent 10 }}
+        {{- with $client.defaultClientScopes }}
+        defaultClientScopes:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with $client.optionalClientScopes }}
+        optionalClientScopes:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
         {{- with $client.protocolMappers }}
         protocolMappers:
           {{- toYaml . | nindent 10 }}

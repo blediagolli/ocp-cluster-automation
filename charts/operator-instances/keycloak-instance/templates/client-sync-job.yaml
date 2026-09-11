@@ -3,6 +3,15 @@
 {{- range $name, $client := .Values.realm.clients }}
 {{- if $client.include }}
 {{- $c := dict "clientId" $client.clientId "enabled" true "protocol" "openid-connect" "clientAuthenticatorType" "client-secret" "secret" $client.clientSecret "publicClient" $client.publicClient "standardFlowEnabled" $client.standardFlowEnabled "directAccessGrantsEnabled" $client.directAccessGrantsEnabled "redirectUris" $client.redirectUris "webOrigins" $client.webOrigins }}
+{{- if $client.serviceAccountsEnabled }}
+{{- $_ := set $c "serviceAccountsEnabled" $client.serviceAccountsEnabled }}
+{{- end }}
+{{- if $client.defaultClientScopes }}
+{{- $_ := set $c "defaultClientScopes" $client.defaultClientScopes }}
+{{- end }}
+{{- if $client.optionalClientScopes }}
+{{- $_ := set $c "optionalClientScopes" $client.optionalClientScopes }}
+{{- end }}
 {{- if $client.protocolMappers }}
 {{- $_ := set $c "protocolMappers" $client.protocolMappers }}
 {{- end }}
