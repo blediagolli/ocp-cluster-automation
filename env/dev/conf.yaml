@@ -1,4 +1,2 @@
 # Environment-level cluster defaults shared by all dev clusters.
 # Merged into each cluster's values; cluster-level conf.yaml takes precedence.
-cluster:
-  registry: quay-dev.io
