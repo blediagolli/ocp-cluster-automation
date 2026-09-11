@@ -7,8 +7,6 @@ kind: ManagedClusterAddOn
 metadata:
   name: {{ $name }}
   namespace: {{ $.Values.cluster.name }}
-spec:
-  installNamespace: open-cluster-management-agent-addon
 {{- end }}
 {{- end }}
 {{- end }}
