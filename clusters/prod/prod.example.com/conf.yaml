@@ -7,18 +7,7 @@ cluster:
   address: "https://kubernetes.default.svc"
 platformCharts: []
 operatorInstanceCharts: []
-managedCluster:
-  deploy: false
-  include: false
-  name: prod
-  environment: prod
-  autoImport:
-    include: false
-    mode: kubeconfig
-    kubeconfig:
-      secretName: prod-kubeconfig
-  addons:
-    include: false
 deployOperators: false
 deployOverlay: false
+deployImport: false
 teams: []

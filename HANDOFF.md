@@ -95,7 +95,7 @@ clusters/<env>/<cluster>/
 | cluster-platform-config | `conf.yaml` + `platformCharts` | platform-config |
 | cluster-operator-instances | `conf.yaml` + `operatorInstanceCharts` | operator-instances |
 | cluster-config-overlays | `conf.yaml` + `deployOverlay` | config-overlay |
-| cluster-import | `conf.yaml` + `managedCluster.deploy` | import |
+| cluster-import | `conf.yaml` + `deployImport` | import |
 | cluster-provisioning | `provision.yaml` | provisioning |
 | onboarding-gitops | `conf.yaml` + `teams` | onboarding-gitops |
 | onboarding-namespaces | `conf.yaml` + `teams` | onboarding-namespaces |
@@ -138,7 +138,7 @@ platform-root (Application)
 
 ## Gotchas
 - `deployOperators` must be top-level in conf.yaml, NOT inside the `operators` map — the chart iterates all keys in `operators` as Subscriptions
-- `managedCluster.deploy` is safe inside the map because the import chart only ranges over `managedCluster.labels`, not top-level keys
+- `deployImport` controls whether the cluster-import ApplicationSet creates an Application; `managedCluster` config lives in platform-config.yaml
 - `missingkey=error` means you can't use `.foo` dot notation on keys that might not exist — use `index . "foo"` instead
 - Onboarding ApplicationSets use `conf.yaml` `teams` list + `elementsYaml` — same pattern as `platformCharts`. Team definitions live centrally in `teams/`. Add a team name to a cluster's `teams` list to onboard it there
 - `teams: []` is required in every conf.yaml (due to `missingkey=error`) even if the cluster has no teams

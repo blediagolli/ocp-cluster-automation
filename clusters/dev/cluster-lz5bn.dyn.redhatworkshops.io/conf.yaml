@@ -12,19 +12,8 @@ platformCharts:
 operatorInstanceCharts:
   - chart: acs-secured-cluster
   - chart: aap-instance
-managedCluster:
-  deploy: true
-  include: true
-  name: "cluster-lz5bn"
-  environment: dev
-  autoImport:
-    include: true
-    mode: kubeconfig
-    kubeconfig:
-      secretName: lz5bn-kubeconfig
-  addons:
-    include: false
 deployOperators: true
 deployOverlay: true
+deployImport: true
 teams:
   - team: team-alpha
