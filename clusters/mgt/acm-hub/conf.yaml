@@ -23,4 +23,5 @@ operatorInstanceCharts:
 deployOperators: true
 deployOverlay: true
 deployImport: false
+deployProvision: false
 teams: []
