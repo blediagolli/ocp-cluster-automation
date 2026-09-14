@@ -24,18 +24,16 @@ spec:
         app.kubernetes.io/instance: vault
     spec:
       serviceAccountName: {{ .Values.vault.serviceAccount.name }}
+      enableServiceLinks: false
       terminationGracePeriodSeconds: 10
       securityContext:
         runAsNonRoot: true
       containers:
         - name: vault
           image: {{ .Values.vault.image }}
-          command:
-            - /bin/sh
-            - -ec
-            - |
-              sleep 2
-              exec vault server -config=/vault/config/vault.hcl
+          args:
+            - server
+            - -config=/vault/config/vault.hcl
           env:
             - name: HOSTNAME
               valueFrom:
