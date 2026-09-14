@@ -30,9 +30,12 @@ spec:
       containers:
         - name: vault
           image: {{ .Values.vault.image }}
-          args:
-            - server
-            - -config=/vault/config/vault.hcl
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              sleep 2
+              exec vault server -config=/vault/config/vault.hcl
           env:
             - name: HOSTNAME
               valueFrom:
