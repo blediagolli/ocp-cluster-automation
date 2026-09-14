@@ -27,7 +27,6 @@ spec:
       terminationGracePeriodSeconds: 10
       securityContext:
         runAsNonRoot: true
-        fsGroup: 1000
       containers:
         - name: vault
           image: {{ .Values.vault.image }}
