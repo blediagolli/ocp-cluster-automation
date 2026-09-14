@@ -10,6 +10,7 @@ metadata:
 data:
   vault.hcl: |
     ui = true
+    disable_mlock = true
 
     listener "tcp" {
       address         = "[::]:8200"
