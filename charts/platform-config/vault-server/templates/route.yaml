@@ -1,0 +1,21 @@
+{{- if and .Values.vault.include .Values.vault.route.enabled }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: vault
+  namespace: {{ .Values.vault.namespace }}
+  labels:
+    app.kubernetes.io/name: vault
+    app.kubernetes.io/instance: vault
+spec:
+  host: {{ include "vault-server.hostname" . }}
+  to:
+    kind: Service
+    name: vault-active
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+{{- end }}

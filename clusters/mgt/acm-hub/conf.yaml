@@ -15,6 +15,7 @@ platformCharts:
   - chart: tls-certificates
   - chart: openshift-apiserver
   - chart: openshift-ingress
+  - chart: vault-server
 operatorInstanceCharts:
   - chart: openshift-gitops-instance
   - chart: acm-multiclusterhub

@@ -1,0 +1,56 @@
+cluster:
+  baseDomain: ""
+  storageClass: ""
+
+vault:
+  include: false
+  namespace: vault
+  createNamespace: true
+
+  replicas: 3
+  image: hashicorp/vault:1.19.0
+
+  route:
+    enabled: true
+    # hostname auto-derived from cluster.baseDomain when empty
+    hostname: ""
+
+  storage:
+    size: 10Gi
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+  audit:
+    enabled: false
+
+  serviceAccount:
+    name: vault
+
+  # Kubernetes auth for ExternalSecrets
+  kubernetesAuth:
+    enabled: true
+    # Path where the Kubernetes auth method is mounted
+    path: kubernetes
+
+secretStore:
+  include: false
+  name: vault
+  kind: ClusterSecretStore
+  # Vault server address — auto-derived from namespace if empty
+  server: ""
+  # Path to the KV v2 secrets engine
+  kvVersion: "2"
+  path: secret
+  auth:
+    # ServiceAccount used by ExternalSecrets to authenticate to Vault
+    serviceAccountRef:
+      name: external-secrets-sa
+      namespace: vault
+    # Vault role that the ServiceAccount maps to
+    role: external-secrets

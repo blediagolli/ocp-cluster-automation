@@ -50,6 +50,10 @@ ingress:
     defaultCertificate:
       enabled: true
       name: cert-manager-ingress-cert
+vault:
+  include: true
+secretStore:
+  include: true
 provider: cert-manager
 certManager:
   issuerRef:

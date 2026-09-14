@@ -1,0 +1,4 @@
+apiVersion: v2
+name: vault-server
+description: HashiCorp Vault server with integrated Raft storage and ExternalSecrets integration
+version: 0.1.0
