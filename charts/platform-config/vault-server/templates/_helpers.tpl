@@ -10,7 +10,7 @@ vault.{{ .Values.cluster.baseDomain }}
 {{- if .Values.secretStore.server -}}
 {{- .Values.secretStore.server -}}
 {{- else -}}
-https://vault-active.{{ .Values.vault.namespace }}.svc:8200
+http://vault-active.{{ .Values.vault.namespace }}.svc:8200
 {{- end -}}
 {{- end -}}
 
