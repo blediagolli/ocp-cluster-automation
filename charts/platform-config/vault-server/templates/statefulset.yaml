@@ -33,7 +33,6 @@ spec:
           image: {{ .Values.vault.image }}
           args:
             - server
-            - -config=/vault/config/vault.hcl
           env:
             - name: HOSTNAME
               valueFrom:
