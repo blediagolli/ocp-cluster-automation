@@ -5,7 +5,7 @@
 {{- $p := include "tls-certificates.provider" (list .Values.certificates.api.provider $provider) }}
 {{- if eq $p "vault" }}
 {{- $vaultCfg := index .Values.vault "api" | default dict }}
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: {{ .Values.certificates.api.secretName }}
@@ -33,7 +33,7 @@ spec:
 {{- $p := include "tls-certificates.provider" (list .Values.certificates.ingress.provider $provider) }}
 {{- if eq $p "vault" }}
 {{- $vaultCfg := index .Values.vault "ingress" | default dict }}
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: {{ .Values.certificates.ingress.secretName }}
@@ -61,7 +61,7 @@ spec:
 {{- $p := include "tls-certificates.provider" (list .Values.certificates.ca.provider $provider) }}
 {{- if eq $p "vault" }}
 {{- $vaultCfg := index .Values.vault "ca" | default dict }}
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: {{ .Values.certificates.ca.configMapName }}
