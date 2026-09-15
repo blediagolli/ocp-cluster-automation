@@ -89,6 +89,21 @@ oidc:
       value: users
       role: Analyst
 
+defaultTLS:
+  include: false
+  secretName: central-default-tls
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault
+    kind: ClusterSecretStore
+  vault:
+    path: openshift/wildcard-cert
+    properties:
+      - secretKey: tls.crt
+        property: tls.crt
+      - secretKey: tls.key
+        property: tls.key
+
 trustedCA:
   include: false
   name: trusted-ca-bundle

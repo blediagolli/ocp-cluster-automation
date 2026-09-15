@@ -29,6 +29,10 @@ spec:
         limits:
           cpu: {{ .Values.central.db.resources.limits.cpu }}
           memory: {{ .Values.central.db.resources.limits.memory }}
+    {{- if .Values.defaultTLS.include }}
+    defaultTLSSecret:
+      name: {{ .Values.defaultTLS.secretName }}
+    {{- end }}
     telemetry:
       enabled: {{ .Values.central.telemetry.enabled }}
     {{- if .Values.oidc.include }}
