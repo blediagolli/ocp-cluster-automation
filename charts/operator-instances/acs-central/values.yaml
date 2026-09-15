@@ -91,7 +91,7 @@ oidc:
 
 defaultTLS:
   include: false
-  secretName: central-default-tls
+  secretName: central-default-tls-cert
   refreshInterval: 1h
   secretStoreRef:
     name: vault
