@@ -1,0 +1,9 @@
+{{- if .Values.trustedCA.include }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.trustedCA.name }}
+  namespace: {{ .Values.central.namespace }}
+  labels:
+    config.openshift.io/inject-trusted-cabundle: "true"
+{{- end }}

@@ -89,6 +89,10 @@ oidc:
       value: users
       role: Analyst
 
+trustedCA:
+  include: false
+  name: trusted-ca-bundle
+
 centralConsoleLink:
   include: false
   centralUrl: ""
