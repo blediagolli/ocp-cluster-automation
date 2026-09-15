@@ -1,0 +1,38 @@
+provision:
+  include: true
+
+cluster:
+  name: aws-none-prod
+  baseDomain: sandbox3321.opentlc.com
+  platform: none
+  environment: prod
+  clusterSet: default
+  imageSetRef: img4.22.13-x86-64-appsub
+  networkType: OVNKubernetes
+  sshPublicKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK5HyWw30Cu2ApDMDc4YYjSIf62ObIL1wuXmhWBNQGPN aws-none-prod"
+
+fleet:
+  operatorClusterType: prod
+  operatorProfile: ocp-4.22
+
+masters:
+  count: 3
+
+workers:
+  count: 0
+
+none:
+  apiVIPs: []
+  ingressVIPs: []
+  provisionRequirements:
+    controlPlaneAgents: 3
+    workerAgents: 0
+
+networking:
+  clusterNetwork:
+    - cidr: 10.128.0.0/14
+      hostPrefix: 23
+  serviceNetwork:
+    - 172.30.0.0/16
+  machineNetwork:
+    - cidr: 10.1.0.0/16
