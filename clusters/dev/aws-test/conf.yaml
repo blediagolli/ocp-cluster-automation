@@ -1,0 +1,12 @@
+cluster:
+  name: aws-test
+  environment: dev
+  address: "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/aws-test"
+  baseDomain: sandbox3321.opentlc.com
+platformCharts: []
+operatorInstanceCharts: []
+deployOperators: false
+deployOverlay: false
+deployImport: true
+deployProvision: true
+teams: []

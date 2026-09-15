@@ -1,0 +1,37 @@
+provision:
+  include: true
+
+cluster:
+  name: aws-test
+  baseDomain: sandbox3321.opentlc.com
+  platform: aws
+  environment: dev
+  clusterSet: default
+  imageSetRef: img4.22.13-x86-64-appsub
+  networkType: OVNKubernetes
+  sshPublicKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINL/LtS5J2YbybfzOmFsvAlx5gxry+26pDKetkNB4PNY aws-test-cluster"
+
+fleet:
+  operatorClusterType: dev
+  operatorProfile: ocp-4.22
+
+masters:
+  count: 3
+
+workers:
+  count: 3
+
+aws:
+  region: us-east-2
+  masters:
+    instanceType: m5.xlarge
+    zones: []
+    rootVolume:
+      size: 120
+      type: gp3
+  workers:
+    instanceType: m5.xlarge
+    zones: []
+    rootVolume:
+      size: 120
+      type: gp3
