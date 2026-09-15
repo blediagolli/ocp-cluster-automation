@@ -206,7 +206,17 @@ none:
   provisionRequirements:
     controlPlaneAgents: 3
     workerAgents: 0
+  bmc:
+    username: ""
+    password: ""
   hosts: []
+  # hosts:
+  #   - name: host001
+  #     role: master
+  #     bootMACAddress: "02:ff:dc:94:79:5f"
+  #     bmcAddress: "redfish-virtualmedia+https://sushy-ec2.cluster.svc:8000/redfish/v1/Systems/i-0123456789abcdef0"
+  #     bmcUsername: ""        # per-host override (falls back to none.bmc.username)
+  #     bmcPassword: ""        # per-host override (falls back to none.bmc.password)
 
 # Networking (agent-based platforms)
 networking:

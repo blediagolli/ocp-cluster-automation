@@ -1,5 +1,6 @@
-{{- if and .Values.provision.include (eq .Values.cluster.platform "baremetal") }}
-{{- range .Values.baremetal.hosts }}
+{{- if and .Values.provision.include (eq (include "cluster.isAgent" .) "true") }}
+{{- $platformCfg := index .Values .Values.cluster.platform }}
+{{- range $platformCfg.hosts }}
 ---
 apiVersion: metal3.io/v1alpha1
 kind: BareMetalHost
