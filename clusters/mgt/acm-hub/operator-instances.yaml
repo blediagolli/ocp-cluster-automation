@@ -29,6 +29,8 @@ initBundle:
 oidc:
   include: true
   clientSecret: "c83d33ea01afb1df37482cfd96ea7c81"
+trustedCA:
+  include: true
 centralConsoleLink:
   include: true
 securedCluster:
