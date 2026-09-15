@@ -10,7 +10,7 @@ spec:
   clusterName: {{ .Values.cluster.name }}
   clusterNamespace: {{ .Values.cluster.name }}
   clusterLabels:
-    cloud: vSphere
+    cloud: {{ include "cluster.cloudLabel" . }}
     vendor: OpenShift
   applicationManager:
     enabled: true

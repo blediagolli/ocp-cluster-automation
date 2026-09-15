@@ -1,0 +1,14 @@
+{{- if and .Values.provision.include .Values.customManifests.enabled (eq (include "cluster.isIPI" .) "true") }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.cluster.name }}-custom-manifests
+  namespace: {{ .Values.cluster.name }}
+  annotations:
+    helm.sh/hook-weight: "355"
+data:
+  {{- range $key, $val := .Values.customManifests.data }}
+  {{ $key }}: |
+    {{- $val | nindent 4 }}
+  {{- end }}
+{{- end }}

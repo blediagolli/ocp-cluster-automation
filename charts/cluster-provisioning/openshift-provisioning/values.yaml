@@ -3,46 +3,231 @@ provision:
 
 cluster:
   name: example
+  baseDomain: example.com
+  # vsphere | aws | baremetal | none
+  platform: vsphere
   environment: dev
+  clusterSet: default
+  imageSetRef: ""
+  networkType: OVNKubernetes
+  sshPublicKey: ""
+  sshPrivateKey: ""
+  pullSecret: ""
+  additionalTrustBundle: ""
+  fips: false
+  # additionalTrustBundle: |
+  #   -----BEGIN CERTIFICATE-----
+  #   MIIDkTCCAnmgAwIBAgI...
+  #   -----END CERTIFICATE-----
+
+# Proxy (all platforms — IPI: install-config; agent-based: AgentClusterInstall + InfraEnv)
+proxy:
+  enabled: false
+  # httpProxy: "http://proxy.internal.example.com:3128"
+  # httpsProxy: "http://proxy.internal.example.com:3128"
+  # noProxy: ".internal.example.com,.cluster.local,10.128.0.0/14,172.30.0.0/16"
+
+# NTP (agent-based platforms — added to InfraEnv)
+ntp:
+  enabled: false
+  # sources:
+  #   - ntp1.internal.example.com
+  #   - ntp2.internal.example.com
+
+# Ignition override for discovery ISO (agent-based platforms — added to InfraEnv)
+ignitionConfigOverride:
+  enabled: false
+  # config: '{"ignition":{"version":"3.1.0"},"storage":{"files":[{"path":"/etc/pki/ca-trust/source/anchors/internal-ca.pem","mode":420,"contents":{"source":"data:text/plain;base64,LS0tLS1C..."}}]}}'
+
+# Day-0 custom manifests ConfigMap (IPI platforms — referenced by ClusterDeployment)
+customManifests:
+  enabled: false
+  # data:
+  #   99-chrony-masters.yaml: |
+  #     apiVersion: machineconfiguration.openshift.io/v1
+  #     kind: MachineConfig
+  #     metadata:
+  #       labels:
+  #         machineconfiguration.openshift.io/role: master
+  #       name: 99-chrony-masters
+  #     spec:
+  #       config:
+  #         ignition:
+  #           version: 3.2.0
+  #         storage:
+  #           files:
+  #             - path: /etc/chrony.conf
+  #               mode: 0644
+  #               contents:
+  #                 source: data:text/plain;charset=utf-8;base64,c2VydmVyIG50cDEuaW50ZXJuYWwuZXhhbXBsZS5jb20gaWJ1cnN0Cg==
+  #   99-kernel-args.yaml: |
+  #     apiVersion: machineconfiguration.openshift.io/v1
+  #     kind: MachineConfig
+  #     metadata:
+  #       labels:
+  #         machineconfiguration.openshift.io/role: worker
+  #       name: 99-kernel-args
+  #     spec:
+  #       kernelArguments:
+  #         - nosmt
+
+fleet:
   operatorClusterType: dev
   operatorProfile: ocp-4.22
 
 masters:
   count: 3
-  cpus: 4
-  coresPerSocket: 2
-  memoryMB: 16384
-  diskGB: 120
 
 workers:
   count: 3
-  cpus: 4
-  coresPerSocket: 2
-  memoryMB: 16384
-  diskGB: 120
 
-imageContentSources:
-  mirror: registry.example.invalid/openshift4
-  registry: registry.example.invalid
-  username: REPLACE_ME
-  password: REPLACE_ME
-  email: platform@example.invalid
-
-provider:
-  username: REPLACE_ME
-  password: REPLACE_ME
-  vcenter: vcenter.example.invalid
-  vmClusterName: REPLACE_ME
-  datacenter: REPLACE_ME
-  datastore: REPLACE_ME
-  baseDomain: example.invalid
-  folder: REPLACE_ME
-  sshPrivatekey: REPLACE_ME
-  sshPublickey: REPLACE_ME
+# --- Platform: vSphere (IPI) ---
+vsphere:
+  vcenter: ""
+  username: ""
+  password: ""
+  datacenter: ""
+  datastore: ""
+  cluster: ""
+  folder: ""
+  network: ""
   cacertificate: ""
-  additionalTrustBundle: ""
+  apiVIP: ""
+  ingressVIP: ""
+  masters:
+    cpus: 4
+    coresPerSocket: 2
+    memoryMB: 16384
+    diskGB: 120
+  workers:
+    cpus: 4
+    coresPerSocket: 2
+    memoryMB: 16384
+    diskGB: 120
 
-network:
-  networkName: REPLACE_ME
-  apiVIP: 192.0.2.10
-  ingressVIP: 192.0.2.11
+# --- Platform: AWS (IPI) ---
+aws:
+  accessKeyID: ""
+  secretAccessKey: ""
+  region: us-east-1
+  masters:
+    instanceType: m5.xlarge
+    # zones:
+    #   - us-east-1a
+    #   - us-east-1b
+    #   - us-east-1c
+    zones: []
+    rootVolume:
+      size: 120
+      type: gp3
+  workers:
+    instanceType: m5.xlarge
+    # zones:
+    #   - us-east-1a
+    #   - us-east-1b
+    #   - us-east-1c
+    zones: []
+    rootVolume:
+      size: 120
+      type: gp3
+
+# --- Platform: Bare Metal (Agent-based) ---
+baremetal:
+  # Leave empty when VIPs are managed externally (e.g. F5)
+  apiVIPs: []
+  # apiVIPs:
+  #   - 10.206.220.10
+  #   - "2610:30:401C:2352::10"  # dual-stack
+  ingressVIPs: []
+  # ingressVIPs:
+  #   - 10.206.220.11
+  #   - "2610:30:401C:2352::11"  # dual-stack
+  provisionRequirements:
+    controlPlaneAgents: 3
+    workerAgents: 0
+  bmc:
+    username: ""
+    password: ""
+  hosts: []
+  # - name: host001
+  #   role: master
+  #   bootMACAddress: "b4:96:91:e9:48:e4"
+  #   bmcAddress: "idrac-virtualmedia+https://10.0.0.1/redfish/v1/Systems/System.Embedded.1"
+  #   bmcInsecure: true
+  #   bmcUsername: ""        # per-host override (falls back to baremetal.bmc.username)
+  #   bmcPassword: ""        # per-host override (falls back to baremetal.bmc.password)
+  #   automatedCleaningMode: metadata
+  #   nmstate:
+  #     config:
+  #       interfaces:
+  #         - name: bond0
+  #           type: bond
+  #           state: up
+  #           ipv4:
+  #             enabled: true
+  #             address:
+  #               - ip: 10.206.220.2
+  #                 prefix-length: 24
+  #             dhcp: false
+  #           link-aggregation:
+  #             mode: 802.3ad
+  #             options:
+  #               miimon: "100"
+  #             slaves:
+  #               - ens2f0
+  #               - ens2f1
+  #       dns-resolver:
+  #         config:
+  #           search:
+  #             - internal.example.com
+  #           server:
+  #             - 10.0.0.53
+  #       routes:
+  #         config:
+  #           - destination: 0.0.0.0/0
+  #             next-hop-address: 10.206.220.1
+  #             next-hop-interface: bond0
+  #             table-id: 254
+  #     interfaces:
+  #       - name: ens2f0
+  #         macAddress: "b4:96:91:e9:48:e4"
+  #       - name: ens2f1
+  #         macAddress: "b4:96:91:e9:48:e5"
+
+# --- Platform: None (Agent-based) ---
+none:
+  # Leave empty when VIPs are managed externally (e.g. F5)
+  apiVIPs: []
+  # apiVIPs:
+  #   - 192.168.1.10
+  ingressVIPs: []
+  # ingressVIPs:
+  #   - 192.168.1.11
+  provisionRequirements:
+    controlPlaneAgents: 3
+    workerAgents: 0
+  hosts: []
+
+# Networking (agent-based platforms)
+networking:
+  clusterNetwork:
+    - cidr: 10.128.0.0/14
+      hostPrefix: 23
+    # - cidr: "fd01::/48"      # dual-stack
+    #   hostPrefix: 64
+  serviceNetwork:
+    - 172.30.0.0/16
+    # - "fd02::/112"           # dual-stack
+  machineNetwork: []
+  # machineNetwork:
+  #   - cidr: 10.206.220.0/24
+  #   - cidr: "2610:30:401C:2352::/64"  # dual-stack
+
+# Disconnected registry (optional)
+imageContentSources:
+  enabled: false
+  # mirror: registry.disconnected.example.com/openshift4
+  # registry: registry.disconnected.example.com
+  # username: registry-user
+  # password: registry-password
+  # email: platform@example.com

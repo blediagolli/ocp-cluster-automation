@@ -1,0 +1,38 @@
+{{- if and .Values.provision.include (eq (include "cluster.isAgent" .) "true") }}
+apiVersion: agent-install.openshift.io/v1beta1
+kind: InfraEnv
+metadata:
+  name: {{ .Values.cluster.name }}
+  namespace: {{ .Values.cluster.name }}
+  annotations:
+    helm.sh/hook-weight: "359"
+spec:
+  clusterRef:
+    name: {{ .Values.cluster.name }}
+    namespace: {{ .Values.cluster.name }}
+  sshAuthorizedKey: {{ .Values.cluster.sshPublicKey | quote }}
+  pullSecretRef:
+    name: {{ .Values.cluster.name }}-pull-secret
+  agentLabelSelector:
+    matchLabels:
+      cluster-name: {{ .Values.cluster.name }}
+  nmStateConfigLabelSelector:
+    matchLabels:
+      cluster-name: {{ .Values.cluster.name }}
+  {{- if .Values.ntp.enabled }}
+  additionalNTPSources:
+    {{- toYaml .Values.ntp.sources | nindent 4 }}
+  {{- end }}
+  {{- if .Values.proxy.enabled }}
+  proxy:
+    httpProxy: {{ .Values.proxy.httpProxy | quote }}
+    httpsProxy: {{ .Values.proxy.httpsProxy | quote }}
+    noProxy: {{ .Values.proxy.noProxy | quote }}
+  {{- end }}
+  {{- if .Values.ignitionConfigOverride.enabled }}
+  ignitionConfigOverride: {{ .Values.ignitionConfigOverride.config | quote }}
+  {{- end }}
+  {{- if .Values.cluster.additionalTrustBundle }}
+  additionalTrustBundle: {{ .Values.cluster.additionalTrustBundle | quote }}
+  {{- end }}
+{{- end }}

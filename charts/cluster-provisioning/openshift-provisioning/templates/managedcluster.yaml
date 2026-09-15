@@ -2,18 +2,18 @@
 apiVersion: cluster.open-cluster-management.io/v1
 kind: ManagedCluster
 metadata:
+  name: {{ .Values.cluster.name }}
   annotations:
     helm.sh/hook-weight: "370"
   labels:
-    cloud: vSphere
+    cloud: {{ include "cluster.cloudLabel" . }}
     name: {{ .Values.cluster.name }}
     vendor: OpenShift
     environment: {{ .Values.cluster.environment }}
     fleet.openshift.io/operators-managed: "true"
-    fleet.openshift.io/cluster-type: {{ .Values.cluster.operatorClusterType | default "prod" }}
-    fleet.openshift.io/operator-profile: {{ .Values.cluster.operatorProfile | default "ocp-4.22" }}
-    cluster.open-cluster-management.io/clusterset: vmware
-  name: {{ .Values.cluster.name }}
+    fleet.openshift.io/cluster-type: {{ .Values.fleet.operatorClusterType | default "prod" }}
+    fleet.openshift.io/operator-profile: {{ .Values.fleet.operatorProfile | default "ocp-4.22" }}
+    cluster.open-cluster-management.io/clusterset: {{ .Values.cluster.clusterSet }}
 spec:
   hubAcceptsClient: true
 {{- end }}

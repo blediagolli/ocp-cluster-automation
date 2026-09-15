@@ -1,0 +1,24 @@
+{{- if and .Values.provision.include (eq .Values.cluster.platform "baremetal") }}
+{{- range .Values.baremetal.hosts }}
+---
+apiVersion: metal3.io/v1alpha1
+kind: BareMetalHost
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.cluster.name }}
+  labels:
+    infraenvs.agent-install.openshift.io: {{ $.Values.cluster.name }}
+  annotations:
+    inspect.metal3.io: disabled
+    bmac.agent-install.openshift.io/hostname: {{ .name | quote }}
+    bmac.agent-install.openshift.io/role: {{ .role | quote }}
+spec:
+  online: true
+  bootMACAddress: {{ .bootMACAddress }}
+  automatedCleaningMode: {{ .automatedCleaningMode | default "metadata" }}
+  bmc:
+    address: {{ .bmcAddress }}
+    credentialsName: {{ .name }}-bmc-credentials
+    disableCertificateVerification: {{ .bmcInsecure | default true }}
+{{- end }}
+{{- end }}

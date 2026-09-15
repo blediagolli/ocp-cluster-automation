@@ -1,5 +1,9 @@
-{{- if .Values.provision.include }}
+{{- if and .Values.provision.include .Values.imageContentSources.enabled }}
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.cluster.name }}-image-content-sources
+  namespace: {{ .Values.cluster.name }}
 data:
   operators-image.yml: |
     apiVersion: operator.openshift.io/v1alpha1
@@ -8,30 +12,25 @@ data:
       name: local-icsp
     spec:
       repositoryDigestMirrors:
-      - mirrors:
-        - {{ .Values.imageContentSources.registry }}
-        source: quay.io
-      - mirrors:
-        - {{ .Values.imageContentSources.registry }}
-        source: registry.redhat.io
-      - mirrors:
-        - {{ .Values.imageContentSources.registry }}
-        source: registry.access.redhat.com
-      - mirrors:
-        - {{ .Values.imageContentSources.registry }}
-        source: registry.connect.redhat.com
-      - mirrors:
-        - {{ .Values.imageContentSources.registry }}
-        source: registry.hub.docker.com
-      - mirrors:
-        - {{ .Values.imageContentSources.registry }}
-        source: registry.marketplace.redhat.com
-      - mirrors:
-        - {{ .Values.imageContentSources.registry }}
-        source: docker.io
-kind: ConfigMap
-metadata:
-  name: {{ .Values.cluster.name }}-image-content-sources
-  namespace: {{ .Values.cluster.name }}
-
+        - mirrors:
+            - {{ .Values.imageContentSources.registry }}
+          source: quay.io
+        - mirrors:
+            - {{ .Values.imageContentSources.registry }}
+          source: registry.redhat.io
+        - mirrors:
+            - {{ .Values.imageContentSources.registry }}
+          source: registry.access.redhat.com
+        - mirrors:
+            - {{ .Values.imageContentSources.registry }}
+          source: registry.connect.redhat.com
+        - mirrors:
+            - {{ .Values.imageContentSources.registry }}
+          source: registry.hub.docker.com
+        - mirrors:
+            - {{ .Values.imageContentSources.registry }}
+          source: registry.marketplace.redhat.com
+        - mirrors:
+            - {{ .Values.imageContentSources.registry }}
+          source: docker.io
 {{- end }}

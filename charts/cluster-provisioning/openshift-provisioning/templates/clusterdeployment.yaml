@@ -2,41 +2,72 @@
 apiVersion: hive.openshift.io/v1
 kind: ClusterDeployment
 metadata:
+  name: {{ .Values.cluster.name }}
+  namespace: {{ .Values.cluster.name }}
   annotations:
     helm.sh/hook-weight: "360"
   labels:
-    cloud: 'vSphere'
+    cloud: {{ include "cluster.cloudLabel" . }}
     vendor: OpenShift
-    hive.openshift.io/cluster-platform: vsphere
-    cluster.open-cluster-management.io/clusterset: 'vmware'
-  name: {{ .Values.cluster.name }}
-  namespace: {{ .Values.cluster.name }}
+    hive.openshift.io/cluster-platform: {{ .Values.cluster.platform }}
+    cluster.open-cluster-management.io/clusterset: {{ .Values.cluster.clusterSet }}
 spec:
   baseDomain: {{ .Values.cluster.baseDomain }}
   clusterName: {{ .Values.cluster.name }}
   controlPlaneConfig:
     servingCertificates: {}
+  {{- if eq (include "cluster.isAgent" .) "true" }}
+  installed: false
+  {{- else }}
   installAttemptsLimit: 1
+  {{- end }}
+  {{- if eq .Values.cluster.platform "vsphere" }}
   platform:
     vsphere:
-      cluster: {{ .Values.provider.vmClusterName }} 
+      cluster: {{ .Values.vsphere.cluster }}
       certificatesSecretRef:
         name: {{ .Values.cluster.name }}-vsphere-certs
       credentialsSecretRef:
         name: {{ .Values.cluster.name }}-vsphere-creds
-      vCenter: {{ .Values.provider.vcenter }} 
-      datacenter: {{ .Values.provider.datacenter }} 
-      defaultDatastore: {{ .Values.provider.datastore }} 
-      network: {{ .Values.network.networkName }} 
+      vCenter: {{ .Values.vsphere.vcenter }}
+      datacenter: {{ .Values.vsphere.datacenter }}
+      defaultDatastore: {{ .Values.vsphere.datastore }}
+      network: {{ .Values.vsphere.network }}
+  {{- else if eq .Values.cluster.platform "aws" }}
+  platform:
+    aws:
+      credentialsSecretRef:
+        name: {{ .Values.cluster.name }}-aws-creds
+      region: {{ .Values.aws.region }}
+  {{- else }}
+  platform:
+    agentBareMetal:
+      agentSelector:
+        matchLabels:
+          cluster-name: {{ .Values.cluster.name }}
+  clusterInstallRef:
+    group: extensions.hive.openshift.io
+    kind: AgentClusterInstall
+    name: {{ .Values.cluster.name }}
+    version: v1beta1
+  {{- end }}
+  {{- if eq (include "cluster.isIPI" .) "true" }}
   provisioning:
     installConfigSecretRef:
       name: {{ .Values.cluster.name }}-install-config
-    manifestsConfigMapRef:
-      name: {{ .Values.cluster.name }}-image-content-sources
     sshPrivateKeySecretRef:
       name: {{ .Values.cluster.name }}-ssh-private-key
     imageSetRef:
-      name: img{{ .Values.imageName }}-x86-64
+      name: {{ .Values.cluster.imageSetRef }}
+    {{- if or .Values.imageContentSources.enabled .Values.customManifests.enabled }}
+    manifestsConfigMapRef:
+      {{- if .Values.customManifests.enabled }}
+      name: {{ .Values.cluster.name }}-custom-manifests
+      {{- else }}
+      name: {{ .Values.cluster.name }}-image-content-sources
+      {{- end }}
+    {{- end }}
+  {{- end }}
   pullSecretRef:
     name: {{ .Values.cluster.name }}-pull-secret
 {{- end }}

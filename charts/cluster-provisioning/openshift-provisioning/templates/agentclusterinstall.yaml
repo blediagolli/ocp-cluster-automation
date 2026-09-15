@@ -1,0 +1,43 @@
+{{- if and .Values.provision.include (eq (include "cluster.isAgent" .) "true") }}
+{{- $platformCfg := index .Values .Values.cluster.platform }}
+apiVersion: extensions.hive.openshift.io/v1beta1
+kind: AgentClusterInstall
+metadata:
+  name: {{ .Values.cluster.name }}
+  namespace: {{ .Values.cluster.name }}
+  annotations:
+    helm.sh/hook-weight: "358"
+    agent-install.openshift.io/install-config-overrides: '{"networking":{"networkType":"{{ .Values.cluster.networkType }}"}}'
+spec:
+  clusterDeploymentRef:
+    name: {{ .Values.cluster.name }}
+  imageSetRef:
+    name: {{ .Values.cluster.imageSetRef }}
+  networking:
+    clusterNetwork:
+      {{- toYaml .Values.networking.clusterNetwork | nindent 6 }}
+    serviceNetwork:
+      {{- toYaml .Values.networking.serviceNetwork | nindent 6 }}
+    {{- if .Values.networking.machineNetwork }}
+    machineNetwork:
+      {{- toYaml .Values.networking.machineNetwork | nindent 6 }}
+    {{- end }}
+  provisionRequirements:
+    controlPlaneAgents: {{ $platformCfg.provisionRequirements.controlPlaneAgents }}
+    workerAgents: {{ $platformCfg.provisionRequirements.workerAgents }}
+  {{- if $platformCfg.apiVIPs }}
+  apiVIPs:
+    {{- toYaml $platformCfg.apiVIPs | nindent 4 }}
+  {{- end }}
+  {{- if $platformCfg.ingressVIPs }}
+  ingressVIPs:
+    {{- toYaml $platformCfg.ingressVIPs | nindent 4 }}
+  {{- end }}
+  {{- if .Values.proxy.enabled }}
+  proxy:
+    httpProxy: {{ .Values.proxy.httpProxy | quote }}
+    httpsProxy: {{ .Values.proxy.httpsProxy | quote }}
+    noProxy: {{ .Values.proxy.noProxy | quote }}
+  {{- end }}
+  sshPublicKey: {{ .Values.cluster.sshPublicKey | quote }}
+{{- end }}
