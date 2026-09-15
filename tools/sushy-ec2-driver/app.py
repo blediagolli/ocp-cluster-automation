@@ -84,6 +84,11 @@ def get_system(identity):
         'VirtualMedia': {
             '@odata.id': f'/redfish/v1/Systems/{identity}/VirtualMedia'
         },
+        'Links': {
+            'ManagedBy': [
+                {'@odata.id': f'/redfish/v1/Managers/{identity}'}
+            ],
+        },
         'Actions': {
             '#ComputerSystem.Reset': {
                 'target': f'/redfish/v1/Systems/{identity}/Actions/ComputerSystem.Reset',
@@ -236,25 +241,93 @@ def get_ethernet(identity, nic_id):
 @app.route('/redfish/v1/Managers/')
 @app.route('/redfish/v1/Managers')
 def managers_collection():
+    systems = driver.get_systems()
+    members = [{'@odata.id': f'/redfish/v1/Managers/{s}'} for s in systems]
     return jsonify({
         '@odata.type': '#ManagerCollection.ManagerCollection',
         'Name': 'Manager Collection',
-        'Members@odata.count': 1,
-        'Members': [{'@odata.id': '/redfish/v1/Managers/BMC'}],
+        'Members@odata.count': len(members),
+        'Members': members,
     })
 
 
-@app.route('/redfish/v1/Managers/BMC')
-def get_manager():
+@app.route('/redfish/v1/Managers/<identity>')
+def get_manager(identity):
     return jsonify({
         '@odata.type': '#Manager.v1_0_0.Manager',
-        'Id': 'BMC',
-        'Name': 'Sushy EC2 Emulator BMC',
+        'Id': identity,
+        'Name': f'BMC for {identity}',
         'ManagerType': 'BMC',
         'FirmwareVersion': '1.0.0',
         'Status': {'State': 'Enabled'},
-        'VirtualMedia': {'@odata.id': '/redfish/v1/Managers/BMC/VirtualMedia'},
+        'VirtualMedia': {'@odata.id': f'/redfish/v1/Managers/{identity}/VirtualMedia'},
     })
+
+
+@app.route('/redfish/v1/Managers/<identity>/VirtualMedia/')
+@app.route('/redfish/v1/Managers/<identity>/VirtualMedia')
+def manager_virtual_media_collection(identity):
+    media = driver.get_virtual_media(identity)
+    members = [
+        {'@odata.id': f'/redfish/v1/Managers/{identity}/VirtualMedia/{m["Id"]}'}
+        for m in media
+    ]
+    return jsonify({
+        '@odata.type': '#VirtualMediaCollection.VirtualMediaCollection',
+        'Name': 'Virtual Media Collection',
+        'Members@odata.count': len(members),
+        'Members': members,
+    })
+
+
+@app.route('/redfish/v1/Managers/<identity>/VirtualMedia/<device>')
+def manager_get_virtual_media(identity, device):
+    media_list = driver.get_virtual_media(identity)
+    media = next((m for m in media_list if m['Id'] == device), None)
+    if not media:
+        abort(404)
+
+    return jsonify({
+        '@odata.type': '#VirtualMedia.v1_2_0.VirtualMedia',
+        'Id': media['Id'],
+        'Name': media['Name'],
+        'MediaTypes': media['MediaTypes'],
+        'Inserted': media['Inserted'],
+        'Image': media['Image'],
+        'WriteProtected': media['WriteProtected'],
+        'Actions': {
+            '#VirtualMedia.InsertMedia': {
+                'target': f'/redfish/v1/Managers/{identity}/VirtualMedia/{device}/Actions/VirtualMedia.InsertMedia',
+            },
+            '#VirtualMedia.EjectMedia': {
+                'target': f'/redfish/v1/Managers/{identity}/VirtualMedia/{device}/Actions/VirtualMedia.EjectMedia',
+            },
+        },
+    })
+
+
+@app.route('/redfish/v1/Managers/<identity>/VirtualMedia/<device>/Actions/VirtualMedia.InsertMedia',
+           methods=['POST'])
+def manager_insert_media(identity, device):
+    body = request.get_json(force=True)
+    image = body.get('Image', '')
+    LOG.info('Insert media on Manager %s/%s: %s', identity, device, image)
+
+    try:
+        driver.insert_virtual_media(identity, device, image)
+    except Exception as e:
+        LOG.error('Insert media failed: %s', e)
+        abort(500)
+
+    return '', 204
+
+
+@app.route('/redfish/v1/Managers/<identity>/VirtualMedia/<device>/Actions/VirtualMedia.EjectMedia',
+           methods=['POST'])
+def manager_eject_media(identity, device):
+    LOG.info('Eject media on Manager %s/%s', identity, device)
+    driver.eject_virtual_media(identity, device)
+    return '', 204
 
 
 # ── Health check ──

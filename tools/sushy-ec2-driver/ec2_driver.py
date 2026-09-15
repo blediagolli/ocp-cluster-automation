@@ -13,11 +13,16 @@ Environment variables:
     AWS_SECRET_ACCESS_KEY   - AWS credentials
     SUSHY_EC2_BOOT_IMAGE    - Default AMI to use for virtual media boot
     SUSHY_EC2_CONFIG        - Path to instance config JSON (optional)
+    SUSHY_EC2_S3_BUCKET     - S3 bucket for ISO conversion
 """
 
+import hashlib
 import json
 import logging
 import os
+import subprocess
+import tempfile
+import threading
 import time
 
 import boto3
@@ -45,6 +50,10 @@ class EC2Driver:
     """Sushy-tools driver that manages EC2 instances via the AWS API."""
 
     PERMANENT_CACHE = {}
+    _media_lock = threading.Lock()
+    _media_threads = {}
+    _ami_cache = {}
+    _ami_cache_lock = threading.Lock()
 
     def __init__(self, config=None):
         region = os.environ.get('AWS_REGION', 'us-east-2')
@@ -62,10 +71,6 @@ class EC2Driver:
         return {}
 
     def _instance_id(self, identity):
-        """Resolve a Redfish identity to an EC2 instance ID.
-
-        Accepts either a raw instance ID (i-xxx) or a mapped UUID from config.
-        """
         if identity.startswith('i-'):
             return identity
         for iid, cfg in self._config.get('instances', {}).items():
@@ -146,7 +151,13 @@ class EC2Driver:
         LOG.info('Setting power state of %s to %s', instance_id, state)
 
         if state in ('On', 'ForceOn'):
-            self._ec2.start_instances(InstanceIds=[instance_id])
+            self._wait_for_media_if_pending(instance_id)
+            cache = self.PERMANENT_CACHE.get(instance_id, {})
+            ami_id = cache.get('boot_ami')
+            if ami_id and cache.get('boot_device') == 'Cd':
+                self._reimage_instance(instance_id, ami_id)
+            else:
+                self._ec2.start_instances(InstanceIds=[instance_id])
         elif state in ('ForceOff', 'GracefulShutdown'):
             self._ec2.stop_instances(InstanceIds=[instance_id])
         elif state in ('ForceRestart', 'GracefulRestart'):
@@ -157,10 +168,18 @@ class EC2Driver:
         else:
             raise Exception(f'Unsupported power state: {state}')
 
+    def _wait_for_media_if_pending(self, instance_id):
+        with self._media_lock:
+            thread = self._media_threads.get(instance_id)
+        if thread and thread.is_alive():
+            LOG.info('Waiting for media insertion to complete on %s...', instance_id)
+            thread.join(timeout=600)
+
     # ── Boot device ──
 
     def get_boot_device(self, identity):
-        return 'Hdd'
+        instance_id = self._instance_id(identity)
+        return self.PERMANENT_CACHE.get(instance_id, {}).get('boot_device', 'Hdd')
 
     def set_boot_device(self, identity, boot_source):
         instance_id = self._instance_id(identity)
@@ -181,7 +200,7 @@ class EC2Driver:
     def get_virtual_media(self, identity):
         instance_id = self._instance_id(identity)
         cached = self.PERMANENT_CACHE.get(instance_id, {})
-        inserted = cached.get('virtual_media_inserted', False)
+        state = cached.get('virtual_media_state', 'ejected')
         image = cached.get('virtual_media_image', '')
 
         return [
@@ -189,8 +208,8 @@ class EC2Driver:
                 'Id': 'Cd',
                 'Name': 'Virtual CD',
                 'MediaTypes': ['CD', 'DVD'],
-                'Inserted': inserted,
-                'Image': image,
+                'Inserted': state == 'inserted',
+                'Image': image if state != 'ejected' else '',
                 'WriteProtected': True,
             },
             {
@@ -204,30 +223,56 @@ class EC2Driver:
         ]
 
     def insert_virtual_media(self, identity, device, image_url):
-        """Insert virtual media — downloads ISO, creates EBS snapshot/AMI.
+        """Insert virtual media — starts async ISO-to-AMI conversion.
 
-        For Metal3, this is called with the discovery ISO URL from InfraEnv.
-        We download the ISO, upload to S3, import as EBS snapshot, and
-        register as an AMI. On next power-on, the instance boots from this AMI.
+        Returns immediately. The actual ISO download, S3 upload, snapshot
+        import, and AMI registration happen in a background thread.
+        Power-on operations will wait for this to complete.
         """
         instance_id = self._instance_id(identity)
         LOG.info('Inserting virtual media on %s: %s (device: %s)',
                  instance_id, image_url, device)
 
+        with self._media_lock:
+            existing = self._media_threads.get(instance_id)
+            if existing and existing.is_alive():
+                LOG.info('Media insertion already in progress for %s, skipping duplicate', instance_id)
+                return
+
         self.PERMANENT_CACHE.setdefault(instance_id, {})
-        self.PERMANENT_CACHE[instance_id]['virtual_media_inserted'] = True
+        self.PERMANENT_CACHE[instance_id]['virtual_media_state'] = 'inserting'
         self.PERMANENT_CACHE[instance_id]['virtual_media_image'] = image_url
 
-        ami_id = self._iso_to_ami(image_url)
-        if ami_id:
-            self.PERMANENT_CACHE[instance_id]['boot_ami'] = ami_id
-            self._reimage_instance(instance_id, ami_id)
+        thread = threading.Thread(
+            target=self._insert_media_background,
+            args=(instance_id, image_url),
+            daemon=True,
+        )
+        with self._media_lock:
+            self._media_threads[instance_id] = thread
+        thread.start()
+
+    def _insert_media_background(self, instance_id, image_url):
+        try:
+            ami_id = self._iso_to_ami(image_url)
+            if ami_id:
+                self.PERMANENT_CACHE.setdefault(instance_id, {})
+                self.PERMANENT_CACHE[instance_id]['boot_ami'] = ami_id
+                self.PERMANENT_CACHE[instance_id]['virtual_media_state'] = 'inserted'
+                LOG.info('Virtual media ready for %s: AMI %s', instance_id, ami_id)
+            else:
+                self.PERMANENT_CACHE[instance_id]['virtual_media_state'] = 'error'
+                LOG.error('Virtual media insertion failed for %s', instance_id)
+        except Exception:
+            LOG.exception('Background media insertion failed for %s', instance_id)
+            self.PERMANENT_CACHE.setdefault(instance_id, {})
+            self.PERMANENT_CACHE[instance_id]['virtual_media_state'] = 'error'
 
     def eject_virtual_media(self, identity, device):
         instance_id = self._instance_id(identity)
         LOG.info('Ejecting virtual media from %s', instance_id)
         self.PERMANENT_CACHE.setdefault(instance_id, {})
-        self.PERMANENT_CACHE[instance_id]['virtual_media_inserted'] = False
+        self.PERMANENT_CACHE[instance_id]['virtual_media_state'] = 'ejected'
         self.PERMANENT_CACHE[instance_id]['virtual_media_image'] = ''
 
     # ── ISO to AMI conversion ──
@@ -235,20 +280,16 @@ class EC2Driver:
     def _iso_to_ami(self, image_url):
         """Convert a discovery ISO URL to an AMI.
 
-        This is a multi-step process:
-        1. Download ISO to local storage
-        2. Upload to S3
-        3. Import as EBS snapshot
-        4. Register as AMI
-
-        Returns the AMI ID or None if a pre-existing AMI is found.
+        Thread-safe: uses a lock per ISO URL hash so concurrent requests
+        for the same ISO don't duplicate work.
         """
-        import hashlib
-        import subprocess
-        import tempfile
-
         iso_hash = hashlib.sha256(image_url.encode()).hexdigest()[:12]
         ami_name = f'sushy-discovery-{iso_hash}'
+
+        with self._ami_cache_lock:
+            if ami_name in self._ami_cache:
+                LOG.info('Using cached AMI %s', self._ami_cache[ami_name])
+                return self._ami_cache[ami_name]
 
         existing = self._ec2.describe_images(
             Owners=['self'],
@@ -257,6 +298,8 @@ class EC2Driver:
         if existing['Images']:
             ami_id = existing['Images'][0]['ImageId']
             LOG.info('Reusing existing AMI %s for %s', ami_id, image_url)
+            with self._ami_cache_lock:
+                self._ami_cache[ami_name] = ami_id
             return ami_id
 
         LOG.info('Converting ISO to AMI: %s', image_url)
@@ -272,7 +315,7 @@ class EC2Driver:
 
             LOG.info('Downloading ISO...')
             subprocess.run(
-                ['curl', '-sL', '-o', iso_path, image_url],
+                ['curl', '-skL', '-o', iso_path, image_url],
                 check=True, timeout=600)
 
             LOG.info('Converting ISO to raw disk image...')
@@ -317,6 +360,8 @@ class EC2Driver:
                           detail.get('StatusMessage'))
                 return None
 
+            progress = detail.get('Progress', '?')
+            LOG.info('Snapshot import %s: %s%% complete', task_id, progress)
             time.sleep(15)
 
         LOG.info('Registering AMI %s from snapshot %s',
@@ -350,18 +395,13 @@ class EC2Driver:
             ]
         )
 
+        with self._ami_cache_lock:
+            self._ami_cache[ami_name] = ami_id
+
         return ami_id
 
     def _reimage_instance(self, instance_id, ami_id):
-        """Stop an instance, swap its root volume to boot from a new AMI.
-
-        This is the EC2 equivalent of "boot from virtual media":
-        1. Stop the instance
-        2. Detach current root volume
-        3. Create new volume from AMI snapshot
-        4. Attach as root
-        5. Start the instance
-        """
+        """Stop an instance, swap its root volume to boot from a new AMI."""
         LOG.info('Re-imaging %s with AMI %s', instance_id, ami_id)
 
         inst = self._describe_instance(instance_id)
