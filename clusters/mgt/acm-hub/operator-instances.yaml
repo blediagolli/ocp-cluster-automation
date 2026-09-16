@@ -72,7 +72,6 @@ quayRegistry:
     superUsers:
       - quayadmin
       - admin
-    userInitialize: true
     actionLogRotation:
       include: true
   oidc:
@@ -83,6 +82,24 @@ quayRegistry:
   bridge:
     include: true
     oauthToken: "EPBol6rTiU6J2V3sOUBHrNl7j9prug1kkGEZwbsc"
+  init:
+    include: true
+    quayUrl: "https://registry-quay-quay-enterprise.apps.cluster-c8444.dyn.redhatworkshops.io"
+    oauthToken: "B07UVAT0XH6NP3RF0R47HM8RES20K0PJPSWULOHI"
+    organizations:
+      - name: platform
+        email: platform@demo.redhat.com
+      - name: team-alpha
+        email: team-alpha@demo.redhat.com
+      - name: team-beta
+        email: team-beta@demo.redhat.com
+    robotAccounts:
+      - org: platform
+        name: cicd
+        description: "CI/CD pipeline push/pull"
+      - org: platform
+        name: pull
+        description: "Read-only pull access"
 keycloak:
   include: true
   createNamespace: true
