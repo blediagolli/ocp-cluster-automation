@@ -1,0 +1,84 @@
+clusterRoles:
+  include: false
+  roles: []
+  # Building block with a label for aggregation:
+  # - include: true
+  #   name: node-reader
+  #   labels:
+  #     rbac.example.com/aggregate-to-platform-viewer: "true"
+  #   rules:
+  #     - apiGroups: [""]
+  #       resources: ["nodes"]
+  #       verbs: ["get", "list", "watch"]
+  #
+  # - include: true
+  #   name: namespace-reader
+  #   labels:
+  #     rbac.example.com/aggregate-to-platform-viewer: "true"
+  #   rules:
+  #     - apiGroups: [""]
+  #       resources: ["namespaces"]
+  #       verbs: ["get", "list", "watch"]
+  #
+  # Aggregated role — no rules needed, auto-combines labeled roles:
+  # - include: true
+  #   name: platform-viewer
+  #   aggregationRule:
+  #     clusterRoleSelectors:
+  #       - matchLabels:
+  #           rbac.example.com/aggregate-to-platform-viewer: "true"
+
+roles:
+  include: false
+  roles: []
+  # - include: true
+  #   name: pod-reader
+  #   namespace: my-namespace
+  #   rules:
+  #     - apiGroups: [""]
+  #       resources: ["pods", "pods/log"]
+  #       verbs: ["get", "list", "watch"]
+
+clusterRoleBindings:
+  include: false
+  bindings: []
+  # - include: true
+  #   name: devs-view-nodes
+  #   clusterRole: read-only-nodes
+  #   subjects:
+  #     - kind: Group
+  #       name: developers
+  #
+  # - include: true
+  #   name: monitoring-sa-view
+  #   clusterRole: view
+  #   subjects:
+  #     - kind: ServiceAccount
+  #       name: monitoring
+  #       namespace: openshift-monitoring
+  #
+  # - include: true
+  #   name: admin-cluster-admin
+  #   clusterRole: cluster-admin
+  #   subjects:
+  #     - kind: User
+  #       name: admin@example.com
+
+roleBindings:
+  include: false
+  bindings: []
+  # - include: true
+  #   name: team-a-edit
+  #   namespace: team-a
+  #   clusterRole: edit
+  #   subjects:
+  #     - kind: Group
+  #       name: team-a-devs
+  #
+  # - include: true
+  #   name: team-b-custom
+  #   namespace: team-b
+  #   role: pod-reader          # references a namespace Role instead of ClusterRole
+  #   subjects:
+  #     - kind: Group
+  #       name: team-b-readonly

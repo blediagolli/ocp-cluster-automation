@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  containers:
+    - name: test
+      image: registry.redhat.io/openshift4/ose-cli:latest
+      command:
+        - /bin/bash
+        - -c
+        - |
+          set -euo pipefail
+          {{- if .Values.clusterRoles.include }}
+          echo "--- Checking ClusterRoles ---"
+          {{- range .Values.clusterRoles.roles }}
+          {{- if .include }}
+          oc get clusterrole {{ .name }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
+          {{- if .Values.clusterRoleBindings.include }}
+          echo "--- Checking ClusterRoleBindings ---"
+          {{- range .Values.clusterRoleBindings.bindings }}
+          {{- if .include }}
+          oc get clusterrolebinding {{ .name }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
+          {{- if .Values.roles.include }}
+          echo "--- Checking Roles ---"
+          {{- range .Values.roles.roles }}
+          {{- if .include }}
+          oc get role {{ .name }} -n {{ .namespace }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
+          {{- if .Values.roleBindings.include }}
+          echo "--- Checking RoleBindings ---"
+          {{- range .Values.roleBindings.bindings }}
+          {{- if .include }}
+          oc get rolebinding {{ .name }} -n {{ .namespace }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
+          echo "PASSED"

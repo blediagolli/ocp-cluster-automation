@@ -1,0 +1,33 @@
+cluster:
+  name: ""
+  baseDomain: ""
+
+secretStoreRef:
+  name: vault
+  kind: ClusterSecretStore
+
+secrets: []
+# secrets:
+#   - include: true
+#     name: my-tls-cert
+#     namespace: openshift-ingress
+#     type: kubernetes.io/tls
+#     refreshInterval: 1h
+#     vault:
+#       path: secret/data/clusters/my-cluster/ingress-cert
+#       properties:
+#         - secretKey: tls.crt
+#           property: tls.crt
+#         - secretKey: tls.key
+#           property: tls.key
+#
+#   - include: true
+#     name: oidc-client-secret
+#     namespace: openshift-config
+#     type: Opaque
+#     refreshInterval: 1h
+#     vault:
+#       path: secret/data/clusters/my-cluster/oidc
+#       properties:
+#         - secretKey: clientSecret
+#           property: clientSecret

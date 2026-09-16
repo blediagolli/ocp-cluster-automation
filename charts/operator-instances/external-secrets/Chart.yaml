@@ -1,0 +1,4 @@
+apiVersion: v2
+name: external-secrets
+description: Platform-level ExternalSecret CRs for cluster-wide secrets (ingress certs, OIDC, pull secrets)
+version: 0.1.0
