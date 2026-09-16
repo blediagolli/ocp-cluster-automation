@@ -13,8 +13,6 @@ spec:
   {{- if .Values.proxy.noProxy }}
   noProxy: {{ .Values.proxy.noProxy | quote }}
   {{- end }}
-  {{- if .Values.proxy.trustedCA.name }}
   trustedCA:
-    name: {{ .Values.proxy.trustedCA.name }}
-  {{- end }}
+    name: {{ .Values.proxy.trustedCA.name | default "" | quote }}
 {{- end }}
