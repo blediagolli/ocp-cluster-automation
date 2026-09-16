@@ -5,12 +5,13 @@ Creates cert-manager ClusterIssuers (self-signed and CA) and Certificate resourc
 
 ## Current state
 - Disabled by default (all toggles `false`)
-- Enabled for `aws-test` cluster (`clusters/dev/aws-test/operator-instances.yaml`) with self-signed + CA issuers + CA bundle
+- Enabled for `aws-test` cluster (`clusters/dev/aws-test/operator-instances.yaml`) with ACME/Let's Encrypt issuer via DNS01/Route53
+- ACME issuer uses a `CredentialsRequest` to have the cloud credential operator provision Route53-scoped AWS credentials (no secrets in git)
+- Self-signed and CA issuers still available but disabled on aws-test
 - Used alongside `tls-certificates` platform chart: this chart creates the ClusterIssuers, `tls-certificates` creates the leaf Certificate CRs
-- CA bundle distributed via `caBundle` toggle — PostSync Job copies CA cert to ConfigMap in `openshift-config`, referenced by `openshift-proxy` chart for cluster trust
-- Tested and deployed on aws-test (all apps Synced/Healthy)
+- Old self-signed resources (selfsigned/cluster-ca issuers, CA bundle Job) are orphaned on aws-test — safe to prune manually
 
 ## Outstanding
 - **Missing dnsNames/SANs** — `certificates.yaml` leaf certs (apiCert/ingressCert) have no `dnsNames`; use `tls-certificates` platform chart for leaf certs instead
 - **Hardcoded secret names** — `api-cert-tls` and `ingress-cert-tls` in `certificates.yaml`; not an issue when using `tls-certificates` chart for leaf certs
-- **No ACME/Let's Encrypt issuer** — Only self-signed and internal CA; add ACME ClusterIssuer option for production use
+- **Orphaned self-signed resources on aws-test** — enable pruning or manually delete the old selfsigned ClusterIssuer, cluster-ca Certificate/ClusterIssuer, and ca-bundle-copier Job/RBAC
