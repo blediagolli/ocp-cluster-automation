@@ -4,20 +4,19 @@ kind: ScanSetting
 metadata:
   name: {{ .Values.scanSetting.name }}
   namespace: {{ .Values.scanSetting.namespace }}
-spec:
-  autoApplyRemediations: {{ .Values.scanSetting.autoApplyRemediations }}
-  rawResultStorage:
-    pvAccessModes:
-      {{- toYaml .Values.scanSetting.rawResultStorage.pvAccessModes | nindent 6 }}
-    rotation: {{ .Values.scanSetting.rawResultStorage.rotation }}
-    size: {{ .Values.scanSetting.rawResultStorage.size }}
-    tolerations:
-      {{- toYaml .Values.scanSetting.rawResultStorage.tolerations | nindent 6 }}
-  roles:
-    {{- toYaml .Values.scanSetting.roles | nindent 4 }}
-  scanTolerations:
-    {{- toYaml .Values.scanSetting.scanTolerations | nindent 4 }}
-  schedule: {{ .Values.scanSetting.schedule | quote }}
-  showNotApplicable: {{ .Values.scanSetting.showNotApplicable }}
-  strictNodeScan: {{ .Values.scanSetting.strictNodeScan }}
+autoApplyRemediations: {{ .Values.scanSetting.autoApplyRemediations }}
+rawResultStorage:
+  pvAccessModes:
+    {{- toYaml .Values.scanSetting.rawResultStorage.pvAccessModes | nindent 4 }}
+  rotation: {{ .Values.scanSetting.rawResultStorage.rotation }}
+  size: {{ .Values.scanSetting.rawResultStorage.size }}
+  tolerations:
+    {{- toYaml .Values.scanSetting.rawResultStorage.tolerations | nindent 4 }}
+roles:
+  {{- toYaml .Values.scanSetting.roles | nindent 2 }}
+scanTolerations:
+  {{- toYaml .Values.scanSetting.scanTolerations | nindent 2 }}
+schedule: {{ .Values.scanSetting.schedule | quote }}
+showNotApplicable: {{ .Values.scanSetting.showNotApplicable }}
+strictNodeScan: {{ .Values.scanSetting.strictNodeScan }}
 {{- end }}
