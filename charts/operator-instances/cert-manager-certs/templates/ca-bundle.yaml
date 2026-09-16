@@ -1,0 +1,68 @@
+{{- if .Values.caBundle.include }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ca-bundle-copier
+  namespace: cert-manager
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ca-bundle-copier
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ca-bundle-copier
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ca-bundle-copier
+subjects:
+  - kind: ServiceAccount
+    name: ca-bundle-copier
+    namespace: cert-manager
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: copy-ca-bundle
+  namespace: cert-manager
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 10
+  template:
+    spec:
+      serviceAccountName: ca-bundle-copier
+      restartPolicy: OnFailure
+      containers:
+        - name: copy-ca
+          image: registry.redhat.io/openshift4/ose-cli:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              CA=$(oc get secret {{ .Values.caIssuer.secretName }} \
+                -n cert-manager -o jsonpath='{.data.ca\.crt}' | base64 -d)
+              if [ -z "$CA" ]; then
+                echo "ERROR: CA cert not found in secret {{ .Values.caIssuer.secretName }}"
+                exit 1
+              fi
+              oc create configmap {{ .Values.caBundle.configMapName }} \
+                --from-literal=ca-bundle.crt="$CA" \
+                -n {{ .Values.caBundle.namespace }} \
+                --dry-run=client -o yaml | oc apply -f -
+              echo "CA bundle ConfigMap created in {{ .Values.caBundle.namespace }}/{{ .Values.caBundle.configMapName }}"
+{{- end }}

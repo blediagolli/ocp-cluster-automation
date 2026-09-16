@@ -7,6 +7,7 @@ platformCharts:
   - chart: tls-certificates
   - chart: openshift-apiserver
   - chart: openshift-ingress
+  - chart: openshift-proxy
 operatorInstanceCharts:
   - chart: cert-manager-certs
 deployOperators: true

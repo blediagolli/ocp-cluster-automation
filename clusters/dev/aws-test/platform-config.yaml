@@ -21,6 +21,10 @@ ingress:
     defaultCertificate:
       enabled: true
       name: cert-manager-ingress-cert
+proxy:
+  include: true
+  trustedCA:
+    name: custom-ca-bundle
 provider: cert-manager
 certManager:
   issuerRef:

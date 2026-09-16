@@ -5,3 +5,5 @@ selfSignedIssuer:
   include: true
 caIssuer:
   include: true
+caBundle:
+  include: true

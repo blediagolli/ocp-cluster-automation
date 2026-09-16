@@ -7,6 +7,10 @@ caIssuer:
   secretName: cluster-ca-key-pair
   duration: 17520h
   renewBefore: 2160h
+caBundle:
+  include: false
+  configMapName: custom-ca-bundle
+  namespace: openshift-config
 apiCert:
   include: false
   namespace: openshift-config
