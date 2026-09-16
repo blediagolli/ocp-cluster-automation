@@ -8,6 +8,8 @@ kind: NMStateConfig
 metadata:
   name: {{ .name }}
   namespace: {{ $.Values.cluster.name }}
+  annotations:
+    helm.sh/hook-weight: "361"
   labels:
     cluster-name: {{ $.Values.cluster.name }}
 spec:

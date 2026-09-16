@@ -10,6 +10,7 @@ metadata:
   labels:
     infraenvs.agent-install.openshift.io: {{ $.Values.cluster.name }}
   annotations:
+    helm.sh/hook-weight: "362"
     inspect.metal3.io: disabled
     bmac.agent-install.openshift.io/hostname: {{ .name | quote }}
     bmac.agent-install.openshift.io/role: {{ .role | quote }}
