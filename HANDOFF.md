@@ -9,6 +9,10 @@
 #### 5. ACS Secured Cluster on aws-test
 - Added `acs-secured-cluster` to `operatorInstanceCharts` in conf.yaml
 - ACS operator already deployed at env level; env-level `securedCluster: include: true` with `secretMode: "generate"` handles config
+- Added `sensor.resources` template to SecuredCluster CR and chart values — enables per-cluster CPU/memory overrides
+- aws-test: sensor reduced to 500m CPU, scannerV4 disabled, admission control disabled, slim collectors
+- Hub Central: reduced from 1500m to 500m CPU, scanner replicas 2→1, scannerV4 replicas 3→1
+- **ACS 4.11 init bundle gotcha**: Do NOT manually create `tls-cert-*` secrets — the operator creates them internally from legacy init bundle secrets. Partial `tls-cert-*` secrets trigger a CA consistency check that blocks reconciliation. Fix: delete all `tls-cert-*` secrets and restart the operator pod.
 
 #### 6. Compliance operator + scans on aws-test
 - Added `compliance-operator` to cluster-level `operator-deployment.yaml` (channel: `stable`)
