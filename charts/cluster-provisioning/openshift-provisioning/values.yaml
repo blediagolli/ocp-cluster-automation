@@ -224,7 +224,7 @@ vsphereControlPlane:
   automation: govc  # govc or ansible
   simulator:
     enabled: false  # deploy vcsim for testing (no real vCenter needed)
-    image: "ghcr.io/vmware/govmomi/vcsim:latest"
+    image: "docker.io/vmware/vcsim:latest"
   images:
     govc: "quay.io/openshift/origin-cli:latest"
     ansible: "quay.io/ansible/ansible-runner:latest"
