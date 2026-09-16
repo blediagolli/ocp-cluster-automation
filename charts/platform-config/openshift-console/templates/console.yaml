@@ -5,10 +5,7 @@ apiVersion: config.openshift.io/v1
 kind: Console
 metadata:
   name: cluster
-spec:
-  {{- if not (or $hasCustomization $hasDevCatalog) }}
-  customization: {}
-  {{- end }}
+spec: {{ if not (or $hasCustomization $hasDevCatalog) }}{}{{ end }}
   {{- if $hasCustomization }}
   customization:
     {{- if .Values.console.branding.customProductName }}
