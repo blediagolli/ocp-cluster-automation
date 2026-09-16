@@ -4,6 +4,71 @@
 
 ## What changed this session
 
+### Session changes (2026-09-16) — Quay registry chart restructure
+
+#### Quay chart value restructuring
+- Consolidated 3 top-level keys (`quayRegistry`, `quayBridge`, `quayKeycloak`) into single `quay:` root with sub-sections
+- Everything togglable via `include` flags following existing repo pattern
+- Value hierarchy: `quayRegistry.config`, `quayRegistry.components`, `quayRegistry.scheduling`, `quayRegistry.customTls`, `quayRegistry.externalDatabase`, `quayRegistry.externalStorage`, `quayRegistry.oidc`, `quayRegistry.bridge`, `quayRegistry.init`
+
+#### Component overrides (11 components)
+- All 11 QuayRegistry components togglable via `managed: true/false`
+- Components with workloads (quay, clair, clairpostgres, postgres, redis, mirror) get `overrides:` block with replicas, resources, affinity, tolerations
+- postgres and clairpostgres support `volumeSize`
+- HPA, route, monitoring, TLS are toggle-only (no resource overrides)
+
+#### Infra node scheduling (`quayRegistry.scheduling`)
+- Single `scheduling.include` flag injects node affinity + tolerations into all managed component overrides
+- Default: `node-role.kubernetes.io/infra` with NoSchedule toleration
+
+#### External integrations (auto-toggle managed components)
+- `quayRegistry.externalDatabase.include` — renders `DB_URI` in config bundle, auto-sets postgres component `managed: false`
+- `quayRegistry.externalStorage.include` — renders `DISTRIBUTED_STORAGE_CONFIG`, auto-sets objectstorage `managed: false`
+- `quayRegistry.customTls.include` — adds `ssl.cert`/`ssl.key` to config bundle secret, auto-sets TLS component `managed: false`
+- `quayRegistry.oidc.include` — renders `{PROVIDER}_LOGIN_CONFIG` block (provider name uppercased), auto-disables `FEATURE_DIRECT_LOGIN`
+
+#### Config bundle features
+- All feature flags driven by values: quotas, auto-prune, garbage collection, rate limits, team syncing, action log rotation, repo mirror
+- `FEATURE_REPO_MIRROR: true` auto-set when mirror component is managed
+- Server hostname + preferred URL scheme rendered when `serverHostname` is set
+- Fixed scientific notation for `DEFAULT_SYSTEM_REJECT_QUOTA_BYTES` — uses `| int64` filter
+
+#### Quay Bridge (`quayRegistry.bridge`)
+- `quayHostname` auto-derived from `quayRegistry.name`, `quayRegistry.namespace`, and `cluster.baseDomain`
+- Denylist rendered via `toYaml` from values list (was ~60 hardcoded lines)
+- OAuth token stored in separate Secret (not inline)
+
+#### Init Job (`quayRegistry.init`) — new template
+- PostSync hook creates organizations and robot accounts via Quay REST API
+- Waits for `/health/instance` endpoint before running
+- OAuth token stored in `quay-init-token` Secret, injected via env var
+- Configurable org list (`organizations[].name/email`) and robot list (`robotAccounts[].org/name/description`)
+
+#### Hub cluster config updated
+- `clusters/mgt/acm-hub/operator-instances.yaml` migrated from old 3-key structure (`quayRegistry`, `quayBridge`, `quayKeycloak`) to consolidated `quayRegistry:` with nested sub-sections
+
+### Session changes (2026-09-16) — RBAC chart + external-secrets chart + preserve docs
+
+#### 0. RBAC management chart
+- Created `charts/platform-config/rbac/` — centralized RBAC management for platform-level resources
+- Four resource types: ClusterRoles, Roles, ClusterRoleBindings, RoleBindings
+- Each section has top-level `include` toggle + per-item `include` (storage-classes pattern)
+- Supports all subject types: Group, User, ServiceAccount (apiGroup auto-set by kind)
+- RoleBindings support both `clusterRole` and `role` references (mutually exclusive, sets roleRef.kind accordingly)
+- Scoped to platform-level RBAC only — app-specific RBAC belongs in the app chart, OAuth groupRBAC stays in openshift-oauth
+- Deploy by adding `- chart: rbac` to `platformCharts` in conf.yaml
+
+#### 1. External secrets instance chart (scoped to platform secrets)
+- Created `charts/operator-instances/external-secrets/` — templates ExternalSecret CRs from a `secrets` list in values
+- Each entry specifies name, namespace, type, vault path, and property mappings
+- Defaults to the `vault` ClusterSecretStore (from vault-server chart); per-secret override supported
+- Scoped to platform/cluster-wide secrets (ingress certs, OIDC, pull secrets) — app-specific ExternalSecrets belong in the app chart
+- Requires: `external-secrets-operator` deployed, `ClusterSecretStore` created (vault-server chart), Vault KV paths populated
+
+#### 2. preserveResourcesOnDeletion docs
+- Created `docs/ai-dev/applicationset-preserve-resources.md` — explains AppSet-level vs App-level flags, interaction matrix, and migration guide for adopting existing resources
+- Added gotcha to HANDOFF.md Gotchas section
+
 ### Session changes (2026-09-16) — aws-test additional operators, teams, compliance
 
 #### 5. ACS Secured Cluster on aws-test
@@ -102,7 +167,7 @@
 ### 1. Values refactoring — flattened nesting and auto-derived URLs
 - **acs-central**: Moved `central.initBundle` → top-level `initBundle`, `central.consoleLink` → top-level `centralConsoleLink`; `centralUrl` auto-derived from `cluster.baseDomain`
 - **acs-secured-cluster**: `centralEndpoint` auto-derived from `cluster.baseDomain` (explicit override still required for managed clusters pointing to remote Central)
-- **quay-registry**: Flattened `quayRegistry.bridge` → `quayBridge`, `quayRegistry.keycloak` → `quayKeycloak`; `quayHostname` auto-derived from `cluster.baseDomain`
+- **quay-registry**: Consolidated `quayRegistry`, `quayBridge`, `quayKeycloak` → single `quay:` root; added external DB/storage/TLS integrations, infra scheduling, OIDC, init job; all components togglable
 - **acm-observability**: Renamed `consoleLink` → `observabilityConsoleLink`; `href` auto-derived from `cluster.baseDomain`; `storageClass` uses `cluster.storageClass`; OBC namespace uses `multiClusterObservability.namespace`
 - **user-workload-monitoring**: `storageClass` falls back to `cluster.storageClass`
 - **conf.yaml**: Added `cluster.baseDomain` (all clusters) and `cluster.storageClass` (mgt)
@@ -315,6 +380,7 @@ Every active chart has both a Helm test template (`templates/tests/test-connecti
 | acm-managed-cluster | `./tests/e2e-test.sh <cluster-name>` |
 | user-workload-monitoring | `./tests/e2e-test.sh` |
 | etcd-backup | `./tests/e2e-test.sh` |
+| rbac | `./tests/e2e-test.sh [values-file]` |
 | etcd-defrag | `./tests/e2e-test.sh` |
 | project-request-template | `./tests/e2e-test.sh` |
 | openshift-marketplace | `./tests/e2e-test.sh` |

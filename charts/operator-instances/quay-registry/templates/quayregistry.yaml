@@ -7,52 +7,160 @@ metadata:
 spec:
   configBundleSecret: quay-registry-config-bundle
   components:
-    - kind: clair
-      managed: true
-      overrides:
-        resources:
-          requests:
-            cpu: 50m
-            memory: 128Mi
-    - kind: clairpostgres
-      managed: true
-      overrides:
-        resources:
-          requests:
-            cpu: 50m
-            memory: 128Mi
-    - kind: postgres
-      managed: true
-      overrides:
-        resources:
-          requests:
-            cpu: 50m
-            memory: 128Mi
-    - kind: objectstorage
-      managed: true
-    - kind: redis
-      managed: true
-      overrides:
-        resources:
-          requests:
-            cpu: 50m
-            memory: 32Mi
-    - kind: horizontalpodautoscaler
-      managed: false
-    - kind: route
-      managed: true
-    - kind: mirror
-      managed: false
-    - kind: monitoring
-      managed: false
-    - kind: tls
-      managed: true
     - kind: quay
-      managed: true
+      managed: {{ .Values.quayRegistry.components.quay.managed }}
+      {{- if .Values.quayRegistry.components.quay.managed }}
       overrides:
-        replicas: 1
+        replicas: {{ .Values.quayRegistry.components.quay.replicas }}
+        {{- with .Values.quayRegistry.components.quay.resources }}
         resources:
-          requests:
-            cpu: 100m
-            memory: 512Mi
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- if .Values.quayRegistry.scheduling.include }}
+        {{- with .Values.quayRegistry.scheduling.affinity }}
+        affinity:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.quayRegistry.scheduling.tolerations }}
+        tolerations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- end }}
+      {{- end }}
+    - kind: clair
+      managed: {{ .Values.quayRegistry.components.clair.managed }}
+      {{- if .Values.quayRegistry.components.clair.managed }}
+      overrides:
+        {{- with .Values.quayRegistry.components.clair.replicas }}
+        replicas: {{ . }}
+        {{- end }}
+        {{- with .Values.quayRegistry.components.clair.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- if .Values.quayRegistry.scheduling.include }}
+        {{- with .Values.quayRegistry.scheduling.affinity }}
+        affinity:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.quayRegistry.scheduling.tolerations }}
+        tolerations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- end }}
+      {{- end }}
+    - kind: clairpostgres
+      managed: {{ .Values.quayRegistry.components.clairPostgres.managed }}
+      {{- if .Values.quayRegistry.components.clairPostgres.managed }}
+      overrides:
+        {{- with .Values.quayRegistry.components.clairPostgres.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.quayRegistry.components.clairPostgres.volumeSize }}
+        volumeSize: {{ . }}
+        {{- end }}
+        {{- if .Values.quayRegistry.scheduling.include }}
+        {{- with .Values.quayRegistry.scheduling.affinity }}
+        affinity:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.quayRegistry.scheduling.tolerations }}
+        tolerations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- end }}
+      {{- end }}
+    - kind: postgres
+      managed: {{ .Values.quayRegistry.components.postgres.managed }}
+      {{- if .Values.quayRegistry.components.postgres.managed }}
+      overrides:
+        {{- with .Values.quayRegistry.components.postgres.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.quayRegistry.components.postgres.volumeSize }}
+        volumeSize: {{ . }}
+        {{- end }}
+        {{- if .Values.quayRegistry.scheduling.include }}
+        {{- with .Values.quayRegistry.scheduling.affinity }}
+        affinity:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.quayRegistry.scheduling.tolerations }}
+        tolerations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- end }}
+      {{- end }}
+    - kind: objectstorage
+      {{- if .Values.quayRegistry.externalStorage.include }}
+      managed: false
+      {{- else }}
+      managed: {{ .Values.quayRegistry.components.objectstorage.managed }}
+      {{- end }}
+      {{- if and .Values.quayRegistry.components.objectstorage.managed (not .Values.quayRegistry.externalStorage.include) .Values.quayRegistry.scheduling.include }}
+      overrides:
+        {{- with .Values.quayRegistry.scheduling.affinity }}
+        affinity:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.quayRegistry.scheduling.tolerations }}
+        tolerations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- end }}
+    - kind: redis
+      managed: {{ .Values.quayRegistry.components.redis.managed }}
+      {{- if .Values.quayRegistry.components.redis.managed }}
+      overrides:
+        {{- with .Values.quayRegistry.components.redis.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- if .Values.quayRegistry.scheduling.include }}
+        {{- with .Values.quayRegistry.scheduling.affinity }}
+        affinity:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.quayRegistry.scheduling.tolerations }}
+        tolerations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- end }}
+      {{- end }}
+    - kind: horizontalpodautoscaler
+      managed: {{ .Values.quayRegistry.components.hpa.managed }}
+    - kind: route
+      managed: {{ .Values.quayRegistry.components.route.managed }}
+    - kind: mirror
+      managed: {{ .Values.quayRegistry.components.mirror.managed }}
+      {{- if .Values.quayRegistry.components.mirror.managed }}
+      overrides:
+        {{- with .Values.quayRegistry.components.mirror.replicas }}
+        replicas: {{ . }}
+        {{- end }}
+        {{- with .Values.quayRegistry.components.mirror.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- if .Values.quayRegistry.scheduling.include }}
+        {{- with .Values.quayRegistry.scheduling.affinity }}
+        affinity:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.quayRegistry.scheduling.tolerations }}
+        tolerations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- end }}
+      {{- end }}
+    - kind: monitoring
+      managed: {{ .Values.quayRegistry.components.monitoring.managed }}
+    - kind: tls
+      {{- if .Values.quayRegistry.customTls.include }}
+      managed: false
+      {{- else }}
+      managed: {{ .Values.quayRegistry.components.tls.managed }}
+      {{- end }}
 {{- end }}

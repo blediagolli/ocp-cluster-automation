@@ -1,4 +1,4 @@
-{{- if and .Values.quayRegistry.include .Values.quayBridge.include }}
+{{- if and .Values.quayRegistry.include .Values.quayRegistry.bridge.include }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -8,7 +8,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
 type: Opaque
 stringData:
-  token: {{ required "quayBridge.oauthToken is required when bridge is enabled" .Values.quayBridge.oauthToken }}
+  token: {{ required "quay.bridge.oauthToken is required when bridge is enabled" .Values.quayRegistry.bridge.oauthToken }}
 ---
 apiVersion: quay.redhat.com/v1
 kind: QuayIntegration
@@ -21,83 +21,14 @@ spec:
   credentialsSecret:
     namespace: openshift-operators
     name: quay-bridge-token
-  quayHostname: https://{{ .Values.quayBridge.quayHostname | default (printf "registry-quay-quay-enterprise.%s" .Values.cluster.baseDomain) }}
-  insecureRegistry: false
-  {{- if .Values.quayBridge.namespaceCreationDefault }}
+  quayHostname: https://{{ .Values.quayRegistry.bridge.hostname | default (printf "%s-quay-%s.%s" .Values.quayRegistry.name .Values.quayRegistry.namespace .Values.cluster.baseDomain) }}
+  insecureRegistry: {{ .Values.quayRegistry.bridge.insecureRegistry }}
+  {{- if .Values.quayRegistry.bridge.namespaceCreationDefault }}
   namespaceCreationDefault: true
   {{- end }}
-  scheduledImageStreamImport: true
+  scheduledImageStreamImport: {{ .Values.quayRegistry.bridge.scheduledImageStreamImport }}
+  {{- with .Values.quayRegistry.bridge.denylistNamespaces }}
   denylistNamespaces:
-    - default
-    - kube-system
-    - kube-public
-    - kube-node-lease
-    - openshift
-    - openshift-apiserver
-    - openshift-apiserver-operator
-    - openshift-authentication
-    - openshift-authentication-operator
-    - openshift-cloud-credential-operator
-    - openshift-cluster-machine-approver
-    - openshift-cluster-node-tuning-operator
-    - openshift-cluster-samples-operator
-    - openshift-cluster-storage-operator
-    - openshift-cluster-version
-    - openshift-config
-    - openshift-config-managed
-    - openshift-console
-    - openshift-console-operator
-    - openshift-controller-manager
-    - openshift-controller-manager-operator
-    - openshift-dns
-    - openshift-dns-operator
-    - openshift-etcd
-    - openshift-etcd-operator
-    - openshift-host-network
-    - openshift-image-registry
-    - openshift-infra
-    - openshift-ingress
-    - openshift-ingress-canary
-    - openshift-ingress-operator
-    - openshift-insights
-    - openshift-kni-infra
-    - openshift-kube-apiserver
-    - openshift-kube-apiserver-operator
-    - openshift-kube-controller-manager
-    - openshift-kube-controller-manager-operator
-    - openshift-kube-scheduler
-    - openshift-kube-scheduler-operator
-    - openshift-kube-storage-version-migrator
-    - openshift-kube-storage-version-migrator-operator
-    - openshift-machine-api
-    - openshift-machine-config-operator
-    - openshift-marketplace
-    - openshift-monitoring
-    - openshift-multus
-    - openshift-network-diagnostics
-    - openshift-network-operator
-    - openshift-node
-    - openshift-oauth-apiserver
-    - openshift-openstack-infra
-    - openshift-operators
-    - openshift-operator-lifecycle-manager
-    - openshift-ovn-kubernetes
-    - openshift-sdn
-    - openshift-service-ca
-    - openshift-service-ca-operator
-    - openshift-user-workload-monitoring
-    - openshift-gitops
-    - stackrox
-    - quay-enterprise
-    - open-cluster-management
-    - multicluster-engine
-    - ansible-automation-platform
-    - hypershift
-    - openshift-storage
-    - openshift-local-storage
-    - openshift-nmstate
-    - openshift-dr-system
-    - hive
-    - local-quay
-    - sushy-ec2
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 {{- end }}

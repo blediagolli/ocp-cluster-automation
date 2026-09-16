@@ -1,21 +1,242 @@
 quayRegistry:
   include: false
-  createNamespace: false
   name: registry
   namespace: quay-enterprise
-  userInitialize: false
-  superUsers:
-    - quayadmin
-  actionLogRotation:
+  createNamespace: false
+
+  config:
+    serverHostname: ""
+    userInitialize: false
+    superUsers:
+      - quayadmin
+    userCreation: false
+    anonymousAccess: false
+    ociSupport: true
+    browserApiCallsXhrOnly: true
+    allowPullsWithoutStrictLogging: false
+    proxyStorage: true
+
+    quotas:
+      include: true
+      defaultSystemRejectBytes: 10737418240
+
+    autoPrune: true
+    garbageCollection: true
+
+    tagExpiration:
+      default: "2w"
+      options:
+        - 1d
+        - 1w
+        - 2w
+        - 4w
+        - 8w
+        - 26w
+        - 52w
+
+    rateLimits:
+      include: true
+
+    actionLogRotation:
+      include: false
+      archivePath: "action_log_archive/"
+      archiveLocation: "local_us"
+
+    teamSyncing:
+      include: true
+      nonSuperuserSetup: false
+      resyncStaleTime: "30m"
+
+  components:
+    quay:
+      managed: true
+      replicas: 1
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+    clair:
+      managed: true
+      replicas: 1
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+    clairPostgres:
+      managed: true
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+      volumeSize: ""
+    postgres:
+      managed: true
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+      volumeSize: ""
+    objectstorage:
+      managed: true
+    redis:
+      managed: true
+      resources:
+        requests:
+          cpu: 50m
+          memory: 32Mi
+    hpa:
+      managed: false
+    route:
+      managed: true
+    mirror:
+      managed: false
+      replicas: 1
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+    monitoring:
+      managed: false
+    tls:
+      managed: true
+
+  scheduling:
     include: false
-    archivePath: "action_log_archive/"
-    archiveLocation: "local_us"
-quayBridge:
-  include: false
-  quayHostname: ""
-  oauthToken: ""
-quayKeycloak:
-  include: false
-  oidcServer: ""
-  clientId: "quay"
-  clientSecret: ""
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: node-role.kubernetes.io/infra
+                  operator: Exists
+    tolerations:
+      - key: node-role.kubernetes.io/infra
+        effect: NoSchedule
+
+  customTls:
+    include: false
+    cert: ""
+    key: ""
+
+  externalDatabase:
+    include: false
+    host: ""
+    port: 5432
+    name: "quay"
+    username: ""
+    password: ""
+    sslMode: "prefer"
+
+  externalStorage:
+    include: false
+    type: "S3Storage"
+    storageName: "default"
+    config:
+      s3_bucket: ""
+      s3_access_key: ""
+      s3_secret_key: ""
+      host: ""
+      port: 443
+      s3_region: ""
+      storage_path: "/datastorage/registry"
+
+  oidc:
+    include: false
+    provider: "keycloak"
+    server: ""
+    clientId: "quay"
+    clientSecret: ""
+    loginScopes:
+      - openid
+      - email
+      - profile
+    verifiedEmailClaimName: "email"
+
+  bridge:
+    include: false
+    hostname: ""
+    oauthToken: ""
+    namespaceCreationDefault: false
+    insecureRegistry: false
+    scheduledImageStreamImport: true
+    denylistNamespaces:
+      - default
+      - kube-system
+      - kube-public
+      - kube-node-lease
+      - openshift
+      - openshift-apiserver
+      - openshift-apiserver-operator
+      - openshift-authentication
+      - openshift-authentication-operator
+      - openshift-cloud-credential-operator
+      - openshift-cluster-machine-approver
+      - openshift-cluster-node-tuning-operator
+      - openshift-cluster-samples-operator
+      - openshift-cluster-storage-operator
+      - openshift-cluster-version
+      - openshift-config
+      - openshift-config-managed
+      - openshift-console
+      - openshift-console-operator
+      - openshift-controller-manager
+      - openshift-controller-manager-operator
+      - openshift-dns
+      - openshift-dns-operator
+      - openshift-etcd
+      - openshift-etcd-operator
+      - openshift-host-network
+      - openshift-image-registry
+      - openshift-infra
+      - openshift-ingress
+      - openshift-ingress-canary
+      - openshift-ingress-operator
+      - openshift-insights
+      - openshift-kni-infra
+      - openshift-kube-apiserver
+      - openshift-kube-apiserver-operator
+      - openshift-kube-controller-manager
+      - openshift-kube-controller-manager-operator
+      - openshift-kube-scheduler
+      - openshift-kube-scheduler-operator
+      - openshift-kube-storage-version-migrator
+      - openshift-kube-storage-version-migrator-operator
+      - openshift-machine-api
+      - openshift-machine-config-operator
+      - openshift-marketplace
+      - openshift-monitoring
+      - openshift-multus
+      - openshift-network-diagnostics
+      - openshift-network-operator
+      - openshift-node
+      - openshift-oauth-apiserver
+      - openshift-openstack-infra
+      - openshift-operators
+      - openshift-operator-lifecycle-manager
+      - openshift-ovn-kubernetes
+      - openshift-sdn
+      - openshift-service-ca
+      - openshift-service-ca-operator
+      - openshift-user-workload-monitoring
+      - openshift-gitops
+      - stackrox
+      - quay-enterprise
+      - open-cluster-management
+      - multicluster-engine
+      - ansible-automation-platform
+      - hypershift
+      - openshift-storage
+      - openshift-local-storage
+      - openshift-nmstate
+      - openshift-dr-system
+      - hive
+      - local-quay
+      - sushy-ec2
+
+  init:
+    include: false
+    quayUrl: ""
+    oauthToken: ""
+    image: "registry.access.redhat.com/ubi9/ubi:latest"
+    organizations: []
+    robotAccounts: []

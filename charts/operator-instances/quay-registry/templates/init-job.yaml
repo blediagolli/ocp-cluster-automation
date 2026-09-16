@@ -1,0 +1,65 @@
+{{- if and .Values.quayRegistry.include .Values.quayRegistry.init.include }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: quay-init-token
+  namespace: {{ .Values.quayRegistry.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+type: Opaque
+stringData:
+  token: {{ required "quay.init.oauthToken is required when init is enabled" .Values.quayRegistry.init.oauthToken }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: quay-init
+  namespace: {{ .Values.quayRegistry.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: init
+          image: {{ .Values.quayRegistry.init.image }}
+          env:
+            - name: QUAY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: quay-init-token
+                  key: token
+            - name: QUAY_URL
+              value: {{ required "quay.init.quayUrl is required when init is enabled" .Values.quayRegistry.init.quayUrl | quote }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "Waiting for Quay to become healthy..."
+              until curl -sk "$QUAY_URL/health/instance" | grep -q "HEALTHY"; do
+                sleep 10
+              done
+              echo "Quay is healthy."
+              {{- range .Values.quayRegistry.init.organizations }}
+              echo "Creating organization: {{ .name }}"
+              curl -sk -X POST "$QUAY_URL/api/v1/organization/" \
+                -H "Authorization: Bearer $QUAY_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d '{"name": "{{ .name }}", "email": "{{ .email | default "" }}"}'
+              echo ""
+              {{- end }}
+              {{- range .Values.quayRegistry.init.robotAccounts }}
+              echo "Creating robot account: {{ .org }}+{{ .name }}"
+              curl -sk -X PUT "$QUAY_URL/api/v1/organization/{{ .org }}/robots/{{ .name }}" \
+                -H "Authorization: Bearer $QUAY_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d '{"description": "{{ .description | default "" }}"}'
+              echo ""
+              {{- end }}
+              echo "Init complete."
+{{- end }}
