@@ -61,6 +61,31 @@ imagePruner:
 console:
   include: true
 
+# --- identity ---
+oauth:
+  include: true
+  identityProviders:
+    - name: keycloak
+      type: OpenID
+      mappingMethod: claim
+      openID:
+        clientID: openshift
+        clientSecret:
+          name: openshift-oidc-client-secret
+        issuer: "https://sso.apps.cluster-c8444.dyn.redhatworkshops.io/realms/sso"
+        claims:
+          preferredUsername:
+            - preferred_username
+          name:
+            - name
+          email:
+            - email
+          groups:
+            - groups
+        extraScopes:
+          - email
+          - profile
+
 # --- TLS ---
 provider: cert-manager
 certManager:

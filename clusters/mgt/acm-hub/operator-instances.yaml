@@ -99,6 +99,13 @@ realm:
         - "https://registry-quay-quay-enterprise.apps.cluster-c8444.dyn.redhatworkshops.io/oauth2/callback"
       webOrigins:
         - "https://registry-quay-quay-enterprise.apps.cluster-c8444.dyn.redhatworkshops.io"
+    openshift:
+      include: true
+      clientSecret: "623e3ac823ae36d88b1a8bf4f70aa159"
+      redirectUris:
+        - "https://oauth-openshift.apps.aws-test.sandbox3321.opentlc.com/oauth2callback/keycloak"
+      webOrigins:
+        - "https://oauth-openshift.apps.aws-test.sandbox3321.opentlc.com"
     stackrox:
       include: true
       clientSecret: "c83d33ea01afb1df37482cfd96ea7c81"

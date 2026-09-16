@@ -17,6 +17,7 @@ platformCharts:
   - chart: openshift-console
   - chart: prometheus-rules
   - chart: alertmanager-config
+  - chart: openshift-oauth
 operatorInstanceCharts:
   - chart: cert-manager-certs
 deployOperators: true
