@@ -1,0 +1,18 @@
+{{- if .Values.build.enabled }}
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: sushy-ec2-emulator
+  namespace: {{ .Values.namespace }}
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: sushy-ec2-emulator:latest
+  source:
+    type: Binary
+  strategy:
+    type: Docker
+    dockerStrategy: {}
+  triggers: []
+{{- end }}

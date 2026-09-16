@@ -1,0 +1,4 @@
+apiVersion: v2
+name: sushy-ec2-emulator
+version: "1.0.0"
+description: Sushy EC2 BMC emulator — Redfish API backed by AWS EC2 API calls

@@ -34,17 +34,17 @@ none:
     - name: aws-none-prod-master-0
       role: master
       bootMACAddress: "02:ff:dc:94:79:5f"
-      bmcAddress: "redfish-virtualmedia+https://sushy-ec2.aws-none-prod.svc:8000/redfish/v1/Systems/i-0c7f5f12f9786b5f3"
+      bmcAddress: "redfish-virtualmedia+https://sushy-ec2.sushy-ec2.svc:8000/redfish/v1/Systems/i-0c7f5f12f9786b5f3"
       automatedCleaningMode: disabled
     - name: aws-none-prod-master-1
       role: master
       bootMACAddress: "06:ff:cf:8a:ce:c7"
-      bmcAddress: "redfish-virtualmedia+https://sushy-ec2.aws-none-prod.svc:8000/redfish/v1/Systems/i-026c6c28c35033a71"
+      bmcAddress: "redfish-virtualmedia+https://sushy-ec2.sushy-ec2.svc:8000/redfish/v1/Systems/i-026c6c28c35033a71"
       automatedCleaningMode: disabled
     - name: aws-none-prod-master-2
       role: master
       bootMACAddress: "0a:ff:c8:49:0a:71"
-      bmcAddress: "redfish-virtualmedia+https://sushy-ec2.aws-none-prod.svc:8000/redfish/v1/Systems/i-08c15c603bfe4590d"
+      bmcAddress: "redfish-virtualmedia+https://sushy-ec2.sushy-ec2.svc:8000/redfish/v1/Systems/i-08c15c603bfe4590d"
       automatedCleaningMode: disabled
 
 networking:

@@ -1,8 +1,36 @@
 # Session Handoff
 
-**Modified:** 2026-09-11
+**Modified:** 2026-09-16
 
 ## What changed this session
+
+### Session changes (2026-09-16) — aws-none-prod reprovisioning
+
+#### 1. Sushy EC2 emulator Helm chart
+- Created `charts/cluster-provisioning/sushy-ec2-emulator/` — Deployment, Service (with OpenShift serving cert), ConfigMap (instances.json), BuildConfig, ImageStream
+- Moved emulator from `aws-none-prod` namespace to dedicated `sushy-ec2` namespace
+- Service name stays `sushy-ec2` — BMH addresses updated to `sushy-ec2.sushy-ec2.svc:8000`
+
+#### 2. aws-none-prod cleanup and reprovisioning
+- Deleted `aws-none-prod` namespace (BMHs stuck in `provisioning` for 11+ hours, no agents registered)
+- Cleared BMH/PreprovisioningImage/Secret finalizers to unblock namespace termination
+- Set `deployImport: false` in `clusters/prod/aws-none-prod/conf.yaml` (import not needed during provisioning)
+- Updated BMH addresses in `provision.yaml` to reference new `sushy-ec2` namespace
+
+#### 3. Quay Bridge denylist
+- Added `sushy-ec2` to denylist in `charts/operator-instances/quay-registry/templates/quay-bridge.yaml`
+- Quay Bridge webhook blocks builds in namespaces without provisioned Quay robot secrets — denylist exempts infrastructure namespaces
+- Workaround: built image locally with podman and pushed directly to internal registry route
+
+### Current state — aws-none-prod
+- ArgoCD provision app: OutOfSync (waiting for git push with updated BMH addresses)
+- ArgoCD import app: still exists (waiting for git push with `deployImport: false`)
+- Sushy emulator: Running 1/1 in `sushy-ec2` namespace
+- AWS creds secret: recreated in `sushy-ec2` namespace
+- Provisioning resources (ClusterDeployment, AgentClusterInstall, InfraEnv, BMHs): not yet recreated — pending ArgoCD sync after push
+- Ignition URL: not yet set on sushy deployment — must be patched after InfraEnv generates a new ISO
+
+## Previous session changes
 
 ### 1. Values refactoring — flattened nesting and auto-derived URLs
 - **acs-central**: Moved `central.initBundle` → top-level `initBundle`, `central.consoleLink` → top-level `centralConsoleLink`; `centralUrl` auto-derived from `cluster.baseDomain`
@@ -270,6 +298,7 @@ Ran against hub (cluster-c8444) and dev (cluster-lz5bn).
 - Added `## Testing` section to all 13 existing active chart HANDOFFs
 
 ## Outstanding
+- **aws-none-prod**: commit and push pending changes, then sync ArgoCD to recreate provisioning resources; patch ignition URL after InfraEnv generates ISO
 - No NetworkPolicy template in namespace-config yet
 - AAP controller not deploying on any cluster — needs investigation
 - Prod cluster (cluster-m6tk9) e2e tests not yet run

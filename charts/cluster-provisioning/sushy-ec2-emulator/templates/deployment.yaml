@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sushy-ec2-emulator
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: sushy-ec2-emulator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sushy-ec2-emulator
+  template:
+    metadata:
+      labels:
+        app: sushy-ec2-emulator
+    spec:
+      containers:
+        - name: sushy-ec2
+          image: {{ .Values.image.registry }}/{{ .Values.namespace }}/sushy-ec2-emulator:{{ .Values.image.tag }}
+          command:
+            - gunicorn
+            - -b
+            - 0.0.0.0:8000
+            - -w
+            - {{ .Values.gunicorn.workers | quote }}
+            - --threads
+            - {{ .Values.gunicorn.threads | quote }}
+            - --timeout
+            - {{ .Values.gunicorn.timeout | quote }}
+            - --certfile
+            - /tls/tls.crt
+            - --keyfile
+            - /tls/tls.key
+            - app:app
+          ports:
+            - containerPort: 8000
+              name: redfish
+          env:
+            - name: AWS_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.aws.existingSecret }}
+                  key: region
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.aws.existingSecret }}
+                  key: aws_access_key_id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.aws.existingSecret }}
+                  key: aws_secret_access_key
+            - name: SUSHY_EC2_S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.aws.existingSecret }}
+                  key: s3_bucket
+            {{- if .Values.bootAMI }}
+            - name: SUSHY_EC2_BOOT_AMI
+              value: {{ .Values.bootAMI | quote }}
+            {{- end }}
+            {{- if .Values.ignitionURL }}
+            - name: SUSHY_EC2_IGNITION_URL
+              value: {{ .Values.ignitionURL | quote }}
+            {{- end }}
+            - name: SUSHY_EC2_CONFIG
+              value: /config/instances.json
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: tls
+              mountPath: /tls
+              readOnly: true
+          resources:
+            requests:
+              cpu: {{ .Values.resources.requests.cpu }}
+              memory: {{ .Values.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.resources.limits.cpu | quote }}
+              memory: {{ .Values.resources.limits.memory }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+              scheme: HTTPS
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 10
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+              scheme: HTTPS
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 10
+            timeoutSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: sushy-ec2-config
+            optional: true
+        - name: tls
+          secret:
+            secretName: sushy-ec2-tls

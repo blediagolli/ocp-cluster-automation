@@ -99,4 +99,5 @@ spec:
     - openshift-dr-system
     - hive
     - local-quay
+    - sushy-ec2
 {{- end }}
