@@ -41,7 +41,7 @@ spec:
             - |
               set -e
               echo "Waiting for Quay to become healthy..."
-              until curl -sk "$QUAY_URL/health/instance" | grep -q "HEALTHY"; do
+              until curl -sk "$QUAY_URL/health/instance" | grep -q '"status_code":200'; do
                 sleep 10
               done
               echo "Quay is healthy."
