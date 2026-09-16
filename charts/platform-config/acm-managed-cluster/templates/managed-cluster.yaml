@@ -1,3 +1,6 @@
+{{- if and (index .Values "deployProvision") .Values.managedCluster.include }}
+{{- fail "cluster-import is not needed for ACM-provisioned clusters — disable deployImport or deployProvision in conf.yaml" }}
+{{- end }}
 {{- if .Values.managedCluster.include }}
 apiVersion: cluster.open-cluster-management.io/v1
 kind: ManagedCluster

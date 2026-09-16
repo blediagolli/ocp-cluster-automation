@@ -1,14 +1,14 @@
 # acm-managed-cluster — Handoff
 
-**Modified:** 2026-09-10
+**Modified:** 2026-09-16
 
 ## What it does
 Registers a managed cluster with ACM hub. Creates: ManagedCluster, KlusterletAddonConfig, ManagedClusterAddons, auto-import Secret (kubeconfig or token mode), and ArgoCD cluster secret registration.
 
 ## What changed this session
-- `managedCluster.name` and `managedCluster.environment` removed from values — templates now reference `cluster.name` and `cluster.environment` from conf.yaml (single source of truth)
-- `managedCluster` config moved from conf.yaml to platform-config.yaml
-- `deployImport` boolean in conf.yaml controls Application generation (replaces old `managedCluster.deploy`)
+- **Static guard**: `managed-cluster.yaml` fails with a clear error if `deployProvision` is true — ACM-provisioned clusters are already imported, using cluster-import would conflict
+- **Dynamic PreSync check**: `presync-check-existing.yaml` runs a Job before sync that queries `oc get managedcluster <name>` — blocks import if the cluster already exists in ACM (e.g. provisioned via ACM console or another repo)
+- Uses `index .Values "deployProvision"` for safe nil handling when the key isn't in the value files
 
 ## Current state
 - Used via the `cluster-import` ApplicationSet with `deployImport` toggle
@@ -23,8 +23,14 @@ Registers a managed cluster with ACM hub. Creates: ManagedCluster, KlusterletAdd
 ## Gotchas
 - Do NOT add `name` or `environment` under `managedCluster` in values — templates use `cluster.name` and `cluster.environment` from conf.yaml
 - `managedCluster` config belongs in `platform-config.yaml`, not `conf.yaml`
+- Do NOT enable `deployImport` for ACM-provisioned clusters — Hive already creates the ManagedCluster; the static guard will fail the template, and the PreSync Job will block sync if the cluster exists in ACM from any source
 
 ## Testing
+
+**Template tests** (`tests/template-test.sh`): 30 assertions, no cluster required.
+- Static guard: fails when `deployProvision=true` + `managedCluster.include=true`
+- PreSync Job: Job, SA, ClusterRole, ClusterRoleBinding rendered with correct hooks
+- ManagedCluster, addons, auto-import rendering and toggle behavior
 
 **Helm test** (`helm test <release>`): Checks ManagedCluster is joined and ManagedClusterAddOns exist. ArgoCD does not run Helm test hooks — use for local validation only.
 
