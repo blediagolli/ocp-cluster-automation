@@ -22,6 +22,9 @@ spec:
     machineNetwork:
       {{- toYaml .Values.networking.machineNetwork | nindent 6 }}
     {{- end }}
+    {{- if eq .Values.cluster.platform "none" }}
+    userManagedNetworking: true
+    {{- end }}
   provisionRequirements:
     controlPlaneAgents: {{ $platformCfg.provisionRequirements.controlPlaneAgents }}
     workerAgents: {{ $platformCfg.provisionRequirements.workerAgents }}
