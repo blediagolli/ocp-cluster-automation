@@ -35,7 +35,7 @@
       "Bash(ROBOT_TOKEN=*)",
       "Bash(RAW_TOKEN=*)",
       "Bash(APP_ID=*)",
-      "Bash(ROBOT_ID=*)",
+      "Bash(*)",
       "Bash(python3 *)"
     ]
   }
