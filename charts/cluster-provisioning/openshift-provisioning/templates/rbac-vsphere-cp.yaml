@@ -1,0 +1,40 @@
+{{- if and .Values.provision.include (eq (include "cluster.isAgent" .) "true") .Values.vsphereControlPlane.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.cluster.name }}-vsphere-cp
+  namespace: {{ .Values.cluster.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Values.cluster.name }}-vsphere-cp
+  namespace: {{ .Values.cluster.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+rules:
+  - apiGroups: ["agent-install.openshift.io"]
+    resources: ["infraenvs"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["agent-install.openshift.io"]
+    resources: ["agents"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Values.cluster.name }}-vsphere-cp
+  namespace: {{ .Values.cluster.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Values.cluster.name }}-vsphere-cp
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.cluster.name }}-vsphere-cp
+    namespace: {{ .Values.cluster.name }}
+{{- end }}

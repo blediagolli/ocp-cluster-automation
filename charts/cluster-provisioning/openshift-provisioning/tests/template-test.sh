@@ -395,6 +395,236 @@ networking:
     - cidr: 10.206.220.0/24
 EOF
 
+cat > "$TMPDIR/baremetal-govc.yaml" <<'EOF'
+provision:
+  include: true
+cluster:
+  name: test-bm-govc
+  baseDomain: dc.example.com
+  platform: baremetal
+  environment: prod
+  clusterSet: datacenter
+  imageSetRef: img4.16.0-x86-64
+  networkType: OVNKubernetes
+  sshPublicKey: ssh-rsa AAAA...
+  pullSecret: '{"auths":{}}'
+  fips: false
+fleet:
+  operatorClusterType: prod
+  operatorProfile: ocp-4.22
+masters:
+  count: 3
+workers:
+  count: 0
+baremetal:
+  apiVIPs:
+    - 10.206.220.10
+  ingressVIPs:
+    - 10.206.220.11
+  provisionRequirements:
+    controlPlaneAgents: 3
+    workerAgents: 0
+  bmc:
+    username: admin
+    password: password
+  hosts: []
+vsphereControlPlane:
+  enabled: true
+  automation: govc
+  simulator:
+    enabled: false
+    image: "ghcr.io/vmware/govmomi/vcsim:latest"
+  govcVersion: "v0.46.2"
+  images:
+    govc: "quay.io/openshift/origin-cli:latest"
+    ansible: "quay.io/ansible/ansible-runner:latest"
+  vcenter: vcsa.lab.example.com
+  username: admin@vsphere.local
+  password: secret
+  insecure: true
+  datacenter: DC1
+  datastore: DS1
+  cluster: Cluster1
+  network: VM-Net
+  folder: /DC1/vm
+  resourcePool: /DC1/host/Cluster1/Resources
+  masters:
+    count: 3
+    cpus: 4
+    memoryMB: 16384
+    diskGB: 120
+proxy:
+  enabled: false
+ntp:
+  enabled: false
+ignitionConfigOverride:
+  enabled: false
+customManifests:
+  enabled: false
+imageContentSources:
+  enabled: false
+networking:
+  clusterNetwork:
+    - cidr: 10.128.0.0/14
+      hostPrefix: 23
+  serviceNetwork:
+    - 172.30.0.0/16
+  machineNetwork: []
+EOF
+
+cat > "$TMPDIR/baremetal-ansible.yaml" <<'EOF'
+provision:
+  include: true
+cluster:
+  name: test-bm-ansible
+  baseDomain: dc.example.com
+  platform: baremetal
+  environment: prod
+  clusterSet: datacenter
+  imageSetRef: img4.16.0-x86-64
+  networkType: OVNKubernetes
+  sshPublicKey: ssh-rsa AAAA...
+  pullSecret: '{"auths":{}}'
+  fips: false
+fleet:
+  operatorClusterType: prod
+  operatorProfile: ocp-4.22
+masters:
+  count: 3
+workers:
+  count: 0
+baremetal:
+  apiVIPs:
+    - 10.206.220.10
+  ingressVIPs:
+    - 10.206.220.11
+  provisionRequirements:
+    controlPlaneAgents: 3
+    workerAgents: 0
+  bmc:
+    username: admin
+    password: password
+  hosts: []
+vsphereControlPlane:
+  enabled: true
+  automation: ansible
+  simulator:
+    enabled: false
+    image: "ghcr.io/vmware/govmomi/vcsim:latest"
+  images:
+    govc: "quay.io/openshift/origin-cli:latest"
+    ansible: "quay.io/ansible/ansible-runner:latest"
+  vcenter: vcsa.lab.example.com
+  username: admin@vsphere.local
+  password: secret
+  insecure: true
+  datacenter: DC1
+  datastore: DS1
+  cluster: Cluster1
+  network: VM-Net
+  folder: /DC1/vm
+  resourcePool: /DC1/host/Cluster1/Resources
+  masters:
+    count: 3
+    cpus: 4
+    memoryMB: 16384
+    diskGB: 120
+proxy:
+  enabled: false
+ntp:
+  enabled: false
+ignitionConfigOverride:
+  enabled: false
+customManifests:
+  enabled: false
+imageContentSources:
+  enabled: false
+networking:
+  clusterNetwork:
+    - cidr: 10.128.0.0/14
+      hostPrefix: 23
+  serviceNetwork:
+    - 172.30.0.0/16
+  machineNetwork: []
+EOF
+
+cat > "$TMPDIR/baremetal-govc-sim.yaml" <<'EOF'
+provision:
+  include: true
+cluster:
+  name: test-sim
+  baseDomain: dc.example.com
+  platform: baremetal
+  environment: dev
+  clusterSet: datacenter
+  imageSetRef: img4.16.0-x86-64
+  networkType: OVNKubernetes
+  sshPublicKey: ssh-rsa AAAA...
+  pullSecret: '{"auths":{}}'
+  fips: false
+fleet:
+  operatorClusterType: dev
+  operatorProfile: ocp-4.22
+masters:
+  count: 3
+workers:
+  count: 0
+baremetal:
+  apiVIPs:
+    - 10.206.220.10
+  ingressVIPs:
+    - 10.206.220.11
+  provisionRequirements:
+    controlPlaneAgents: 3
+    workerAgents: 0
+  bmc:
+    username: admin
+    password: password
+  hosts: []
+vsphereControlPlane:
+  enabled: true
+  automation: govc
+  simulator:
+    enabled: true
+    image: "ghcr.io/vmware/govmomi/vcsim:latest"
+  govcVersion: "v0.46.2"
+  images:
+    govc: "quay.io/openshift/origin-cli:latest"
+    ansible: "quay.io/ansible/ansible-runner:latest"
+  vcenter: vcsa.real.example.com
+  username: admin@vsphere.local
+  password: secret
+  insecure: true
+  datacenter: DC1
+  datastore: DS1
+  cluster: Cluster1
+  network: VM-Net
+  folder: /DC1/vm
+  resourcePool: /DC1/host/Cluster1/Resources
+  masters:
+    count: 3
+    cpus: 4
+    memoryMB: 16384
+    diskGB: 120
+proxy:
+  enabled: false
+ntp:
+  enabled: false
+ignitionConfigOverride:
+  enabled: false
+customManifests:
+  enabled: false
+imageContentSources:
+  enabled: false
+networking:
+  clusterNetwork:
+    - cidr: 10.128.0.0/14
+      hostPrefix: 23
+  serviceNetwork:
+    - 172.30.0.0/16
+  machineNetwork: []
+EOF
+
 cat > "$TMPDIR/vsphere-opts.yaml" <<'EOF'
 provision:
   include: true
@@ -982,6 +1212,351 @@ if has_string "$OUTPUT" "cluster.open-cluster-management.io/managedCluster: test
   pass "Namespace has managedCluster annotation"
 else
   fail "Namespace missing managedCluster annotation"
+fi
+
+# ============================================================================
+echo ""
+echo "--- Test 11: vSphere control plane automation — govc mode ---"
+# ============================================================================
+OUTPUT=$(render "$TMPDIR/baremetal-govc.yaml")
+if [ $? -ne 0 ]; then
+  fail "helm template failed for baremetal-govc: $OUTPUT"
+else
+  pass "baremetal with govc automation renders successfully"
+
+  # RBAC resources
+  if has_string "$OUTPUT" "test-bm-govc-vsphere-cp"; then
+    pass "govc: ServiceAccount name correct"
+  else
+    fail "govc: ServiceAccount name incorrect"
+  fi
+  if echo "$OUTPUT" | grep -A5 "kind: Role" | grep -q "test-bm-govc-vsphere-cp"; then
+    pass "govc: Role present"
+  else
+    fail "govc: Role missing"
+  fi
+  if has_kind "$OUTPUT" "RoleBinding"; then
+    pass "govc: RoleBinding present"
+  else
+    fail "govc: RoleBinding missing"
+  fi
+
+  # RBAC sync-wave = 6
+  SA_WAVE=$(echo "$OUTPUT" | grep -A5 "kind: ServiceAccount" | grep "sync-wave" | head -1 | grep -o '"[0-9]*"' | tr -d '"')
+  if [ "$SA_WAVE" = "6" ]; then
+    pass "govc: RBAC sync-wave = 6"
+  else
+    fail "govc: RBAC sync-wave = ${SA_WAVE:-none} (expected 6)"
+  fi
+
+  # Secret
+  if has_string "$OUTPUT" "test-bm-govc-vsphere-cp-creds"; then
+    pass "govc: vCenter credentials secret present"
+  else
+    fail "govc: vCenter credentials secret missing"
+  fi
+  if has_string "$OUTPUT" "username: admin@vsphere.local"; then
+    pass "govc: secret has correct username"
+  else
+    fail "govc: secret username incorrect"
+  fi
+
+  # ConfigMap (govc script)
+  if has_string "$OUTPUT" "test-bm-govc-vsphere-cp-govc"; then
+    pass "govc: govc ConfigMap present"
+  else
+    fail "govc: govc ConfigMap missing"
+  fi
+  if has_string "$OUTPUT" "govc.sh:"; then
+    pass "govc: govc.sh key in ConfigMap"
+  else
+    fail "govc: govc.sh key missing from ConfigMap"
+  fi
+
+  # ConfigMap sync-wave = 7
+  CM_WAVE=$(echo "$OUTPUT" | grep -A5 "test-bm-govc-vsphere-cp-govc" | grep "sync-wave" | head -1 | grep -o '"[0-9]*"' | tr -d '"')
+  if [ "$CM_WAVE" = "7" ]; then
+    pass "govc: ConfigMap sync-wave = 7"
+  else
+    fail "govc: ConfigMap sync-wave = ${CM_WAVE:-none} (expected 7)"
+  fi
+
+  # Ansible ConfigMap must NOT exist
+  if has_string "$OUTPUT" "vsphere-cp-ansible"; then
+    fail "govc: ansible ConfigMap present (should be govc-only)"
+  else
+    pass "govc: ansible ConfigMap absent (correct)"
+  fi
+
+  # Job
+  if has_kind "$OUTPUT" "Job"; then
+    pass "govc: Job present"
+  else
+    fail "govc: Job missing"
+  fi
+
+  # Job sync-wave = 9
+  JOB_WAVE=$(echo "$OUTPUT" | grep -A5 "kind: Job" | grep "sync-wave" | head -1 | grep -o '"[0-9]*"' | tr -d '"')
+  if [ "$JOB_WAVE" = "9" ]; then
+    pass "govc: Job sync-wave = 9"
+  else
+    fail "govc: Job sync-wave = ${JOB_WAVE:-none} (expected 9)"
+  fi
+
+  # Job Replace=true sync option
+  if has_string "$OUTPUT" "Replace=true"; then
+    pass "govc: Job has Replace=true sync option"
+  else
+    fail "govc: Job missing Replace=true sync option"
+  fi
+
+  # Job env vars
+  if has_string "$OUTPUT" "GOVC_VERSION"; then
+    pass "govc: Job has GOVC_VERSION env var"
+  else
+    fail "govc: Job missing GOVC_VERSION env var"
+  fi
+  if has_string "$OUTPUT" 'value: "vcsa.lab.example.com"'; then
+    pass "govc: Job has correct VCENTER value"
+  else
+    fail "govc: Job VCENTER value incorrect"
+  fi
+
+  # Job uses secretKeyRef for credentials
+  if has_string "$OUTPUT" "secretKeyRef:"; then
+    pass "govc: Job uses secretKeyRef for credentials"
+  else
+    fail "govc: Job should use secretKeyRef for credentials"
+  fi
+
+  # Job image
+  if has_string "$OUTPUT" "quay.io/openshift/origin-cli:latest"; then
+    pass "govc: Job uses correct image"
+  else
+    fail "govc: Job image incorrect"
+  fi
+
+  # Job serviceAccountName
+  if has_string "$OUTPUT" "serviceAccountName: test-bm-govc-vsphere-cp"; then
+    pass "govc: Job uses correct ServiceAccount"
+  else
+    fail "govc: Job ServiceAccount incorrect"
+  fi
+
+  # Job backoffLimit and activeDeadlineSeconds
+  if has_string "$OUTPUT" "backoffLimit: 2"; then
+    pass "govc: Job has backoffLimit: 2"
+  else
+    fail "govc: Job missing backoffLimit"
+  fi
+  if has_string "$OUTPUT" "activeDeadlineSeconds: 7200"; then
+    pass "govc: Job has activeDeadlineSeconds: 7200"
+  else
+    fail "govc: Job missing activeDeadlineSeconds"
+  fi
+fi
+
+# ============================================================================
+echo ""
+echo "--- Test 12: vSphere control plane automation — ansible mode ---"
+# ============================================================================
+OUTPUT=$(render "$TMPDIR/baremetal-ansible.yaml")
+if [ $? -ne 0 ]; then
+  fail "helm template failed for baremetal-ansible: $OUTPUT"
+else
+  pass "baremetal with ansible automation renders successfully"
+
+  # RBAC (shared with govc)
+  if has_string "$OUTPUT" "test-bm-ansible-vsphere-cp"; then
+    pass "ansible: ServiceAccount present"
+  else
+    fail "ansible: ServiceAccount missing"
+  fi
+
+  # Secret (shared with govc)
+  if has_string "$OUTPUT" "test-bm-ansible-vsphere-cp-creds"; then
+    pass "ansible: vCenter credentials secret present"
+  else
+    fail "ansible: vCenter credentials secret missing"
+  fi
+
+  # ConfigMap (ansible scripts)
+  if has_string "$OUTPUT" "test-bm-ansible-vsphere-cp-ansible"; then
+    pass "ansible: ansible ConfigMap present"
+  else
+    fail "ansible: ansible ConfigMap missing"
+  fi
+  if has_string "$OUTPUT" "entrypoint.sh:"; then
+    pass "ansible: entrypoint.sh key in ConfigMap"
+  else
+    fail "ansible: entrypoint.sh key missing from ConfigMap"
+  fi
+  if has_string "$OUTPUT" "playbook.yml:"; then
+    pass "ansible: playbook.yml key in ConfigMap"
+  else
+    fail "ansible: playbook.yml key missing from ConfigMap"
+  fi
+  if has_string "$OUTPUT" "requirements.yml:"; then
+    pass "ansible: requirements.yml key in ConfigMap"
+  else
+    fail "ansible: requirements.yml key missing from ConfigMap"
+  fi
+
+  # govc ConfigMap must NOT exist
+  if has_string "$OUTPUT" "vsphere-cp-govc"; then
+    fail "ansible: govc ConfigMap present (should be ansible-only)"
+  else
+    pass "ansible: govc ConfigMap absent (correct)"
+  fi
+
+  # Job
+  if has_kind "$OUTPUT" "Job"; then
+    pass "ansible: Job present"
+  else
+    fail "ansible: Job missing"
+  fi
+
+  # Job image
+  if has_string "$OUTPUT" "quay.io/ansible/ansible-runner:latest"; then
+    pass "ansible: Job uses correct image"
+  else
+    fail "ansible: Job image incorrect"
+  fi
+
+  # Job should NOT have GOVC_VERSION
+  if has_string "$OUTPUT" "GOVC_VERSION"; then
+    fail "ansible: Job has GOVC_VERSION (should be govc-only)"
+  else
+    pass "ansible: Job does not have GOVC_VERSION (correct)"
+  fi
+
+  # Job command
+  if has_string "$OUTPUT" "/scripts/entrypoint.sh"; then
+    pass "ansible: Job runs entrypoint.sh"
+  else
+    fail "ansible: Job should run entrypoint.sh"
+  fi
+fi
+
+# ============================================================================
+echo ""
+echo "--- Test 13: vSphere CP excluded when disabled or on non-agent platforms ---"
+# ============================================================================
+OUTPUT=$(render "$TMPDIR/baremetal.yaml")
+if has_string "$OUTPUT" "vsphere-cp"; then
+  fail "excluded: vsphere-cp resources appear when vsphereControlPlane.enabled=false (default)"
+else
+  pass "excluded: no vsphere-cp resources when disabled (default)"
+fi
+
+OUTPUT=$(render "$TMPDIR/vsphere.yaml")
+if has_string "$OUTPUT" "vsphere-cp"; then
+  fail "excluded: vsphere-cp resources appear on IPI vsphere platform"
+else
+  pass "excluded: no vsphere-cp resources on IPI vsphere platform"
+fi
+
+OUTPUT=$(render "$TMPDIR/aws.yaml")
+if has_string "$OUTPUT" "vsphere-cp"; then
+  fail "excluded: vsphere-cp resources appear on AWS platform"
+else
+  pass "excluded: no vsphere-cp resources on AWS platform"
+fi
+
+# ============================================================================
+echo ""
+echo "--- Test 14: vSphere control plane — simulator mode ---"
+# ============================================================================
+OUTPUT=$(render "$TMPDIR/baremetal-govc-sim.yaml")
+if [ $? -ne 0 ]; then
+  fail "helm template failed for simulator mode: $OUTPUT"
+else
+  pass "simulator mode renders successfully"
+
+  # vcsim Deployment present
+  if has_kind "$OUTPUT" "Deployment"; then
+    pass "simulator: vcsim Deployment present"
+  else
+    fail "simulator: vcsim Deployment missing"
+  fi
+
+  # vcsim Service present
+  if has_kind "$OUTPUT" "Service"; then
+    pass "simulator: vcsim Service present"
+  else
+    fail "simulator: vcsim Service missing"
+  fi
+
+  # vcsim image
+  if has_string "$OUTPUT" "ghcr.io/vmware/govmomi/vcsim:latest"; then
+    pass "simulator: vcsim image correct"
+  else
+    fail "simulator: vcsim image incorrect"
+  fi
+
+  # vcsim Deployment sync-wave = 7
+  VCSIM_WAVE=$(echo "$OUTPUT" | grep -B10 "kind: Deployment" | grep "sync-wave" | head -1 | grep -o '"[0-9]*"' | tr -d '"')
+  if [ "$VCSIM_WAVE" = "7" ]; then
+    pass "simulator: vcsim Deployment sync-wave = 7"
+  else
+    fail "simulator: vcsim Deployment sync-wave = ${VCSIM_WAVE:-none} (expected 7)"
+  fi
+
+  # Job VCENTER points at vcsim service, NOT real vcenter
+  if has_string "$OUTPUT" 'value: "test-sim-vcsim"'; then
+    pass "simulator: Job VCENTER points to vcsim service"
+  else
+    fail "simulator: Job VCENTER should point to test-sim-vcsim"
+  fi
+  if has_string "$OUTPUT" "vcsa.real.example.com"; then
+    fail "simulator: real vCenter URL leaked into output"
+  else
+    pass "simulator: real vCenter URL not in output"
+  fi
+
+  # vcsim Deployment selector labels
+  if has_string "$OUTPUT" "app: test-sim-vcsim"; then
+    pass "simulator: vcsim Deployment has correct selector label"
+  else
+    fail "simulator: vcsim Deployment selector label incorrect"
+  fi
+
+  # Service targets port 443
+  if has_string "$OUTPUT" "port: 443"; then
+    pass "simulator: Service exposes port 443"
+  else
+    fail "simulator: Service should expose port 443"
+  fi
+
+  # RBAC and Job still present alongside vcsim
+  if has_kind "$OUTPUT" "Job"; then
+    pass "simulator: automation Job still present"
+  else
+    fail "simulator: automation Job missing"
+  fi
+  if has_kind "$OUTPUT" "RoleBinding"; then
+    pass "simulator: RBAC still present"
+  else
+    fail "simulator: RBAC missing"
+  fi
+fi
+
+# Verify simulator resources absent when simulator.enabled=false
+OUTPUT=$(render "$TMPDIR/baremetal-govc.yaml")
+if has_kind "$OUTPUT" "Deployment"; then
+  fail "simulator: Deployment present when simulator.enabled=false"
+else
+  pass "simulator: no Deployment when simulator.enabled=false"
+fi
+if echo "$OUTPUT" | grep -qx "kind: Service"; then
+  fail "simulator: Service present when simulator.enabled=false"
+else
+  pass "simulator: no Service when simulator.enabled=false"
+fi
+if has_string "$OUTPUT" 'value: "vcsa.lab.example.com"'; then
+  pass "simulator: Job uses real vCenter when simulator off"
+else
+  fail "simulator: Job should use real vCenter when simulator off"
 fi
 
 # ============================================================================

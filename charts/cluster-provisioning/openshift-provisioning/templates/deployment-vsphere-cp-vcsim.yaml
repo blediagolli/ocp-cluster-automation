@@ -1,0 +1,39 @@
+{{- if and .Values.provision.include (eq (include "cluster.isAgent" .) "true") .Values.vsphereControlPlane.enabled .Values.vsphereControlPlane.simulator.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.cluster.name }}-vcsim
+  namespace: {{ .Values.cluster.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.cluster.name }}-vcsim
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.cluster.name }}-vcsim
+    spec:
+      containers:
+        - name: vcsim
+          image: {{ .Values.vsphereControlPlane.simulator.image }}
+          args: ["-l", ":443"]
+          ports:
+            - containerPort: 443
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.cluster.name }}-vcsim
+  namespace: {{ .Values.cluster.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+spec:
+  selector:
+    app: {{ .Values.cluster.name }}-vcsim
+  ports:
+    - port: 443
+      targetPort: 443
+{{- end }}

@@ -218,6 +218,33 @@ none:
   #     bmcUsername: ""        # per-host override (falls back to none.bmc.username)
   #     bmcPassword: ""        # per-host override (falls back to none.bmc.password)
 
+# vSphere control plane automation (agent-based mixed cluster: vSphere VMs + bare metal workers)
+vsphereControlPlane:
+  enabled: false
+  automation: govc  # govc or ansible
+  simulator:
+    enabled: false  # deploy vcsim for testing (no real vCenter needed)
+    image: "ghcr.io/vmware/govmomi/vcsim:latest"
+  images:
+    govc: "quay.io/openshift/origin-cli:latest"
+    ansible: "quay.io/ansible/ansible-runner:latest"
+  govcVersion: "v0.46.2"
+  vcenter: ""
+  username: ""
+  password: ""
+  insecure: true
+  datacenter: ""
+  datastore: ""
+  cluster: ""
+  network: ""
+  folder: ""
+  resourcePool: ""
+  masters:
+    count: 3
+    cpus: 4
+    memoryMB: 16384
+    diskGB: 120
+
 # Networking (agent-based platforms)
 networking:
   clusterNetwork:

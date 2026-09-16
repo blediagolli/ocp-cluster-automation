@@ -1,0 +1,136 @@
+---
+- name: vSphere Control Plane Automation
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    vcenter_hostname: "{{ lookup('env', 'VCENTER') }}"
+    vcenter_username: "{{ lookup('env', 'VCENTER_USERNAME') }}"
+    vcenter_password: "{{ lookup('env', 'VCENTER_PASSWORD') }}"
+    vcenter_validate_certs: "{{ not (lookup('env', 'VCENTER_INSECURE') | bool) }}"
+    datacenter: "{{ lookup('env', 'DATACENTER') }}"
+    datastore: "{{ lookup('env', 'DATASTORE') }}"
+    vc_cluster: "{{ lookup('env', 'CLUSTER_VC') }}"
+    network: "{{ lookup('env', 'NETWORK') }}"
+    folder: "{{ lookup('env', 'FOLDER') }}"
+    resource_pool: "{{ lookup('env', 'RESOURCE_POOL') }}"
+    cluster_name: "{{ lookup('env', 'CLUSTER_NAME') }}"
+    master_count: "{{ lookup('env', 'MASTER_COUNT') | int }}"
+    master_cpus: "{{ lookup('env', 'MASTER_CPUS') | int }}"
+    master_memory_mb: "{{ lookup('env', 'MASTER_MEMORY_MB') | int }}"
+    master_disk_gb: "{{ lookup('env', 'MASTER_DISK_GB') | int }}"
+    non_bmh_query: "[?!contains(keys(metadata.labels || `{}`), 'agent-install.openshift.io/bmh')]"
+
+  tasks:
+    - name: Wait for InfraEnv ISO URL
+      kubernetes.core.k8s_info:
+        api_version: agent-install.openshift.io/v1beta1
+        kind: InfraEnv
+        name: "{{ cluster_name }}"
+        namespace: "{{ cluster_name }}"
+      register: infraenv
+      until:
+        - infraenv.resources | length > 0
+        - infraenv.resources[0].status is defined
+        - infraenv.resources[0].status.isoDownloadURL is defined
+        - infraenv.resources[0].status.isoDownloadURL | length > 0
+      retries: 60
+      delay: 10
+
+    - name: Set ISO URL
+      set_fact:
+        iso_url: "{{ infraenv.resources[0].status.isoDownloadURL }}"
+
+    - name: Download discovery ISO
+      get_url:
+        url: "{{ iso_url }}"
+        dest: /tmp/discovery.iso
+        validate_certs: false
+
+    - name: Create datastore directory
+      community.vmware.vsphere_file:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ vcenter_validate_certs }}"
+        datacenter: "{{ datacenter }}"
+        datastore: "{{ datastore }}"
+        path: "{{ cluster_name }}"
+        state: directory
+      ignore_errors: true
+
+    - name: Upload ISO to datastore
+      community.vmware.vsphere_copy:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ vcenter_validate_certs }}"
+        datacenter: "{{ datacenter }}"
+        datastore: "{{ datastore }}"
+        src: /tmp/discovery.iso
+        path: "{{ cluster_name }}/discovery.iso"
+
+    - name: Create control plane VMs
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ vcenter_validate_certs }}"
+        datacenter: "{{ datacenter }}"
+        cluster: "{{ vc_cluster }}"
+        datastore: "{{ datastore }}"
+        folder: "{{ folder }}"
+        resource_pool: "{{ resource_pool }}"
+        name: "{{ cluster_name }}-master-{{ item }}"
+        state: poweredon
+        guest_id: rhel9_64Guest
+        hardware:
+          num_cpus: "{{ master_cpus }}"
+          memory_mb: "{{ master_memory_mb }}"
+          scsi: paravirtual
+        disk:
+          - size_gb: "{{ master_disk_gb }}"
+            type: thin
+            controller_type: paravirtual
+        networks:
+          - name: "{{ network }}"
+            device_type: vmxnet3
+        cdrom:
+          - controller_type: ide
+            controller_number: 0
+            unit_number: 0
+            type: iso
+            iso_path: "[{{ datastore }}] {{ cluster_name }}/discovery.iso"
+            state: present
+        boot:
+          boot_order:
+            - cdrom
+            - disk
+      loop: "{{ range(0, master_count | int) | list }}"
+
+    - name: Wait for non-BMH agents to register
+      kubernetes.core.k8s_info:
+        api_version: agent-install.openshift.io/v1beta1
+        kind: Agent
+        namespace: "{{ cluster_name }}"
+      register: all_agents
+      until: >-
+        (all_agents.resources | default([]) |
+         json_query(non_bmh_query) | length) >= (master_count | int)
+      retries: 120
+      delay: 15
+
+    - name: Approve non-BMH agents as masters
+      kubernetes.core.k8s:
+        api_version: agent-install.openshift.io/v1beta1
+        kind: Agent
+        name: "{{ item.metadata.name }}"
+        namespace: "{{ cluster_name }}"
+        merge_type: merge
+        definition:
+          spec:
+            approved: true
+            role: master
+      loop: >-
+        {{ all_agents.resources | default([]) | json_query(non_bmh_query) }}
+      when: not (item.spec.approved | default(false) | bool)

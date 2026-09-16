@@ -4,6 +4,41 @@
 
 ## What changed this session
 
+### Session changes (2026-09-16) — vSphere control plane automation for mixed clusters
+
+#### vSphere control plane automation (agent-based mixed cluster: vSphere VMs + bare metal workers)
+- Added `vsphereControlPlane` section to `values.yaml` — toggles vSphere VM creation for control plane nodes in agent-based provisioning (platform `baremetal` or `none`)
+- Two automation backends selectable via `vsphereControlPlane.automation`: `govc` (shell script) or `ansible` (Ansible playbook)
+- **govc mode**: Downloads govc binary, waits for InfraEnv ISO, uploads to vCenter datastore, creates VMs with cdrom boot, waits for non-BMH agents, approves as masters
+- **ansible mode**: Uses `community.vmware` collection for VM lifecycle, `kubernetes.core` for agent approval — same flow as govc but declarative
+- Files in `files/` directory (embedded via `.Files.Get` to avoid Helm/Jinja2 delimiter conflicts):
+  - `vsphere-cp-govc.sh` — govc automation script
+  - `vsphere-cp-entrypoint.sh`, `vsphere-cp-playbook.yml`, `vsphere-cp-requirements.yml` — ansible automation
+- 6 new templates:
+  - `rbac-vsphere-cp.yaml` — SA + Role + RoleBinding (wave 6), grants get/list/watch on infraenvs + get/list/watch/patch/update on agents
+  - `secret-vsphere-cp-creds.yaml` — vCenter credentials (wave 6)
+  - `configmap-vsphere-cp-govc.yaml` — govc script (wave 7, govc mode only)
+  - `configmap-vsphere-cp-ansible.yaml` — ansible scripts (wave 7, ansible mode only)
+  - `job-vsphere-cp-govc.yaml` — govc Job (wave 9, Replace=true for re-syncs)
+  - `job-vsphere-cp-ansible.yaml` — ansible Job (wave 9, Replace=true for re-syncs)
+- All templates guarded by `provision.include && isAgent && vsphereControlPlane.enabled` (+ automation mode for ConfigMap/Job)
+- **vcsim simulator toggle** (`vsphereControlPlane.simulator.enabled`): deploys govmomi vcsim as Deployment+Service in the cluster namespace for testing without a real vCenter
+  - `deployment-vsphere-cp-vcsim.yaml` — vcsim Deployment + Service (wave 7), same guard + `simulator.enabled`
+  - Job templates conditionally set `VCENTER` env to `{cluster}-vcsim` (simulator) or real vCenter URL
+  - vcsim listens on port 443 to match standard vCenter HTTPS — no port changes needed in scripts
+- Template tests expanded from 97 to 147 assertions — covers govc mode, ansible mode, simulator mode, and exclusion on disabled/non-agent platforms
+
+### Session changes (2026-09-16) — Provisioning chart sync fixes + tests
+
+#### 1. ArgoCD sync fixes for provisioning app (3 separate issues)
+- **spec.installed drift**: Hive admission webhook rejects `installed: false` on already-installed clusters. Fixed by adding `ignoreDifferences` for `/spec/installed` on ClusterDeployment in the ApplicationSet + `RespectIgnoreDifferences=true` syncOption
+- **agentLabelSelector perpetual sync loop**: The assisted-service controller strips `spec.agentLabelSelector` and manages it in `status.agentLabelSelector`. Fixed by removing it from the InfraEnv template
+- **cluster-platform label drift**: Hive normalizes `hive.openshift.io/cluster-platform` to `agent-baremetal` for agent-based platforms. Added `cluster.platformLabel` helper in `_helpers.tpl` that maps `baremetal`/`none` → `agent-baremetal`
+
+#### 2. Chart test coverage
+- Created `charts/cluster-provisioning/openshift-provisioning/tests/template-test.sh` — 97 assertions covering all 4 platforms (vsphere, aws, baremetal, none), conditional features (NTP, proxy, FIPS, NMState, ignition, custom manifests, trust bundles), sync wave ordering, platform label normalization, and agentLabelSelector removal
+- Created `charts/cluster-provisioning/openshift-provisioning/tests/e2e-test.sh` — live cluster validation via `oc` (namespace, ClusterDeployment, ManagedCluster, agent/IPI resources, ArgoCD sync status)
+
 ### Session changes (2026-09-16) — Quay registry chart restructure
 
 #### Quay chart value restructuring
@@ -386,6 +421,7 @@ Every active chart has both a Helm test template (`templates/tests/test-connecti
 | openshift-marketplace | `./tests/e2e-test.sh` |
 | application-gitops | `./tests/e2e-test.sh <team-name>` |
 | namespace-config | `./tests/e2e-test.sh <team-name> <environment>` |
+| openshift-provisioning | `./tests/template-test.sh` (147 assertions), `./tests/e2e-test.sh <cluster-name>` |
 
 ### E2E test results (2026-09-11)
 

@@ -1,0 +1,70 @@
+{{- if and .Values.provision.include (eq (include "cluster.isAgent" .) "true") .Values.vsphereControlPlane.enabled (eq .Values.vsphereControlPlane.automation "ansible") }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.cluster.name }}-vsphere-cp
+  namespace: {{ .Values.cluster.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+    argocd.argoproj.io/sync-options: Replace=true
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 7200
+  template:
+    spec:
+      serviceAccountName: {{ .Values.cluster.name }}-vsphere-cp
+      restartPolicy: OnFailure
+      volumes:
+        - name: scripts
+          configMap:
+            name: {{ .Values.cluster.name }}-vsphere-cp-ansible
+            defaultMode: 0755
+      containers:
+        - name: ansible
+          image: {{ .Values.vsphereControlPlane.images.ansible }}
+          command: ["/scripts/entrypoint.sh"]
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+          env:
+            - name: CLUSTER_NAME
+              value: {{ .Values.cluster.name | quote }}
+            - name: VCENTER
+              {{- if .Values.vsphereControlPlane.simulator.enabled }}
+              value: {{ printf "%s-vcsim" .Values.cluster.name | quote }}
+              {{- else }}
+              value: {{ .Values.vsphereControlPlane.vcenter | quote }}
+              {{- end }}
+            - name: VCENTER_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.cluster.name }}-vsphere-cp-creds
+                  key: username
+            - name: VCENTER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.cluster.name }}-vsphere-cp-creds
+                  key: password
+            - name: VCENTER_INSECURE
+              value: {{ .Values.vsphereControlPlane.insecure | quote }}
+            - name: DATACENTER
+              value: {{ .Values.vsphereControlPlane.datacenter | quote }}
+            - name: DATASTORE
+              value: {{ .Values.vsphereControlPlane.datastore | quote }}
+            - name: CLUSTER_VC
+              value: {{ .Values.vsphereControlPlane.cluster | quote }}
+            - name: NETWORK
+              value: {{ .Values.vsphereControlPlane.network | quote }}
+            - name: FOLDER
+              value: {{ .Values.vsphereControlPlane.folder | quote }}
+            - name: RESOURCE_POOL
+              value: {{ .Values.vsphereControlPlane.resourcePool | quote }}
+            - name: MASTER_COUNT
+              value: {{ .Values.vsphereControlPlane.masters.count | quote }}
+            - name: MASTER_CPUS
+              value: {{ .Values.vsphereControlPlane.masters.cpus | quote }}
+            - name: MASTER_MEMORY_MB
+              value: {{ .Values.vsphereControlPlane.masters.memoryMB | quote }}
+            - name: MASTER_DISK_GB
+              value: {{ .Values.vsphereControlPlane.masters.diskGB | quote }}
+{{- end }}
