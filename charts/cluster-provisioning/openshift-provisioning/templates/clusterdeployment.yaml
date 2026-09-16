@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.cluster.name }}
   namespace: {{ .Values.cluster.name }}
   annotations:
-    helm.sh/hook-weight: "360"
+    helm.sh/hook-weight: "357"
   labels:
     cloud: {{ include "cluster.cloudLabel" . }}
     vendor: OpenShift
