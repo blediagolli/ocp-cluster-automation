@@ -1,6 +1,5 @@
 # Cluster-level platform config overrides. Configures cert-manager as the TLS
-# certificate provider with a self-signed CA chain (ClusterIssuer created by
-# the cert-manager-certs operator instance chart).
+# certificate provider with Let's Encrypt via DNS01/Route53.
 apiServer:
   include: true
   servingCerts:
@@ -23,12 +22,10 @@ ingress:
       name: cert-manager-ingress-cert
 proxy:
   include: true
-  trustedCA:
-    name: custom-ca-bundle
 provider: cert-manager
 certManager:
   issuerRef:
-    name: cluster-ca
+    name: letsencrypt
     kind: ClusterIssuer
 certificates:
   api:

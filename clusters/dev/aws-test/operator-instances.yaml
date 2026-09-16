@@ -1,9 +1,8 @@
 # Cluster-level operator instance overrides. Configures operator CRs deployed
-# by the cert-manager-certs chart. Enables a self-signed CA chain:
-# self-signed root → CA ClusterIssuer → leaf certificates.
-selfSignedIssuer:
+# by the cert-manager-certs chart. Enables Let's Encrypt via DNS01/Route53.
+acmeIssuer:
   include: true
-caIssuer:
-  include: true
-caBundle:
-  include: true
+  email: bledi.agolli@gmail.com
+  dns01:
+    region: us-east-2
+    hostedZoneID: Z006467336SWDGRD2WSM0

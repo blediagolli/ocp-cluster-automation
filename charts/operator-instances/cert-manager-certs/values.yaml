@@ -11,6 +11,16 @@ caBundle:
   include: false
   configMapName: custom-ca-bundle
   namespace: openshift-config
+acmeIssuer:
+  include: false
+  name: letsencrypt
+  server: https://acme-v02.api.letsencrypt.org/directory
+  email: ""
+  privateKeySecretName: letsencrypt-account-key
+  dns01:
+    region: us-east-1
+    hostedZoneID: ""
+    credentialsSecretName: cert-manager-dns01-credentials
 apiCert:
   include: false
   namespace: openshift-config

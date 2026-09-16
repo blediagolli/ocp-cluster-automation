@@ -35,3 +35,55 @@ spec:
   ca:
     secretName: {{ .Values.caIssuer.secretName }}
 {{- end }}
+{{- if .Values.acmeIssuer.include }}
+---
+apiVersion: cloudcredential.openshift.io/v1
+kind: CredentialsRequest
+metadata:
+  name: cert-manager-dns01
+  namespace: openshift-cloud-credential-operator
+spec:
+  providerSpec:
+    apiVersion: cloudcredential.openshift.io/v1
+    kind: AWSProviderSpec
+    statementEntries:
+      - effect: Allow
+        action:
+          - route53:GetChange
+          - route53:ChangeResourceRecordSets
+          - route53:ListResourceRecordSets
+        resource: '*'
+      - effect: Allow
+        action:
+          - route53:ListHostedZones
+          - route53:ListHostedZonesByName
+          - route53:ListResourceRecordSets
+        resource: '*'
+  secretRef:
+    name: {{ .Values.acmeIssuer.dns01.credentialsSecretName }}
+    namespace: cert-manager
+  serviceAccountNames:
+    - cert-manager
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ .Values.acmeIssuer.name }}
+spec:
+  acme:
+    server: {{ .Values.acmeIssuer.server }}
+    email: {{ .Values.acmeIssuer.email }}
+    privateKeySecretRef:
+      name: {{ .Values.acmeIssuer.privateKeySecretName }}
+    solvers:
+      - dns01:
+          route53:
+            region: {{ .Values.acmeIssuer.dns01.region }}
+            hostedZoneID: {{ .Values.acmeIssuer.dns01.hostedZoneID }}
+            accessKeyIDSecretRef:
+              name: {{ .Values.acmeIssuer.dns01.credentialsSecretName }}
+              key: aws_access_key_id
+            secretAccessKeySecretRef:
+              name: {{ .Values.acmeIssuer.dns01.credentialsSecretName }}
+              key: aws_secret_access_key
+{{- end }}
