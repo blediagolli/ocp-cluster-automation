@@ -3,6 +3,13 @@ central:
   createNamespace: false
   name: stackrox-central-services
   namespace: stackrox
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2
+      memory: 4Gi
   exposure:
     route:
       enabled: true

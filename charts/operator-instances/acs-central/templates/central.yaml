@@ -6,6 +6,13 @@ metadata:
   namespace: {{ .Values.central.namespace }}
 spec:
   central:
+    resources:
+      requests:
+        cpu: {{ .Values.central.resources.requests.cpu }}
+        memory: {{ .Values.central.resources.requests.memory }}
+      limits:
+        cpu: {{ .Values.central.resources.limits.cpu }}
+        memory: {{ .Values.central.resources.limits.memory }}
     exposure:
       route:
         enabled: {{ .Values.central.exposure.route.enabled }}

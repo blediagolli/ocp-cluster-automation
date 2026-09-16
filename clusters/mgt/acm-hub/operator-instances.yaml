@@ -23,6 +23,30 @@ consolePlugins:
 central:
   include: true
   createNamespace: true
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2
+      memory: 4Gi
+  scanner:
+    analyzer:
+      scaling:
+        minReplicas: 1
+        maxReplicas: 3
+        replicas: 1
+  scannerV4:
+    indexer:
+      scaling:
+        minReplicas: 1
+        maxReplicas: 3
+        replicas: 1
+    matcher:
+      scaling:
+        minReplicas: 1
+        maxReplicas: 3
+        replicas: 1
 initBundle:
   include: true
   distributeAuth: true
