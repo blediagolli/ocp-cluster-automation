@@ -146,7 +146,7 @@ imageRegistry:
   replicas: 2
   managementState: Managed
   rolloutStrategy: RollingUpdate
-  defaultRoute: false
+  defaultRoute: true
   storage:
     type: s3
     s3:
