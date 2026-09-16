@@ -28,6 +28,11 @@ spec:
         type: provisioning
     spec:
       project: platform
+      ignoreDifferences:
+        - group: hive.openshift.io
+          kind: ClusterDeployment
+          jsonPointers:
+            - /spec/installed
       source:
         repoURL: git@github.com:blediagolli/gitops-for-organizations.git
         targetRevision: main
@@ -44,3 +49,4 @@ spec:
           selfHeal: true
         syncOptions:
           - preserveResourcesOnDeletion=true
+          - RespectIgnoreDifferences=true
