@@ -52,6 +52,7 @@ securedCluster:
     envVars: []
   # enable virtual machine scanning
   vmScanning: false
+  sensor: {}
   monitoring:
     openshift:
       enabled: true

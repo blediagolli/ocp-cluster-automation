@@ -10,6 +10,14 @@ acmeIssuer:
 
 # --- ACS secured cluster (minimal) ---
 securedCluster:
+  sensor:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2
+        memory: 4Gi
   scannerV4:
     scannerComponent: Disabled
   perNode:

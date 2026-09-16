@@ -39,6 +39,13 @@ spec:
   vmScanning:
     enabled: true
   {{- end }}
+  {{- if .Values.securedCluster.sensor }}
+  sensor:
+    {{- if .Values.securedCluster.sensor.resources }}
+    resources:
+      {{- toYaml .Values.securedCluster.sensor.resources | nindent 6 }}
+    {{- end }}
+  {{- end }}
   monitoring:
     openshift:
       enabled: {{ .Values.securedCluster.monitoring.openshift.enabled }}
