@@ -6,3 +6,4 @@ acmeIssuer:
   dns01:
     region: us-east-2
     hostedZoneID: Z006467336SWDGRD2WSM0
+    recursiveNameserversOnly: true

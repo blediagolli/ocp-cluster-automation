@@ -21,6 +21,7 @@ acmeIssuer:
     region: us-east-1
     hostedZoneID: ""
     credentialsSecretName: cert-manager-dns01-credentials
+    recursiveNameserversOnly: false
 apiCert:
   include: false
   namespace: openshift-config
