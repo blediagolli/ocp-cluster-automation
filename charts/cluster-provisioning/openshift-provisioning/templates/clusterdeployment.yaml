@@ -9,7 +9,7 @@ metadata:
   labels:
     cloud: {{ include "cluster.cloudLabel" . }}
     vendor: OpenShift
-    hive.openshift.io/cluster-platform: {{ .Values.cluster.platform }}
+    hive.openshift.io/cluster-platform: {{ include "cluster.platformLabel" . }}
     cluster.open-cluster-management.io/clusterset: {{ .Values.cluster.clusterSet }}
 spec:
   baseDomain: {{ .Values.cluster.baseDomain }}

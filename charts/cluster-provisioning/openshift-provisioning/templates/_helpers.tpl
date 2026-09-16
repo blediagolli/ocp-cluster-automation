@@ -6,6 +6,12 @@
 {{- end -}}
 {{- end -}}
 
+{{- define "cluster.platformLabel" -}}
+{{- if eq (include "cluster.isAgent" .) "true" }}agent-baremetal
+{{- else }}{{ .Values.cluster.platform }}
+{{- end -}}
+{{- end -}}
+
 {{- define "cluster.isIPI" -}}
 {{- if or (eq .Values.cluster.platform "vsphere") (eq .Values.cluster.platform "aws") }}true
 {{- else }}false
