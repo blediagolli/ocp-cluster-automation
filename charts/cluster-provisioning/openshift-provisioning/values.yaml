@@ -225,6 +225,8 @@ vsphereControlPlane:
   simulator:
     enabled: false  # deploy vcsim for testing (no real vCenter needed)
     image: "docker.io/vmware/vcsim:latest"
+  # Optional ignition override for CP InfraEnv (overrides top-level ignitionConfigOverride for CP nodes)
+  ignitionConfigOverride: ""
   images:
     govc: "quay.io/openshift/origin-cli:latest"
     ansible: "quay.io/ansible/ansible-runner:latest"

@@ -8,7 +8,11 @@ metadata:
   name: {{ .name }}
   namespace: {{ $.Values.cluster.name }}
   labels:
+    {{- if $.Values.vsphereControlPlane.enabled }}
+    infraenvs.agent-install.openshift.io: {{ $.Values.cluster.name }}-workers
+    {{- else }}
     infraenvs.agent-install.openshift.io: {{ $.Values.cluster.name }}
+    {{- end }}
   annotations:
     argocd.argoproj.io/sync-wave: "7"
     inspect.metal3.io: disabled

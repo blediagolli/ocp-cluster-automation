@@ -1,4 +1,77 @@
 {{- if and .Values.provision.include (eq (include "cluster.isAgent" .) "true") }}
+{{- if .Values.vsphereControlPlane.enabled }}
+{{- /* Mixed cluster: separate InfraEnvs for CP (vSphere VMs) and workers (bare metal) */}}
+apiVersion: agent-install.openshift.io/v1beta1
+kind: InfraEnv
+metadata:
+  name: {{ .Values.cluster.name }}-cp
+  namespace: {{ .Values.cluster.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  clusterRef:
+    name: {{ .Values.cluster.name }}
+    namespace: {{ .Values.cluster.name }}
+  sshAuthorizedKey: {{ .Values.cluster.sshPublicKey | quote }}
+  pullSecretRef:
+    name: {{ .Values.cluster.name }}-pull-secret
+  nmStateConfigLabelSelector:
+    matchLabels:
+      infraenv: {{ .Values.cluster.name }}-cp
+  {{- if .Values.ntp.enabled }}
+  additionalNTPSources:
+    {{- toYaml .Values.ntp.sources | nindent 4 }}
+  {{- end }}
+  {{- if .Values.proxy.enabled }}
+  proxy:
+    httpProxy: {{ .Values.proxy.httpProxy | quote }}
+    httpsProxy: {{ .Values.proxy.httpsProxy | quote }}
+    noProxy: {{ .Values.proxy.noProxy | quote }}
+  {{- end }}
+  {{- if .Values.vsphereControlPlane.ignitionConfigOverride }}
+  ignitionConfigOverride: {{ .Values.vsphereControlPlane.ignitionConfigOverride | quote }}
+  {{- else if .Values.ignitionConfigOverride.enabled }}
+  ignitionConfigOverride: {{ .Values.ignitionConfigOverride.config | quote }}
+  {{- end }}
+  {{- if .Values.cluster.additionalTrustBundle }}
+  additionalTrustBundle: {{ .Values.cluster.additionalTrustBundle | quote }}
+  {{- end }}
+---
+apiVersion: agent-install.openshift.io/v1beta1
+kind: InfraEnv
+metadata:
+  name: {{ .Values.cluster.name }}-workers
+  namespace: {{ .Values.cluster.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  clusterRef:
+    name: {{ .Values.cluster.name }}
+    namespace: {{ .Values.cluster.name }}
+  sshAuthorizedKey: {{ .Values.cluster.sshPublicKey | quote }}
+  pullSecretRef:
+    name: {{ .Values.cluster.name }}-pull-secret
+  nmStateConfigLabelSelector:
+    matchLabels:
+      infraenv: {{ .Values.cluster.name }}-workers
+  {{- if .Values.ntp.enabled }}
+  additionalNTPSources:
+    {{- toYaml .Values.ntp.sources | nindent 4 }}
+  {{- end }}
+  {{- if .Values.proxy.enabled }}
+  proxy:
+    httpProxy: {{ .Values.proxy.httpProxy | quote }}
+    httpsProxy: {{ .Values.proxy.httpsProxy | quote }}
+    noProxy: {{ .Values.proxy.noProxy | quote }}
+  {{- end }}
+  {{- if .Values.ignitionConfigOverride.enabled }}
+  ignitionConfigOverride: {{ .Values.ignitionConfigOverride.config | quote }}
+  {{- end }}
+  {{- if .Values.cluster.additionalTrustBundle }}
+  additionalTrustBundle: {{ .Values.cluster.additionalTrustBundle | quote }}
+  {{- end }}
+{{- else }}
+{{- /* Standard: single InfraEnv for all agents */}}
 apiVersion: agent-install.openshift.io/v1beta1
 kind: InfraEnv
 metadata:
@@ -32,4 +105,5 @@ spec:
   {{- if .Values.cluster.additionalTrustBundle }}
   additionalTrustBundle: {{ .Values.cluster.additionalTrustBundle | quote }}
   {{- end }}
+{{- end }}
 {{- end }}

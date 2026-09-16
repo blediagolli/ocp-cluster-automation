@@ -26,7 +26,8 @@
   - `deployment-vsphere-cp-vcsim.yaml` — vcsim Deployment + Service (wave 7), same guard + `simulator.enabled`
   - Job templates conditionally set `VCENTER` env to `{cluster}-vcsim` (simulator) or real vCenter URL
   - vcsim listens on port 443 to match standard vCenter HTTPS — no port changes needed in scripts
-- Template tests expanded from 97 to 147 assertions — covers govc mode, ansible mode, simulator mode, and exclusion on disabled/non-agent platforms
+- **Dual InfraEnv for mixed clusters**: When `vsphereControlPlane.enabled`, creates separate InfraEnv resources for CP (`{name}-cp`) and workers (`{name}-workers`). vSphere VMs and bare metal servers need different discovery ISOs due to different NIC names (vmxnet3 vs physical), boot flows, and network configs. Each InfraEnv uses `nmStateConfigLabelSelector` with `infraenv:` labels instead of `cluster-name:`. BareMetalHost and NMStateConfig resources use the `-workers` InfraEnv. govc/ansible Jobs receive `INFRAENV_NAME` env var (`{name}-cp`) with fallback `${INFRAENV_NAME:-${CLUSTER_NAME}}` for backward compat. CP InfraEnv supports optional `vsphereControlPlane.ignitionConfigOverride` (falls back to global). Fully backward compatible — single InfraEnv when `vsphereControlPlane.enabled: false`.
+- Template tests expanded from 97 to 160 assertions — covers govc mode, ansible mode, simulator mode, exclusion on disabled/non-agent platforms, dual InfraEnv for mixed clusters, and backward compatibility with single InfraEnv
 
 ### Session changes (2026-09-16) — Provisioning chart sync fixes + tests
 
@@ -421,7 +422,7 @@ Every active chart has both a Helm test template (`templates/tests/test-connecti
 | openshift-marketplace | `./tests/e2e-test.sh` |
 | application-gitops | `./tests/e2e-test.sh <team-name>` |
 | namespace-config | `./tests/e2e-test.sh <team-name> <environment>` |
-| openshift-provisioning | `./tests/template-test.sh` (147 assertions), `./tests/e2e-test.sh <cluster-name>` |
+| openshift-provisioning | `./tests/template-test.sh` (160 assertions), `./tests/e2e-test.sh <cluster-name>` |
 
 ### E2E test results (2026-09-11)
 

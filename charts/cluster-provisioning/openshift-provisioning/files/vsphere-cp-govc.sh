@@ -24,10 +24,12 @@ export GOVC_INSECURE="${VCENTER_INSECURE}"
 export GOVC_DATACENTER="${DATACENTER}"
 export GOVC_DATASTORE="${DATASTORE}"
 
-echo "--- Waiting for InfraEnv ISO URL ---"
+INFRAENV_NAME="${INFRAENV_NAME:-${CLUSTER_NAME}}"
+
+echo "--- Waiting for InfraEnv ISO URL (${INFRAENV_NAME}) ---"
 ISO_URL=""
 for i in $(seq 1 60); do
-  ISO_URL=$(oc get infraenv "${CLUSTER_NAME}" -n "${CLUSTER_NAME}" \
+  ISO_URL=$(oc get infraenv "${INFRAENV_NAME}" -n "${CLUSTER_NAME}" \
     -o jsonpath='{.status.isoDownloadURL}' 2>/dev/null || true)
   if [ -n "${ISO_URL}" ]; then
     echo "ISO URL available"

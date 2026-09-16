@@ -15,6 +15,7 @@
     folder: "{{ lookup('env', 'FOLDER') }}"
     resource_pool: "{{ lookup('env', 'RESOURCE_POOL') }}"
     cluster_name: "{{ lookup('env', 'CLUSTER_NAME') }}"
+    infraenv_name: "{{ lookup('env', 'INFRAENV_NAME') | default(cluster_name, true) }}"
     master_count: "{{ lookup('env', 'MASTER_COUNT') | int }}"
     master_cpus: "{{ lookup('env', 'MASTER_CPUS') | int }}"
     master_memory_mb: "{{ lookup('env', 'MASTER_MEMORY_MB') | int }}"
@@ -26,7 +27,7 @@
       kubernetes.core.k8s_info:
         api_version: agent-install.openshift.io/v1beta1
         kind: InfraEnv
-        name: "{{ cluster_name }}"
+        name: "{{ infraenv_name }}"
         namespace: "{{ cluster_name }}"
       register: infraenv
       until:

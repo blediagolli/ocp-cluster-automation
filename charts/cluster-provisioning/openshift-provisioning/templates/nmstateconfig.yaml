@@ -11,7 +11,11 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "6"
   labels:
+    {{- if $.Values.vsphereControlPlane.enabled }}
+    infraenv: {{ $.Values.cluster.name }}-workers
+    {{- else }}
     cluster-name: {{ $.Values.cluster.name }}
+    {{- end }}
 spec:
   config:
     {{- toYaml .nmstate.config | nindent 4 }}

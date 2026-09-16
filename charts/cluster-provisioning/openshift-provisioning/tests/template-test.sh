@@ -21,7 +21,9 @@ render() {
 }
 
 count_kind() {
-  echo "$1" | grep -c "^kind: $2" || echo 0
+  local n
+  n=$(echo "$1" | grep -c "^kind: $2") || true
+  echo "$n"
 }
 
 has_kind() {
@@ -592,6 +594,106 @@ vsphereControlPlane:
     govc: "quay.io/openshift/origin-cli:latest"
     ansible: "quay.io/ansible/ansible-runner:latest"
   vcenter: vcsa.real.example.com
+  username: admin@vsphere.local
+  password: secret
+  insecure: true
+  datacenter: DC1
+  datastore: DS1
+  cluster: Cluster1
+  network: VM-Net
+  folder: /DC1/vm
+  resourcePool: /DC1/host/Cluster1/Resources
+  masters:
+    count: 3
+    cpus: 4
+    memoryMB: 16384
+    diskGB: 120
+proxy:
+  enabled: false
+ntp:
+  enabled: false
+ignitionConfigOverride:
+  enabled: false
+customManifests:
+  enabled: false
+imageContentSources:
+  enabled: false
+networking:
+  clusterNetwork:
+    - cidr: 10.128.0.0/14
+      hostPrefix: 23
+  serviceNetwork:
+    - 172.30.0.0/16
+  machineNetwork: []
+EOF
+
+cat > "$TMPDIR/mixed-dual-infraenv.yaml" <<'EOF'
+provision:
+  include: true
+cluster:
+  name: test-mixed
+  baseDomain: dc.example.com
+  platform: baremetal
+  environment: prod
+  clusterSet: datacenter
+  imageSetRef: img4.16.0-x86-64
+  networkType: OVNKubernetes
+  sshPublicKey: ssh-rsa AAAA...
+  pullSecret: '{"auths":{}}'
+  fips: false
+fleet:
+  operatorClusterType: prod
+  operatorProfile: ocp-4.22
+masters:
+  count: 3
+workers:
+  count: 2
+baremetal:
+  apiVIPs:
+    - 10.206.220.10
+  ingressVIPs:
+    - 10.206.220.11
+  provisionRequirements:
+    controlPlaneAgents: 3
+    workerAgents: 2
+  bmc:
+    username: admin
+    password: password
+  hosts:
+    - name: worker001
+      role: worker
+      bootMACAddress: "b4:96:91:e9:49:01"
+      bmcAddress: "idrac-virtualmedia+https://10.0.1.1/redfish/v1/Systems/System.Embedded.1"
+      nmstate:
+        config:
+          interfaces:
+            - name: ens1f0
+              type: ethernet
+              state: up
+              ipv4:
+                enabled: true
+                address:
+                  - ip: 10.206.220.50
+                    prefix-length: 24
+                dhcp: false
+        interfaces:
+          - name: ens1f0
+            macAddress: "b4:96:91:e9:49:01"
+    - name: worker002
+      role: worker
+      bootMACAddress: "b4:96:91:e9:49:02"
+      bmcAddress: "idrac-virtualmedia+https://10.0.1.2/redfish/v1/Systems/System.Embedded.1"
+vsphereControlPlane:
+  enabled: true
+  automation: govc
+  simulator:
+    enabled: false
+    image: "ghcr.io/vmware/govmomi/vcsim:latest"
+  govcVersion: "v0.46.2"
+  images:
+    govc: "quay.io/openshift/origin-cli:latest"
+    ansible: "quay.io/ansible/ansible-runner:latest"
+  vcenter: vcsa.lab.example.com
   username: admin@vsphere.local
   password: secret
   insecure: true
@@ -1557,6 +1659,100 @@ if has_string "$OUTPUT" 'value: "vcsa.lab.example.com"'; then
   pass "simulator: Job uses real vCenter when simulator off"
 else
   fail "simulator: Job should use real vCenter when simulator off"
+fi
+
+# ============================================================================
+echo ""
+echo "--- Test 15: Dual InfraEnv for mixed clusters ---"
+# ============================================================================
+OUTPUT=$(render "$TMPDIR/mixed-dual-infraenv.yaml")
+if [ $? -ne 0 ]; then
+  fail "helm template failed for mixed-dual-infraenv: $OUTPUT"
+else
+  pass "mixed cluster with dual InfraEnv renders successfully"
+
+  # Two InfraEnv resources
+  INFRAENV_COUNT=$(count_kind "$OUTPUT" "InfraEnv")
+  if [ "$INFRAENV_COUNT" -eq 2 ]; then
+    pass "dual-infraenv: exactly 2 InfraEnv resources rendered"
+  else
+    fail "dual-infraenv: expected 2 InfraEnv, got $INFRAENV_COUNT"
+  fi
+
+  # CP InfraEnv name
+  if has_string "$OUTPUT" "name: test-mixed-cp"; then
+    pass "dual-infraenv: CP InfraEnv named test-mixed-cp"
+  else
+    fail "dual-infraenv: CP InfraEnv name missing"
+  fi
+
+  # Workers InfraEnv name
+  if has_string "$OUTPUT" "name: test-mixed-workers"; then
+    pass "dual-infraenv: workers InfraEnv named test-mixed-workers"
+  else
+    fail "dual-infraenv: workers InfraEnv name missing"
+  fi
+
+  # CP InfraEnv label selector
+  if has_string "$OUTPUT" "infraenv: test-mixed-cp"; then
+    pass "dual-infraenv: CP InfraEnv has correct label selector"
+  else
+    fail "dual-infraenv: CP InfraEnv label selector incorrect"
+  fi
+
+  # Workers InfraEnv label selector
+  if has_string "$OUTPUT" "infraenv: test-mixed-workers"; then
+    pass "dual-infraenv: workers InfraEnv has correct label selector"
+  else
+    fail "dual-infraenv: workers InfraEnv label selector incorrect"
+  fi
+
+  # BareMetalHost uses workers InfraEnv
+  if echo "$OUTPUT" | grep -A2 "infraenvs.agent-install.openshift.io" | grep -q "test-mixed-workers"; then
+    pass "dual-infraenv: BareMetalHost bound to workers InfraEnv"
+  else
+    fail "dual-infraenv: BareMetalHost should be bound to workers InfraEnv"
+  fi
+
+  # NMStateConfig uses workers label
+  if echo "$OUTPUT" | grep -B2 -A15 "kind: NMStateConfig" | grep -q "infraenv: test-mixed-workers"; then
+    pass "dual-infraenv: NMStateConfig has infraenv workers label"
+  else
+    fail "dual-infraenv: NMStateConfig should have infraenv workers label"
+  fi
+
+  # INFRAENV_NAME env var in govc Job
+  if has_string "$OUTPUT" "INFRAENV_NAME"; then
+    pass "dual-infraenv: Job has INFRAENV_NAME env var"
+  else
+    fail "dual-infraenv: Job missing INFRAENV_NAME env var"
+  fi
+  if has_string "$OUTPUT" 'value: "test-mixed-cp"'; then
+    pass "dual-infraenv: INFRAENV_NAME set to test-mixed-cp"
+  else
+    fail "dual-infraenv: INFRAENV_NAME should be test-mixed-cp"
+  fi
+
+  # InfraEnv should not use single-mode cluster-name label selector
+  if echo "$OUTPUT" | grep -B2 -A15 "kind: InfraEnv" | grep -q "cluster-name: test-mixed"; then
+    fail "dual-infraenv: InfraEnv uses cluster-name label (should use infraenv labels)"
+  else
+    pass "dual-infraenv: InfraEnv uses infraenv labels, not cluster-name"
+  fi
+fi
+
+# Verify standard mode still produces single InfraEnv
+OUTPUT=$(render "$TMPDIR/baremetal.yaml")
+INFRAENV_COUNT=$(count_kind "$OUTPUT" "InfraEnv")
+if [ "$INFRAENV_COUNT" -eq 1 ]; then
+  pass "standard-mode: single InfraEnv when vsphereControlPlane disabled"
+else
+  fail "standard-mode: expected 1 InfraEnv, got $INFRAENV_COUNT"
+fi
+if has_string "$OUTPUT" "cluster-name: test-bm"; then
+  pass "standard-mode: InfraEnv uses cluster-name label selector"
+else
+  fail "standard-mode: InfraEnv should use cluster-name label selector"
 fi
 
 # ============================================================================

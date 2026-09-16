@@ -29,6 +29,8 @@ spec:
           env:
             - name: CLUSTER_NAME
               value: {{ .Values.cluster.name | quote }}
+            - name: INFRAENV_NAME
+              value: {{ printf "%s-cp" .Values.cluster.name | quote }}
             - name: VCENTER
               {{- if .Values.vsphereControlPlane.simulator.enabled }}
               value: {{ printf "%s-vcsim" .Values.cluster.name | quote }}
