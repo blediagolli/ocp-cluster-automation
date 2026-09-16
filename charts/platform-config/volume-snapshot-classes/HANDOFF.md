@@ -8,12 +8,9 @@ Deploys VolumeSnapshotClass resources for CSI snapshot support. Supports multipl
 
 ## Current state
 
-- **New chart, not enabled on any cluster**
-- Four example classes defined (all disabled by default)
-- Parameters left empty — need cluster-specific values (e.g. clusterID, snapshotter secret)
+- **Enabled on aws-test** — `csi-aws-ebs-snapclass` for EBS CSI snapshots
+- Four example classes defined in defaults (all disabled) — enable per infrastructure
 
 ## Outstanding
 
-- Enable on clusters with ODF/CSI and populate driver-specific parameters
-- Add to `cluster-config.yaml` ApplicationSet when ready
-- Ceph classes may need snapshotter secret name/namespace in parameters
+- Ceph classes need snapshotter secret name/namespace in parameters for ODF clusters

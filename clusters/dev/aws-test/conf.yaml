@@ -27,6 +27,8 @@ platformCharts:
   - chart: openshift-dns
   - chart: openshift-build
   - chart: openshift-scheduler
+  - chart: admin-network-policy
+  - chart: volume-snapshot-classes
 operatorInstanceCharts:
   - chart: cert-manager-certs
   - chart: acs-secured-cluster

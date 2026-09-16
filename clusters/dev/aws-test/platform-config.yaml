@@ -194,6 +194,65 @@ scheduler:
   include: true
   profile: LowNodeUtilization
 
+# --- admin network policies ---
+adminNetworkPolicies:
+  - name: allow-monitoring
+    include: true
+    priority: 10
+    subject:
+      namespaceSelector:
+        matchLabels: {}
+    ingress:
+      - name: allow-prometheus
+        action: Allow
+        from:
+          - namespaces:
+              namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: openshift-monitoring
+        ports:
+          - portNumber:
+              port: 9090
+              protocol: TCP
+          - portNumber:
+              port: 9091
+              protocol: TCP
+          - portNumber:
+              port: 8443
+              protocol: TCP
+    egress: []
+  - name: allow-ingress-controller
+    include: true
+    priority: 20
+    subject:
+      namespaceSelector:
+        matchLabels: {}
+    ingress:
+      - name: allow-router
+        action: Allow
+        from:
+          - namespaces:
+              namespaceSelector:
+                matchLabels:
+                  policy-group.network.openshift.io/ingress: ""
+        ports:
+          - portNumber:
+              port: 8080
+              protocol: TCP
+          - portNumber:
+              port: 8443
+              protocol: TCP
+    egress: []
+
+# --- volume snapshot classes ---
+volumeSnapshotClasses:
+  include: true
+  classes:
+    - name: csi-aws-ebs-snapclass
+      include: true
+      driver: ebs.csi.aws.com
+      deletionPolicy: Delete
+
 # --- TLS ---
 provider: cert-manager
 certManager:

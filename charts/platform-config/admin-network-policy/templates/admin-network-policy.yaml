@@ -10,6 +10,9 @@ spec:
   subject:
     namespaces:
       {{- if .subject.namespaceSelector }}
+      {{- if and (not .subject.namespaceSelector.matchLabels) (not .subject.namespaceSelector.matchExpressions) }}
+      matchLabels: {}
+      {{- end }}
       {{- if .subject.namespaceSelector.matchLabels }}
       matchLabels:
         {{- toYaml .subject.namespaceSelector.matchLabels | nindent 8 }}

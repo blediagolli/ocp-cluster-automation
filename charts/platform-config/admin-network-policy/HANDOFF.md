@@ -12,11 +12,9 @@ Default policies included (all `include: false`):
 
 ## Current state
 
-- Not enabled on any cluster
-- Not in any ApplicationSet `cluster-config.yaml`
-- Passes helm lint
+- **Enabled on aws-test** — both `allow-monitoring` and `allow-ingress-controller` policies active
+- Fixed template bug: empty `matchLabels` now renders `matchLabels: {}` instead of null
 
 ## Outstanding
 
-- Enable per-cluster via `conf.yaml` and add to ApplicationSet when ready
 - Consider adding a default-deny baseline AdminNetworkPolicy
