@@ -212,8 +212,23 @@ platformCharts:
 
 | Operator | Instance Chart | What it does | When to enable |
 |----------|---------------|-------------|----------------|
-| `compliance-operator` | `compliance-scans` | CIS/NIST compliance scanning | Regulated environments, audit requirements |
+| `compliance-operator` | `compliance-scans` | CIS/NIST compliance scanning | Regulated environments, audit requirements. See [compliance setup](#compliance-operator-setup) below |
 | `gatekeeper` or `kyverno` | `gatekeeper-instance` / `kyverno-instance` | Policy admission control | When you need to enforce policy beyond what ACS covers |
+
+### Compliance operator setup
+
+Add `compliance-operator` to `operator-deployment.yaml` (channel: `stable`) and `compliance-scans` to `operatorInstanceCharts` in `conf.yaml`. Enable scans in `operator-instances.yaml`:
+
+```yaml
+scanSetting:
+  include: true
+scanSettingBinding:
+  include: true
+```
+
+The chart defaults to daily STIG scans (ocp4-stig, ocp4-stig-node, rhcos4-stig profiles) at 01:00 UTC. Override `scanSetting.schedule` or `scanSettingBinding.profiles` in `operator-instances.yaml` for different profiles or timing.
+
+**CRD quirk**: The compliance operator CRDs (ScanSetting, ScanSettingBinding) put all fields at the root level, not under `spec:`. The chart templates handle this correctly — if you're writing custom templates, don't nest fields under `spec`.
 
 ---
 

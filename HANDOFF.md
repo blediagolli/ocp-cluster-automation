@@ -18,6 +18,12 @@
 - Added `compliance-operator` to cluster-level `operator-deployment.yaml` (channel: `stable`)
 - Added `compliance-scans` to `operatorInstanceCharts` in conf.yaml
 - Enabled `scanSetting` and `scanSettingBinding` in `operator-instances.yaml` (STIG profiles, daily scans)
+- **Fixed**: ScanSetting and ScanSettingBinding templates had fields under `spec:` but the compliance CRDs use root-level fields — scans never ran because profiles weren't parsed
+
+#### 9. Console CR fix
+- Console chart rendered empty `customization: null` and `developerCatalog.types.state: Enabled` causing perpetual OutOfSync
+- Fixed to render `spec: {}` when no customization is configured
+- Same pattern as the proxy chart `spec: Required value` fix
 
 #### 7. External secrets operator on aws-test
 - Added `external-secrets-operator` to cluster-level `operator-deployment.yaml` (channel: `stable-v1`)
