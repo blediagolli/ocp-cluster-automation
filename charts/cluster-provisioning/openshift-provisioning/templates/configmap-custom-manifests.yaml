@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.cluster.name }}-custom-manifests
   namespace: {{ .Values.cluster.name }}
   annotations:
-    helm.sh/hook-weight: "355"
+    argocd.argoproj.io/sync-wave: "1"
 data:
   {{- range $key, $val := .Values.customManifests.data }}
   {{ $key }}: |

@@ -116,7 +116,35 @@ oc set env deployment/sushy-ec2-emulator -n sushy-ec2 SUSHY_EC2_IGNITION_URL="$I
 5. Updated provision.yaml BMH addresses to reference new namespace
 6. Disabled cluster import (`deployImport: false`) during provisioning
 
-**Current state:** Awaiting git push + ArgoCD sync to recreate provisioning resources.
+**What was fixed during this run:**
+- Sync-wave ordering: ClusterDeployment moved to wave 357 (before ACI at 358 and InfraEnv at 359)
+- BMH and BMC secrets moved to waves 361-362 (after InfraEnv), fixing a deadlock where BMH ownerReferences on secrets kept them "Progressing" and blocked all later waves
+- Pull secret recreated from hub cluster's pull secret
+
+**Current state:** BMHs provisioning, waiting for agents to register.
+
+### Run 3 (2026-09-16) — Debugging and fixing bootstrap
+
+**Root cause of Run 2 failure:** Sushy pod restart during `_reimage_and_start` execution (caused by `oc set env` for ignition URL). The reimage background thread was killed mid-process, and the new pod's `PERMANENT_CACHE` was empty.
+
+**Actions taken:**
+1. Manually triggered reimage via sushy Redfish API (InsertMedia + boot Cd + Power On)
+2. Agents registered and install started successfully
+3. Discovered NTP and inter-host connectivity validation failures (resolved automatically)
+4. Discovered cross-zone load balancing was disabled on the API NLB — master-1/master-2 couldn't reach the API server on master-0 during bootstrap
+5. Enabled cross-zone LB on both API and ingress NLBs
+6. Changed `api-int` DNS from NLB alias (public IPs) to direct A records with private IPs — fixes NAT hairpin issue where NLB client IP preservation breaks connections through NAT gateway
+7. Nodes registered, control plane bootstrapped, etcd and kube-apiserver became available
+8. Ironic re-sent deploy commands (InsertMedia + boot Cd + Power On) during bootstrap, triggering a second reimage that destroyed master-1 and master-2's installed OS
+9. Fixed sushy driver: added `reimage_done` flag to `PERMANENT_CACHE` that prevents re-reimaging; also clears `boot_device` and `virtual_media_inserted` after reimage
+10. Converted chart from `helm.sh/hook-weight` to `argocd.argoproj.io/sync-wave` annotations
+11. Cleaned up namespace for Run 4
+
+**What was learned:**
+- The sushy PERMANENT_CACHE is lost on pod restart — don't restart the pod between Ironic's deploy sequence and the install completing
+- NLBs must have cross-zone load balancing enabled for multi-AZ bootstrap
+- `api-int` DNS must resolve to private IPs (not NLB public IPs) when instances are in private subnets with NAT — NLB client IP preservation changes the source IP to the NAT gateway's public IP, which breaks security group rules restricted to the VPC CIDR
+- Ironic periodically re-sends InsertMedia/boot/power commands as part of BMH reconciliation — the sushy driver must guard against re-reimaging
 
 ## Lessons Learned
 
@@ -151,8 +179,43 @@ The InfraEnv generates a unique ISO URL with an embedded JWT token. The sushy em
 
 Future improvement: automate this with a Job or controller that watches InfraEnv status and patches the sushy deployment.
 
-### 5. Image pull requires rolebinding in new namespace
+### 5. Sync-wave ordering is critical for agent-based provisioning
+The provisioning chart uses `argocd.argoproj.io/sync-wave` annotations for correct ordering:
+- Wave 0: Namespace
+- Wave 1: Non-BMC secrets (pull secret, SSH keys, etc.)
+- Wave 2: ClusterDeployment (must exist before ACI and InfraEnv)
+- Wave 3: AgentClusterInstall (references ClusterDeployment)
+- Wave 4: InfraEnv (references ClusterDeployment, generates ISO)
+- Wave 5: KlusterAddonConfig, MachinePool
+- Wave 6: BMC credential secrets + NMStateConfig
+- Wave 7: BareMetalHosts (reference BMC secrets, trigger provisioning)
+- Wave 8: ManagedCluster
+- Wave 9: ManagedClusterInfo
+
+If BMHs have no wave annotation, they're created at wave 0 (first). Metal3 adds ownerReferences from BMHs to their BMC secrets, making ArgoCD see the secrets as "Progressing". This blocks all later waves — including ClusterDeployment and InfraEnv — creating a deadlock.
+
+### 8. Cross-zone load balancing required for multi-AZ bootstrap
+During bootstrap, only the bootstrap node runs the API server. If the NLB has cross-zone disabled, nodes in other AZs can't reach the API. Enable cross-zone on both API and ingress NLBs.
+
+### 9. api-int DNS must use private IPs with NAT gateways
+When instances are in private subnets with NAT, `api-int` DNS should resolve to private IPs (A records), not an internet-facing NLB alias. With NLB client IP preservation, the source IP seen by the target is the NAT gateway's public IP, not the instance's private IP. Security group rules restricted to the VPC CIDR (e.g., port 22623 allowing only 10.1.0.0/16) will reject traffic from the NAT's public IP.
+
+### 10. Sushy reimage_done guard prevents Ironic re-reimage loop
+Ironic periodically re-sends InsertMedia + set boot Cd + Power On as part of BMH reconciliation. Without a guard, each power-on re-triggers `_reimage_and_start`, destroying the installed OS. The driver uses a `reimage_done` flag in `PERMANENT_CACHE` — once set after the first successful reimage, subsequent power-on commands skip the reimage path.
+
+### 6. Pull secret is not managed by git
+The `cluster.pullSecret` value is sensitive and not stored in the repo. It must be manually created after namespace recreation:
+```bash
+oc create secret generic <cluster>-pull-secret -n <cluster> \
+  --from-file=.dockerconfigjson=<pull-secret-file> \
+  --type=kubernetes.io/dockerconfigjson
+```
+
+### 7. Image pull requires rolebinding in new namespace
 When using the internal registry, service accounts in the namespace need `system:image-puller` role to pull images. This isn't automatic for manually created namespaces:
 ```bash
 oc policy add-role-to-group system:image-puller system:serviceaccounts:<ns> -n <ns>
 ```
+
+### 11. Don't restart sushy pod during Ironic deploy sequence
+The `PERMANENT_CACHE` is in-memory. If the pod restarts between Ironic's InsertMedia/boot-set/Power-On and the completion of the reimage thread, the reimage is killed and the cache is lost. Schedule sushy updates for periods when no BMHs are being provisioned.

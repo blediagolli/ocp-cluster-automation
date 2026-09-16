@@ -217,7 +217,10 @@ class EC2Driver:
 
         if state in ('On', 'ForceOn'):
             cache = self.PERMANENT_CACHE.get(instance_id, {})
-            if cache.get('boot_device') == 'Cd' and cache.get('virtual_media_inserted') and self._boot_ami:
+            if (cache.get('boot_device') == 'Cd'
+                    and cache.get('virtual_media_inserted')
+                    and self._boot_ami
+                    and not cache.get('reimage_done')):
                 self._reimage_and_start(instance_id)
             else:
                 self._ec2.start_instances(InstanceIds=[instance_id])
@@ -332,6 +335,9 @@ class EC2Driver:
             self._ec2.start_instances(InstanceIds=[instance_id])
             self.PERMANENT_CACHE.setdefault(instance_id, {})
             self.PERMANENT_CACHE[instance_id]['last_reimaged'] = time.time()
+            self.PERMANENT_CACHE[instance_id]['boot_device'] = 'Hdd'
+            self.PERMANENT_CACHE[instance_id]['virtual_media_inserted'] = False
+            self.PERMANENT_CACHE[instance_id]['reimage_done'] = True
             LOG.info('Reimage complete for %s', instance_id)
 
         except Exception:

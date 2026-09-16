@@ -6,7 +6,7 @@ metadata:
   name: {{ .Values.cluster.name }}
   namespace: {{ .Values.cluster.name }}
   annotations:
-    helm.sh/hook-weight: "358"
+    argocd.argoproj.io/sync-wave: "3"
     agent-install.openshift.io/install-config-overrides: '{"networking":{"networkType":"{{ .Values.cluster.networkType }}"}}'
 spec:
   clusterDeploymentRef:

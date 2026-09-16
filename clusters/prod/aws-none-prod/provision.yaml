@@ -47,6 +47,11 @@ none:
       bmcAddress: "redfish-virtualmedia+https://sushy-ec2.sushy-ec2.svc:8000/redfish/v1/Systems/i-08c15c603bfe4590d"
       automatedCleaningMode: disabled
 
+ntp:
+  enabled: true
+  sources:
+    - 169.254.169.123
+
 networking:
   clusterNetwork:
     - cidr: 10.128.0.0/14

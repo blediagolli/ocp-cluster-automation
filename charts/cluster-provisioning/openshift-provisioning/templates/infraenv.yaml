@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.cluster.name }}
   namespace: {{ .Values.cluster.name }}
   annotations:
-    helm.sh/hook-weight: "359"
+    argocd.argoproj.io/sync-wave: "4"
 spec:
   clusterRef:
     name: {{ .Values.cluster.name }}

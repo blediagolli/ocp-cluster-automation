@@ -11,6 +11,6 @@ metadata:
   # object is to avoid Argo CD showing this object as out of sync.
   name: '{{ .Values.cluster.name }}'
   annotations:
-    helm.sh/hook-weight: "375"
+    argocd.argoproj.io/sync-wave: "9"
   namespace: {{ .Values.cluster.name }}
 {{- end }}

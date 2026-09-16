@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.cluster.name }}
   namespace: {{ .Values.cluster.name }}
   annotations:
-    helm.sh/hook-weight: "357"
+    argocd.argoproj.io/sync-wave: "2"
   labels:
     cloud: {{ include "cluster.cloudLabel" . }}
     vendor: OpenShift

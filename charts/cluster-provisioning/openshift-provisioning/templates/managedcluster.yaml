@@ -4,7 +4,7 @@ kind: ManagedCluster
 metadata:
   name: {{ .Values.cluster.name }}
   annotations:
-    helm.sh/hook-weight: "370"
+    argocd.argoproj.io/sync-wave: "8"
   labels:
     cloud: {{ include "cluster.cloudLabel" . }}
     name: {{ .Values.cluster.name }}

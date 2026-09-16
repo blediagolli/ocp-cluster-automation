@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.cluster.name }}-worker
   namespace: {{ .Values.cluster.name }}
   annotations:
-    helm.sh/hook-weight: "360"
+    argocd.argoproj.io/sync-wave: "5"
 spec:
   clusterDeploymentRef:
     name: {{ .Values.cluster.name }}

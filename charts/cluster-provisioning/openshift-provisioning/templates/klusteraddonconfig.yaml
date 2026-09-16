@@ -3,7 +3,7 @@ apiVersion: agent.open-cluster-management.io/v1
 kind: KlusterletAddonConfig
 metadata:
   annotations:
-    helm.sh/hook-weight: "360"
+    argocd.argoproj.io/sync-wave: "5"
   name: {{ .Values.cluster.name }}
   namespace: {{ .Values.cluster.name }}
 spec:
