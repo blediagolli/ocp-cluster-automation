@@ -88,14 +88,14 @@
 - NMStateConfig added wave 361
 
 ### Current state — aws-none-prod
+- **Cluster installed**: OpenShift 4.22.13, all 34 COs Available, 3 nodes Ready
 - ArgoCD provision app: Healthy (successfully synced)
 - ArgoCD import app: removed (`deployImport: false`)
-- Sushy emulator: Running 1/1 in `sushy-ec2` namespace, ignition URL patched
-- InfraEnv: Available, ISO created
-- PreprovisioningImages: All 3 ready (InfraEnvAvailable)
-- BareMetalHosts: All 3 in `provisioning` state with correct addresses
-- AgentClusterInstall: `insufficient` — waiting for agents to register
-- Agents: None yet — EC2 instances booting from discovery ISO
+- Sushy emulator: Running 1/1 in `sushy-ec2` namespace
+- AgentClusterInstall: `adding-hosts` (100% complete)
+- All 3 agents: Done (100%)
+- Kubeconfig: `oc get secret aws-none-prod-admin-kubeconfig -n aws-none-prod -o jsonpath='{.data.kubeconfig}' | base64 -d`
+- AWS infra changes persisted from Run 3: cross-zone LB enabled on both NLBs, api-int DNS pointing to private IPs
 
 ## Previous session changes
 
@@ -291,6 +291,7 @@ chart defaults < teams/<team>.yaml < env conf < env teams override < cluster con
 - Namespace creation toggles are nested under parent keys (e.g. `securedCluster.createNamespace`, not `securedClusterNamespace.include`)
 - `ignoreMissingValueFiles: true` on all ApplicationSets — files at any level are optional
 - Renaming an ApplicationSet resource causes ArgoCD to delete the old and create the new — Applications with unchanged names are adopted
+- `preserveResourcesOnDeletion: true` is set at the AppSet level on all 8 ApplicationSets — if a generator stops matching, the Application is removed but cluster-side resources survive. The Application template level flag is **not** set, so a direct `oc delete` of an Application will cascade-delete its managed resources. See `docs/ai-dev/applicationset-preserve-resources.md` for the full interaction matrix and migration guide.
 - `platform-root` is self-managing — changes to `applications/app-argocd.yaml` sync automatically, but if it breaks, manual `oc apply` is the recovery path
 - ArgoCD hook resources (sync-wave Jobs) don't get pruned automatically — delete manually if they become stale after restructuring
 - The ArgoCD CR has many operator-injected defaults (grafana, sso, monitoring, etc.) — the `openshift-gitops-instance` chart includes all of them to stay in sync
@@ -365,7 +366,7 @@ Ran against hub (cluster-c8444) and dev (cluster-lz5bn).
 - Added `## Testing` section to all 13 existing active chart HANDOFFs
 
 ## Outstanding
-- **aws-none-prod**: commit and push pending changes, then sync ArgoCD to recreate provisioning resources; patch ignition URL after InfraEnv generates ISO
+- **aws-none-prod**: Cluster installed successfully (Run 4). Next steps: enable `deployImport` to register with ACM hub, configure day2 platform charts
 - No NetworkPolicy template in namespace-config yet
 - AAP controller not deploying on any cluster — needs investigation
 - Prod cluster (cluster-m6tk9) e2e tests not yet run

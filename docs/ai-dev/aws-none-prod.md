@@ -146,6 +146,38 @@ oc set env deployment/sushy-ec2-emulator -n sushy-ec2 SUSHY_EC2_IGNITION_URL="$I
 - `api-int` DNS must resolve to private IPs (not NLB public IPs) when instances are in private subnets with NAT — NLB client IP preservation changes the source IP to the NAT gateway's public IP, which breaks security group rules restricted to the VPC CIDR
 - Ironic periodically re-sends InsertMedia/boot/power commands as part of BMH reconciliation — the sushy driver must guard against re-reimaging
 
+### Run 4 (2026-09-16) — Successful install
+
+**Result:** Success — OpenShift 4.22.13 fully installed, all 34 cluster operators Available.
+
+**Timeline:**
+- 15:16 — ArgoCD synced provisioning resources (sync-wave ordered)
+- 15:22 — Pull secret created manually, ACI synced, InfraEnv generated ISO
+- 15:23 — Sushy patched with ignition URL, rolling restart completed
+- 15:23:52 — Ironic sent InsertMedia + boot Cd + Power On for all 3 instances
+- 15:24:27 — All 3 instances reimaged with RHCOS, `reimage_done` flag set
+- 15:25 — Agents registered, validation passed, install started (27%)
+- 15:29 — Writing image to disk → rebooting (48%)
+- 15:31 — master-0, master-1 configuring; master-2 waiting for control plane
+- 15:34 — master-0, master-1 done; master-2 entered "Waiting for bootkube"
+- 15:54 — etcd installer deploying static pods to masters
+- 15:55 — etcd Available on master-0 (5/5 Running)
+- 15:59 — kube-apiserver Available, kube-controller-manager Available
+- 16:04 — Bootkube complete, master-2 rebooted to "Configuring" (81%)
+- 16:07 — All 3 nodes Ready, master-2 "Joined" (90%)
+- 16:12 — All agents Done, ACI 87% finalizing
+- 16:17 — Install complete: 100%, all 34 COs Available, cluster version 4.22.13
+
+**What worked:**
+- Sync-wave annotations (0-9) ensured correct resource creation order
+- `reimage_done` guard prevented Ironic re-reimage loop — no spurious reimages in sushy logs
+- Cross-zone LB (enabled in Run 3) allowed multi-AZ bootstrap
+- `api-int` pointing to private IPs (changed in Run 3) prevented NAT hairpin issues
+- NTP config (added in Run 3) — no NTP validation failures
+- Total time from ArgoCD sync to install complete: ~55 minutes
+
+**No manual interventions needed during install** — only pre-install setup: pull secret creation and ignition URL patching.
+
 ## Lessons Learned
 
 ### 1. Namespace termination blocked by BMH finalizers
