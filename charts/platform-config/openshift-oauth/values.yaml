@@ -3,6 +3,11 @@ oauth:
   tokenConfig:
     accessTokenMaxAgeSeconds: 86400
   identityProviders: []
+  groupRBAC: []
+  # - group: admins
+  #   clusterRole: cluster-admin
+  # - group: users
+  #   clusterRole: edit
   # Example LDAP provider:
   # - name: ldap
   #   type: LDAP

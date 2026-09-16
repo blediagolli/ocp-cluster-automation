@@ -64,6 +64,11 @@ console:
 # --- identity ---
 oauth:
   include: true
+  groupRBAC:
+    - group: admins
+      clusterRole: cluster-admin
+    - group: users
+      clusterRole: edit
   identityProviders:
     - name: keycloak
       type: OpenID
