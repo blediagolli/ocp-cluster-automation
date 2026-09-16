@@ -8,6 +8,19 @@ acmeIssuer:
     hostedZoneID: Z006467336SWDGRD2WSM0
     recursiveNameserversOnly: true
 
+# --- ACS secured cluster (minimal) ---
+securedCluster:
+  scannerV4:
+    scannerComponent: Disabled
+  perNode:
+    collector:
+      collection: CORE_BPF
+      imageFlavor: Slim
+  admissionControl:
+    listenOnCreates: false
+    listenOnUpdates: false
+    listenOnEvents: false
+
 # --- compliance scanning ---
 scanSetting:
   include: true
