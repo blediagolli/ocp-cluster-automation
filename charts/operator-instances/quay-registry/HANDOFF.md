@@ -81,7 +81,14 @@ Full e2e test passed on `mgt/acm-hub`:
 4. Deployment pulled image back from Quay successfully
 5. Namespace deletion triggered bridge cleanup of Quay org
 
+## Verified — Init Job (2026-09-16)
+Init job PostSync hook tested on `mgt/acm-hub`:
+1. Health check passed (`"status_code":200` grep)
+2. Created 3 orgs: platform, team-alpha, team-beta (all with 10GB quota)
+3. Created 2 robot accounts: platform+cicd, platform+pull
+4. Idempotent rerun: "already exists" errors are non-fatal (curl returns 0)
+5. Job completed in 6 seconds
+
 ## Outstanding
 - Consider enabling monitoring when operator is deployed in AllNamespaces mode
 - Resource requests are minimal (test sizing) — needs production sizing for real workloads
-- Init job not yet tested on live cluster
