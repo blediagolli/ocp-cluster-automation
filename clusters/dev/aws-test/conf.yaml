@@ -8,6 +8,15 @@ platformCharts:
   - chart: openshift-apiserver
   - chart: openshift-ingress
   - chart: openshift-proxy
+  - chart: etcd-backup
+  - chart: etcd-defrag
+  - chart: user-workload-monitoring
+  - chart: project-request-template
+  - chart: machine-health-checks
+  - chart: image-pruner
+  - chart: openshift-console
+  - chart: prometheus-rules
+  - chart: alertmanager-config
 operatorInstanceCharts:
   - chart: cert-manager-certs
 deployOperators: true

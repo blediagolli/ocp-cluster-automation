@@ -22,6 +22,46 @@ ingress:
       name: cert-manager-ingress-cert
 proxy:
   include: true
+
+# --- etcd maintenance ---
+etcdBackup:
+  include: true
+  storage:
+    type: pvc
+    pvc:
+      storageClass: gp3-csi
+etcdDefrag:
+  include: true
+
+# --- monitoring ---
+userWorkloadMonitoring:
+  include: true
+  prometheus:
+    storageClass: gp3-csi
+prometheusRules:
+  include: true
+alertmanager:
+  include: true
+
+# --- cluster hygiene ---
+projectConfig:
+  include: true
+networkPolicy:
+  include: true
+limitRange:
+  include: true
+resourceQuota:
+  include: true
+machineHealthChecks:
+  include: true
+imagePruner:
+  include: true
+
+# --- console ---
+console:
+  include: true
+
+# --- TLS ---
 provider: cert-manager
 certManager:
   issuerRef:
