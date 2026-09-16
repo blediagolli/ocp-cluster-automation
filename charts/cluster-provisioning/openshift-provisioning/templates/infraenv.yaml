@@ -13,9 +13,6 @@ spec:
   sshAuthorizedKey: {{ .Values.cluster.sshPublicKey | quote }}
   pullSecretRef:
     name: {{ .Values.cluster.name }}-pull-secret
-  agentLabelSelector:
-    matchLabels:
-      cluster-name: {{ .Values.cluster.name }}
   nmStateConfigLabelSelector:
     matchLabels:
       cluster-name: {{ .Values.cluster.name }}
