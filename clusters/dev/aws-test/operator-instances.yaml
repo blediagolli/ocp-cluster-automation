@@ -7,3 +7,9 @@ acmeIssuer:
     region: us-east-2
     hostedZoneID: Z006467336SWDGRD2WSM0
     recursiveNameserversOnly: true
+
+# --- compliance scanning ---
+scanSetting:
+  include: true
+scanSettingBinding:
+  include: true

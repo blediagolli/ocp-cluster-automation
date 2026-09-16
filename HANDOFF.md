@@ -4,6 +4,54 @@
 
 ## What changed this session
 
+### Session changes (2026-09-16) — aws-test additional operators, teams, compliance
+
+#### 5. ACS Secured Cluster on aws-test
+- Added `acs-secured-cluster` to `operatorInstanceCharts` in conf.yaml
+- ACS operator already deployed at env level; env-level `securedCluster: include: true` with `secretMode: "generate"` handles config
+
+#### 6. Compliance operator + scans on aws-test
+- Added `compliance-operator` to cluster-level `operator-deployment.yaml` (channel: `stable`)
+- Added `compliance-scans` to `operatorInstanceCharts` in conf.yaml
+- Enabled `scanSetting` and `scanSettingBinding` in `operator-instances.yaml` (STIG profiles, daily scans)
+
+#### 7. External secrets operator on aws-test
+- Added `external-secrets-operator` to cluster-level `operator-deployment.yaml` (channel: `stable-v1`)
+- Fixed chart default channel from `change-me` to `stable-v1`
+- Operator-only for now — no instance chart yet (closes gap for future OIDC secret management)
+
+#### 8. Team onboarding on aws-test
+- Added `team-alpha` and `team-beta` to `teams` list in conf.yaml
+- Both teams get their own ArgoCD instance + dev namespaces (team-alpha-dev, team-alpha-stage, team-beta-dev, team-beta-stage)
+
+### Session changes (2026-09-16) — aws-test day2 config + OAuth/Keycloak OIDC
+
+#### 1. Let's Encrypt DNS01 TLS on aws-test
+- Switched from self-signed CA to Let's Encrypt ACME with Route53 DNS01 solver
+- Added ACME ClusterIssuer + CredentialsRequest templates to `cert-manager-certs` chart
+- Added CertManager CR template for `--dns01-recursive-nameservers-only` flag
+- Cluster-level config: `clusters/dev/aws-test/operator-instances.yaml` enables acmeIssuer with Route53 zone
+- Fixed: `openshift-proxy` chart errored on empty `spec:` — now renders `trustedCA.name` with default empty string
+- Fixed: Hive admin kubeconfig on hub had old CA in `certificate-authority-data` — patched both `kubeconfig` and `raw-kubeconfig` keys
+
+#### 2. Recommended platform charts enabled on aws-test
+- Added 10 platform charts to `clusters/dev/aws-test/conf.yaml`: etcd-backup, etcd-defrag, user-workload-monitoring, project-request-template, machine-health-checks, image-pruner, openshift-console, prometheus-rules, alertmanager-config, openshift-oauth
+- Full values configured in `clusters/dev/aws-test/platform-config.yaml`
+
+#### 3. OpenShift OAuth with Keycloak OIDC on aws-test
+- Registered `openshift` OIDC client in hub Keycloak realm (`clusters/mgt/acm-hub/operator-instances.yaml`)
+- Added `groups` protocol mapper to keycloak-instance chart for OIDC group claim
+- Created `openshift-oidc-client-secret` imperatively on aws-test (no sealed-secrets operator)
+- Configured openshift-oauth chart with Keycloak OIDC provider and groupRBAC (admins→cluster-admin, users→edit)
+- Added `rbac.yaml` template to openshift-oauth chart — ClusterRoleBindings only
+- Removed Group resources from chart — ArgoCD self-heal resets `users` field, breaking OIDC group membership
+- Fixed orphaned identity blocking login after user cleanup
+
+#### 4. Documentation
+- Created `docs/day2-cluster-config.md` — comprehensive day2 guide with Critical/Recommended/Nice to Have tiers, now includes OAuth/Keycloak OIDC setup section
+- Created `docs/ai-dev/letsencrypt-dns01-setup.md` — LE DNS01 setup with Hive fix
+- Created `docs/ai-dev/claude-sa-setup.md` — ServiceAccount + kubeconfig setup
+
 ### Session changes (2026-09-16) — aws-none-prod reprovisioning
 
 #### 1. Sushy EC2 emulator Helm chart
@@ -22,13 +70,21 @@
 - Quay Bridge webhook blocks builds in namespaces without provisioned Quay robot secrets — denylist exempts infrastructure namespaces
 - Workaround: built image locally with podman and pushed directly to internal registry route
 
+#### 4. Provisioning chart sync-wave fixes
+- ClusterDeployment moved from wave 360 → 357 (must exist before ACI/InfraEnv)
+- BMC credential secrets moved from wave 355 → 361 (before BMHs, after InfraEnv)
+- BareMetalHosts added wave 362 (were at wave 0, causing deadlock)
+- NMStateConfig added wave 361
+
 ### Current state — aws-none-prod
-- ArgoCD provision app: OutOfSync (waiting for git push with updated BMH addresses)
-- ArgoCD import app: still exists (waiting for git push with `deployImport: false`)
-- Sushy emulator: Running 1/1 in `sushy-ec2` namespace
-- AWS creds secret: recreated in `sushy-ec2` namespace
-- Provisioning resources (ClusterDeployment, AgentClusterInstall, InfraEnv, BMHs): not yet recreated — pending ArgoCD sync after push
-- Ignition URL: not yet set on sushy deployment — must be patched after InfraEnv generates a new ISO
+- ArgoCD provision app: Healthy (successfully synced)
+- ArgoCD import app: removed (`deployImport: false`)
+- Sushy emulator: Running 1/1 in `sushy-ec2` namespace, ignition URL patched
+- InfraEnv: Available, ISO created
+- PreprovisioningImages: All 3 ready (InfraEnvAvailable)
+- BareMetalHosts: All 3 in `provisioning` state with correct addresses
+- AgentClusterInstall: `insufficient` — waiting for agents to register
+- Agents: None yet — EC2 instances booting from discovery ISO
 
 ## Previous session changes
 

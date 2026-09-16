@@ -95,7 +95,7 @@ operators:
     namespace: external-secrets-operator
     operatorGroup: external-secrets-operator
     package: openshift-external-secrets-operator
-    channel: change-me
+    channel: stable-v1
     source: redhat-operators
     sourceNamespace: openshift-marketplace
     clusterScoped: true

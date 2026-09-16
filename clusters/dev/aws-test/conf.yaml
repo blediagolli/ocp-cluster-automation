@@ -20,8 +20,12 @@ platformCharts:
   - chart: openshift-oauth
 operatorInstanceCharts:
   - chart: cert-manager-certs
+  - chart: acs-secured-cluster
+  - chart: compliance-scans
 deployOperators: true
 deployOverlay: false
 deployImport: true
 deployProvision: true
-teams: []
+teams:
+  - team: team-alpha
+  - team: team-beta

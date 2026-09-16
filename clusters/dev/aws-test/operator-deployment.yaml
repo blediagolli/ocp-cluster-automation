@@ -6,3 +6,9 @@ operators:
   cert-manager:
     include: true
     channel: stable-v1
+  compliance-operator:
+    include: true
+    channel: stable
+  external-secrets-operator:
+    include: true
+    channel: stable-v1
