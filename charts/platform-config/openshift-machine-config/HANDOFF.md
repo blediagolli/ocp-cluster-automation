@@ -12,20 +12,13 @@ Manages node-level configuration via the Machine Config Operator. Templates:
 - **SELinux permissive** — opt-in only, disabled by default (compliance fix this session)
 - **MachineConfigPool infra** — infra node pool with nodeSelector and maxUnavailable
 
-## What changed this session
-
-- Added KubeletConfig for master pool (was worker-only)
-- Added ContainerRuntimeConfig template
-- Added MachineConfig for kernel args and sysctls
-- Made SELinux permissive opt-in (`include: false`) — was accidentally defaulting to permissive (critical bug fix)
-- Added MachineConfigPool for infra nodes
-
 ## Current state
 
-- Active on hub and clusters (in ApplicationSet shared config list)
-- All new sections default to `include: false` — safe to sync without side effects
+- **Enabled on aws-test** — kubeletconfig-worker, kubeletconfig-master, containerruntimeconfig active with defaults
+- Chrony, kernel args, SELinux permissive, infra MCP remain optional (`include: false`)
+- **Generic `customMachineConfigs` template** — define arbitrary MachineConfigs via values (files + kernel args) without creating new templates. See commented examples in `values.yaml`.
 
 ## Outstanding
 
 - Tune eviction thresholds per-cluster based on workload density
-- Configure NTP servers if not using defaults
+- Configure NTP servers if not using defaults (AWS clusters use Amazon Time Sync by default)

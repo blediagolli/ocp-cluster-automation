@@ -120,3 +120,38 @@ machineConfigPoolInfra:
     node-role.kubernetes.io/infra: ""
   maxUnavailable: 1
   paused: false
+
+# ---------------------------------------------------------------------------
+# Custom MachineConfigs — generic template for arbitrary configs
+# ---------------------------------------------------------------------------
+# Each entry creates a MachineConfig with optional files and kernel arguments.
+# Use this to add any node-level config without creating a new template.
+#
+# Example:
+#   customMachineConfigs:
+#     - name: 99-worker-custom-sysctl
+#       include: true
+#       role: worker
+#       files:
+#         - path: /etc/sysctl.d/99-custom.conf
+#           mode: 0644
+#           content: |
+#             vm.max_map_count = 262144
+#             net.core.somaxconn = 32768
+#     - name: 99-worker-disable-thp
+#       include: true
+#       role: worker
+#       files:
+#         - path: /etc/tmpfiles.d/disable-thp.conf
+#           mode: 0644
+#           content: |
+#             w /sys/kernel/mm/transparent_hugepage/enabled - - - - never
+#             w /sys/kernel/mm/transparent_hugepage/defrag - - - - never
+#     - name: 99-worker-custom-kernel-args
+#       include: true
+#       role: worker
+#       kernelArguments:
+#         - nosmt
+#         - hugepagesz=2M
+#         - hugepages=128
+customMachineConfigs: []

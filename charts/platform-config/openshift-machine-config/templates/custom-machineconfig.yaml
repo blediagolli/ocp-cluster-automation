@@ -1,0 +1,32 @@
+{{- range .Values.customMachineConfigs }}
+{{- if .include }}
+---
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  labels:
+    machineconfiguration.openshift.io/role: {{ .role }}
+  name: {{ .name }}
+spec:
+  config:
+    ignition:
+      version: 3.2.0
+    {{- if .files }}
+    storage:
+      files:
+        {{- range .files }}
+        - path: {{ .path }}
+          mode: {{ .mode | default 420 }}
+          overwrite: true
+          contents:
+            source: data:text/plain;charset=utf-8;base64,{{ .content | b64enc }}
+        {{- end }}
+    {{- end }}
+  {{- if .kernelArguments }}
+  kernelArguments:
+    {{- range .kernelArguments }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}

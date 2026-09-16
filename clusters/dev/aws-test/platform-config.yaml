@@ -253,6 +253,14 @@ volumeSnapshotClasses:
       driver: ebs.csi.aws.com
       deletionPolicy: Delete
 
+# --- machine config ---
+kubeletConfigWorker:
+  include: true
+kubeletConfigMaster:
+  include: true
+containerRuntimeConfig:
+  include: true
+
 # --- TLS ---
 provider: cert-manager
 certManager:
