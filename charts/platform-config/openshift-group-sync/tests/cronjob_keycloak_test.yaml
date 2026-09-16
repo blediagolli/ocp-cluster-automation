@@ -1,0 +1,166 @@
+suite: Keycloak CronJob
+templates:
+  - templates/cronjob-keycloak.yaml
+tests:
+  - it: should not render when include is false
+    set:
+      groupSync.include: false
+      groupSync.provider: keycloak
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when provider is ldap
+    set:
+      groupSync.include: true
+      groupSync.provider: ldap
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render ConfigMap and CronJob for keycloak provider
+    set:
+      groupSync.include: true
+      groupSync.provider: keycloak
+    asserts:
+      - hasDocuments:
+          count: 2
+
+  - it: should render sync script in ConfigMap
+    set:
+      groupSync.include: true
+      groupSync.provider: keycloak
+      groupSync.namespace: openshift-authentication
+      groupSync.keycloak.url: "https://sso.example.com"
+      groupSync.keycloak.realm: myrealm
+    documentIndex: 0
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: keycloak-group-sync-script
+      - matchRegex:
+          path: data["sync.sh"]
+          pattern: "KEYCLOAK_URL=\"https://sso.example.com\""
+      - matchRegex:
+          path: data["sync.sh"]
+          pattern: "REALM=\"myrealm\""
+
+  - it: should configure CronJob with correct schedule and SA
+    set:
+      groupSync.include: true
+      groupSync.provider: keycloak
+      groupSync.namespace: openshift-authentication
+      groupSync.schedule: "*/15 * * * *"
+      groupSync.serviceAccountName: group-syncer
+      groupSync.image: registry.redhat.io/openshift4/ose-cli:v4.22
+    documentIndex: 1
+    asserts:
+      - isKind:
+          of: CronJob
+      - equal:
+          path: metadata.name
+          value: keycloak-group-sync
+      - equal:
+          path: spec.schedule
+          value: "*/15 * * * *"
+      - equal:
+          path: spec.concurrencyPolicy
+          value: Forbid
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.serviceAccountName
+          value: group-syncer
+
+  - it: should mount credentials secret
+    set:
+      groupSync.include: true
+      groupSync.provider: keycloak
+      groupSync.keycloak.credentialsSecretName: my-kc-secret
+    documentIndex: 1
+    asserts:
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.volumes
+          content:
+            name: credentials
+            secret:
+              secretName: my-kc-secret
+
+  - it: should mount CA configmap when specified
+    set:
+      groupSync.include: true
+      groupSync.provider: keycloak
+      groupSync.keycloak.caConfigMapName: keycloak-ca
+    documentIndex: 1
+    asserts:
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.volumes
+          content:
+            name: keycloak-ca
+            configMap:
+              name: keycloak-ca
+
+  - it: should not mount CA volume when caConfigMapName is empty
+    set:
+      groupSync.include: true
+      groupSync.provider: keycloak
+      groupSync.keycloak.caConfigMapName: ""
+    documentIndex: 1
+    asserts:
+      - notContains:
+          path: spec.jobTemplate.spec.template.spec.volumes
+          content:
+            name: keycloak-ca
+          any: true
+
+  - it: should use insecure curl when insecure is true
+    set:
+      groupSync.include: true
+      groupSync.provider: keycloak
+      groupSync.keycloak.insecure: true
+    documentIndex: 0
+    asserts:
+      - matchRegex:
+          path: data["sync.sh"]
+          pattern: 'CURL_OPTS="-sk"'
+
+  - it: should include group mappings in script
+    set:
+      groupSync.include: true
+      groupSync.provider: keycloak
+      groupSync.keycloak:
+        url: "https://sso.example.com"
+        realm: sso
+        credentialsSecretName: kc-creds
+        insecure: false
+        caConfigMapName: ""
+        groupMappings:
+          - keycloakGroup: admins
+            openshiftGroup: cluster-admins
+          - keycloakGroup: devs
+            openshiftGroup: developers
+    documentIndex: 0
+    asserts:
+      - matchRegex:
+          path: data["sync.sh"]
+          pattern: 'GROUP_MAP\["admins"\]="cluster-admins"'
+      - matchRegex:
+          path: data["sync.sh"]
+          pattern: 'GROUP_MAP\["devs"\]="developers"'
+
+  - it: should use group name directly when no mappings
+    set:
+      groupSync.include: true
+      groupSync.provider: keycloak
+      groupSync.keycloak:
+        url: "https://sso.example.com"
+        realm: sso
+        credentialsSecretName: kc-creds
+        insecure: false
+        caConfigMapName: ""
+        groupMappings: []
+    documentIndex: 0
+    asserts:
+      - matchRegex:
+          path: data["sync.sh"]
+          pattern: 'OCP_GROUP="\$\{GROUP_NAME\}"'

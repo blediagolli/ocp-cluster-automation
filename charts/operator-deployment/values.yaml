@@ -311,6 +311,14 @@ operators:
     sourceNamespace: openshift-marketplace
     skipNamespace: true
     skipOperatorGroup: true
+  group-sync-operator:
+    include: false
+    namespace: group-sync-operator
+    operatorGroup: group-sync-operator
+    package: group-sync-operator
+    channel: alpha
+    source: community-operators
+    sourceNamespace: openshift-marketplace
   keycloak:
     include: false
     namespace: openshift-operators

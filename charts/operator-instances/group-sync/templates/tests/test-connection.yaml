@@ -1,0 +1,48 @@
+{{- if .Values.groupSync.include }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  containers:
+    - name: test
+      image: registry.redhat.io/openshift4/ose-cli:latest
+      command:
+        - /bin/bash
+        - -c
+        - |
+          FAILED=0
+
+          echo "--- Checking GroupSync CR ---"
+          STATUS=$(oc get groupsync {{ .Values.groupSync.name }} -n {{ .Values.groupSync.namespace }} -o jsonpath='{.status.conditions[?(@.type=="Synced")].status}' 2>/dev/null || echo "NotFound")
+          if [ "$STATUS" = "NotFound" ]; then
+            echo "  FAIL: GroupSync {{ .Values.groupSync.name }} not found"
+            FAILED=1
+          elif [ "$STATUS" = "True" ]; then
+            echo "  PASS: GroupSync {{ .Values.groupSync.name }} Synced=True"
+          else
+            echo "  WARN: GroupSync {{ .Values.groupSync.name }} Synced=$STATUS (may not have run yet)"
+          fi
+
+          echo "--- Checking group-sync-operator pod ---"
+          NOT_READY=$(oc get pods -n {{ .Values.groupSync.namespace }} -l control-plane=controller-manager --no-headers 2>/dev/null | grep -cv "Running" || true)
+          TOTAL_PODS=$(oc get pods -n {{ .Values.groupSync.namespace }} -l control-plane=controller-manager --no-headers 2>/dev/null | wc -l | tr -d ' ')
+          if [ "$TOTAL_PODS" -gt 0 ] && [ "$NOT_READY" -eq 0 ]; then
+            echo "  PASS: Operator pod running"
+          else
+            echo "  FAIL: Operator pod not running ($NOT_READY of $TOTAL_PODS not ready)"
+            FAILED=1
+          fi
+
+          echo "--- Checking OpenShift Groups ---"
+          GROUP_COUNT=$(oc get groups --no-headers 2>/dev/null | wc -l | tr -d ' ')
+          echo "  INFO: ${GROUP_COUNT} OpenShift Group(s) exist"
+
+          if [ "$FAILED" -eq 0 ]; then
+            echo "PASS: group-sync operator instance configured"
+          fi
+          exit $FAILED
+{{- end }}

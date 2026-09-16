@@ -1,0 +1,308 @@
+suite: GroupSync CR
+templates:
+  - templates/groupsync.yaml
+tests:
+  - it: should not render when include is false
+    set:
+      groupSync.include: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render GroupSync CR when include is true
+    set:
+      groupSync:
+        include: true
+        name: my-sync
+        namespace: group-sync-operator
+        schedule: "*/30 * * * *"
+        providers:
+          - name: keycloak
+            type: keycloak
+            keycloak:
+              url: "https://sso.example.com"
+              realm: sso
+              credentialsSecretName: kc-creds
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: GroupSync
+      - isAPIVersion:
+          of: redhatcop.redhat.io/v1alpha1
+
+  - it: should set metadata correctly
+    set:
+      groupSync:
+        include: true
+        name: my-group-sync
+        namespace: my-ns
+        schedule: "*/30 * * * *"
+        providers:
+          - name: keycloak
+            type: keycloak
+            keycloak:
+              url: "https://sso.example.com"
+              realm: sso
+              credentialsSecretName: kc-creds
+    asserts:
+      - equal:
+          path: metadata.name
+          value: my-group-sync
+      - equal:
+          path: metadata.namespace
+          value: my-ns
+      - equal:
+          path: spec.schedule
+          value: "*/30 * * * *"
+
+  - it: should render keycloak provider with all fields
+    set:
+      groupSync:
+        include: true
+        name: sync
+        namespace: group-sync-operator
+        schedule: "*/30 * * * *"
+        providers:
+          - name: keycloak
+            type: keycloak
+            keycloak:
+              url: "https://sso.corp.com"
+              realm: production
+              loginRealm: master
+              scope: sub
+              insecure: false
+              credentialsSecretName: kc-secret
+    asserts:
+      - equal:
+          path: spec.providers[0].name
+          value: keycloak
+      - equal:
+          path: spec.providers[0].keycloak.realm
+          value: production
+      - equal:
+          path: spec.providers[0].keycloak.loginRealm
+          value: master
+      - equal:
+          path: spec.providers[0].keycloak.scope
+          value: sub
+      - equal:
+          path: spec.providers[0].keycloak.url
+          value: "https://sso.corp.com"
+      - equal:
+          path: spec.providers[0].keycloak.insecure
+          value: false
+      - equal:
+          path: spec.providers[0].keycloak.credentialsSecret.name
+          value: kc-secret
+      - equal:
+          path: spec.providers[0].keycloak.credentialsSecret.namespace
+          value: group-sync-operator
+
+  - it: should include keycloak caSecret when specified
+    set:
+      groupSync:
+        include: true
+        name: sync
+        namespace: group-sync-operator
+        schedule: "*/30 * * * *"
+        providers:
+          - name: keycloak
+            type: keycloak
+            keycloak:
+              url: "https://sso.example.com"
+              realm: sso
+              credentialsSecretName: kc-creds
+              caSecretName: kc-ca
+    asserts:
+      - equal:
+          path: spec.providers[0].keycloak.caSecret.name
+          value: kc-ca
+      - equal:
+          path: spec.providers[0].keycloak.caSecret.namespace
+          value: group-sync-operator
+
+  - it: should omit keycloak caSecret when empty
+    set:
+      groupSync:
+        include: true
+        name: sync
+        namespace: group-sync-operator
+        schedule: "*/30 * * * *"
+        providers:
+          - name: keycloak
+            type: keycloak
+            keycloak:
+              url: "https://sso.example.com"
+              realm: sso
+              credentialsSecretName: kc-creds
+              caSecretName: ""
+    asserts:
+      - isNull:
+          path: spec.providers[0].keycloak.caSecret
+
+  - it: should render ldap provider with rfc2307
+    set:
+      groupSync:
+        include: true
+        name: sync
+        namespace: group-sync-operator
+        schedule: "*/30 * * * *"
+        providers:
+          - name: ldap
+            type: ldap
+            ldap:
+              url: "ldaps://ldap.corp.com:636"
+              insecure: false
+              credentialsSecretName: ldap-creds
+              caSecretName: ldap-ca
+              rfc2307:
+                groupBaseDN: "ou=groups,dc=corp,dc=com"
+                userBaseDN: "ou=users,dc=corp,dc=com"
+                groupFilter: "(objectClass=groupOfNames)"
+                groupNameAttributes:
+                  - cn
+                groupMembershipAttributes:
+                  - member
+                userNameAttributes:
+                  - uid
+    asserts:
+      - equal:
+          path: spec.providers[0].name
+          value: ldap
+      - equal:
+          path: spec.providers[0].ldap.url
+          value: "ldaps://ldap.corp.com:636"
+      - equal:
+          path: spec.providers[0].ldap.insecure
+          value: false
+      - equal:
+          path: spec.providers[0].ldap.credentialsSecret.name
+          value: ldap-creds
+      - equal:
+          path: spec.providers[0].ldap.caSecret.name
+          value: ldap-ca
+      - equal:
+          path: spec.providers[0].ldap.rfc2307.groupsQuery.baseDN
+          value: "ou=groups,dc=corp,dc=com"
+      - equal:
+          path: spec.providers[0].ldap.rfc2307.groupsQuery.filter
+          value: "(objectClass=groupOfNames)"
+      - equal:
+          path: spec.providers[0].ldap.rfc2307.groupNameAttributes[0]
+          value: cn
+      - equal:
+          path: spec.providers[0].ldap.rfc2307.groupMembershipAttributes[0]
+          value: member
+      - equal:
+          path: spec.providers[0].ldap.rfc2307.usersQuery.baseDN
+          value: "ou=users,dc=corp,dc=com"
+      - equal:
+          path: spec.providers[0].ldap.rfc2307.userNameAttributes[0]
+          value: uid
+
+  - it: should omit ldap caSecret when empty
+    set:
+      groupSync:
+        include: true
+        name: sync
+        namespace: group-sync-operator
+        schedule: "*/30 * * * *"
+        providers:
+          - name: ldap
+            type: ldap
+            ldap:
+              url: "ldaps://ldap.corp.com:636"
+              credentialsSecretName: ldap-creds
+              caSecretName: ""
+              rfc2307:
+                groupBaseDN: "ou=groups,dc=corp,dc=com"
+                userBaseDN: "ou=users,dc=corp,dc=com"
+                groupNameAttributes:
+                  - cn
+                groupMembershipAttributes:
+                  - member
+                userNameAttributes:
+                  - uid
+    asserts:
+      - isNull:
+          path: spec.providers[0].ldap.caSecret
+
+  - it: should render multiple providers simultaneously
+    set:
+      groupSync:
+        include: true
+        name: multi-sync
+        namespace: group-sync-operator
+        schedule: "0 * * * *"
+        providers:
+          - name: keycloak
+            type: keycloak
+            keycloak:
+              url: "https://sso.example.com"
+              realm: sso
+              credentialsSecretName: kc-creds
+              caSecretName: ""
+          - name: ldap
+            type: ldap
+            ldap:
+              url: "ldaps://ldap.example.com:636"
+              credentialsSecretName: ldap-creds
+              caSecretName: ""
+              rfc2307:
+                groupBaseDN: "ou=groups,dc=example,dc=com"
+                userBaseDN: "ou=users,dc=example,dc=com"
+                groupNameAttributes:
+                  - cn
+                groupMembershipAttributes:
+                  - member
+                userNameAttributes:
+                  - uid
+    asserts:
+      - equal:
+          path: spec.providers[0].name
+          value: keycloak
+      - isNotNull:
+          path: spec.providers[0].keycloak
+      - equal:
+          path: spec.providers[1].name
+          value: ldap
+      - isNotNull:
+          path: spec.providers[1].ldap
+
+  - it: should default loginRealm and scope for keycloak
+    set:
+      groupSync:
+        include: true
+        name: sync
+        namespace: group-sync-operator
+        schedule: "*/30 * * * *"
+        providers:
+          - name: keycloak
+            type: keycloak
+            keycloak:
+              url: "https://sso.example.com"
+              realm: sso
+              credentialsSecretName: kc-creds
+              caSecretName: ""
+    asserts:
+      - equal:
+          path: spec.providers[0].keycloak.loginRealm
+          value: master
+      - equal:
+          path: spec.providers[0].keycloak.scope
+          value: sub
+
+  - it: should render empty providers list when none given
+    set:
+      groupSync:
+        include: true
+        name: sync
+        namespace: group-sync-operator
+        schedule: "*/30 * * * *"
+        providers: []
+    asserts:
+      - isNotNull:
+          path: spec.schedule
+      - isEmpty:
+          path: spec.providers

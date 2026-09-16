@@ -7,9 +7,28 @@ spec:
   replicas: {{ .Values.imageRegistry.replicas }}
   managementState: {{ .Values.imageRegistry.managementState }}
   rolloutStrategy: {{ .Values.imageRegistry.rolloutStrategy }}
+  defaultRoute: {{ .Values.imageRegistry.defaultRoute | default false }}
   storage:
     {{- if eq .Values.imageRegistry.storage.type "pvc" }}
     pvc:
       claim: {{ .Values.imageRegistry.storage.pvc.claim }}
+    {{- end }}
+    {{- if eq .Values.imageRegistry.storage.type "s3" }}
+    s3:
+      bucket: {{ .Values.imageRegistry.storage.s3.bucket }}
+      region: {{ .Values.imageRegistry.storage.s3.region }}
+      encrypt: {{ .Values.imageRegistry.storage.s3.encrypt | default true }}
+      {{- if .Values.imageRegistry.storage.s3.keyID }}
+      keyID: {{ .Values.imageRegistry.storage.s3.keyID }}
+      {{- end }}
+      {{- if .Values.imageRegistry.storage.s3.regionEndpoint }}
+      regionEndpoint: {{ .Values.imageRegistry.storage.s3.regionEndpoint }}
+      {{- end }}
+      {{- if .Values.imageRegistry.storage.s3.virtualHostedStyle }}
+      virtualHostedStyle: {{ .Values.imageRegistry.storage.s3.virtualHostedStyle }}
+      {{- end }}
+    {{- end }}
+    {{- if eq .Values.imageRegistry.storage.type "emptyDir" }}
+    emptyDir: {}
     {{- end }}
 {{- end }}

@@ -26,6 +26,10 @@ The template automatically sets `apiGroup` based on subject kind.
 
 RoleBindings accept either `clusterRole` or `role` (mutually exclusive). The template sets `roleRef.kind` accordingly.
 
+## Current state
+- **Enabled on aws-test** — `cluster-viewer` ClusterRole bound to `team-alpha` and `team-beta` Groups
+- `cluster-viewer` provides read-only access to nodes, namespaces, PVs, events, storage classes, machines, and `config.openshift.io` resources
+
 ## Deployment
 
 Add `- chart: rbac` to `platformCharts` in the cluster's conf.yaml. Override values at env or cluster level as needed.

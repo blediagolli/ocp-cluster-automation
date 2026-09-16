@@ -18,7 +18,7 @@ Each catalog is configurable with image repository, tag, poll interval, and publ
 
 ## Current state
 
-- Active on hub and clusters (in ApplicationSet shared config list)
+- **Wired to aws-test** — both catalogs `include: false` (connected cluster, using upstream catalogs)
 - Both catalogs default to `include: false` — no effect until enabled
 - Image tags default to `v4.14` — update to match cluster version when enabling
 

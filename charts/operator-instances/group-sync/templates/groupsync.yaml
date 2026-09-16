@@ -1,0 +1,61 @@
+{{- if .Values.groupSync.include }}
+---
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: GroupSync
+metadata:
+  name: {{ .Values.groupSync.name }}
+  namespace: {{ .Values.groupSync.namespace }}
+spec:
+  schedule: {{ .Values.groupSync.schedule | quote }}
+  providers:
+    {{- range .Values.groupSync.providers }}
+    - name: {{ .name }}
+      {{- if eq .type "keycloak" }}
+      keycloak:
+        realm: {{ .keycloak.realm }}
+        loginRealm: {{ .keycloak.loginRealm | default "master" }}
+        scope: {{ .keycloak.scope | default "sub" }}
+        url: {{ .keycloak.url }}
+        insecure: {{ .keycloak.insecure | default false }}
+        credentialsSecret:
+          name: {{ .keycloak.credentialsSecretName }}
+          namespace: {{ $.Values.groupSync.namespace }}
+        {{- if and .keycloak.caSecretName (ne .keycloak.caSecretName "") }}
+        caSecret:
+          name: {{ .keycloak.caSecretName }}
+          namespace: {{ $.Values.groupSync.namespace }}
+        {{- end }}
+      {{- end }}
+      {{- if eq .type "ldap" }}
+      ldap:
+        url: {{ .ldap.url | quote }}
+        insecure: {{ .ldap.insecure | default false }}
+        credentialsSecret:
+          name: {{ .ldap.credentialsSecretName }}
+          namespace: {{ $.Values.groupSync.namespace }}
+        {{- if and .ldap.caSecretName (ne .ldap.caSecretName "") }}
+        caSecret:
+          name: {{ .ldap.caSecretName }}
+          namespace: {{ $.Values.groupSync.namespace }}
+        {{- end }}
+        rfc2307:
+          groupsQuery:
+            baseDN: {{ .ldap.rfc2307.groupBaseDN | quote }}
+            scope: sub
+            derefAliases: never
+            filter: {{ .ldap.rfc2307.groupFilter | default "(objectClass=groupOfNames)" | quote }}
+          groupUIDAttribute: dn
+          groupNameAttributes:
+            {{- toYaml .ldap.rfc2307.groupNameAttributes | nindent 12 }}
+          groupMembershipAttributes:
+            {{- toYaml .ldap.rfc2307.groupMembershipAttributes | nindent 12 }}
+          usersQuery:
+            baseDN: {{ .ldap.rfc2307.userBaseDN | quote }}
+            scope: sub
+            derefAliases: never
+          userUIDAttribute: dn
+          userNameAttributes:
+            {{- toYaml .ldap.rfc2307.userNameAttributes | nindent 12 }}
+      {{- end }}
+    {{- end }}
+{{- end }}

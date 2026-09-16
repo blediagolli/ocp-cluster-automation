@@ -1,9 +1,11 @@
 groupSync:
   include: false
+  provider: ldap  # ldap or keycloak
   namespace: openshift-authentication
   schedule: "*/30 * * * *"
   image: registry.redhat.io/openshift4/ose-cli:v4.22
-  serviceAccountName: ldap-group-syncer
+  serviceAccountName: group-syncer
+
   ldap:
     url: "ldaps://ldap.example.com:636"
     insecure: false
@@ -19,8 +21,17 @@ groupSync:
       - member
     userNameAttributes:
       - uid
-  groupMappings: []
-  # - ldapGroup: "cn=admins,ou=groups,dc=example,dc=com"
-  #   openshiftGroup: cluster-admins
-  # - ldapGroup: "cn=developers,ou=groups,dc=example,dc=com"
-  #   openshiftGroup: developers
+
+  keycloak:
+    url: "https://sso.example.com"
+    realm: sso
+    credentialsSecretName: keycloak-group-sync
+    # Secret must contain 'client-id' and 'client-secret' keys
+    # (service account client with realm-management/view-users role)
+    insecure: false
+    caConfigMapName: ""
+    groupMappings: []
+    # - keycloakGroup: admins
+    #   openshiftGroup: cluster-admins
+    # - keycloakGroup: developers
+    #   openshiftGroup: developers

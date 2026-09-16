@@ -1,0 +1,36 @@
+groupSync:
+  include: false
+  name: group-sync
+  namespace: group-sync-operator
+  schedule: "*/30 * * * *"
+  providers: []
+  # providers:
+  #   - name: keycloak
+  #     type: keycloak
+  #     keycloak:
+  #       url: "https://sso.example.com"
+  #       realm: sso
+  #       loginRealm: master
+  #       credentialsSecretName: keycloak-group-sync
+  #       insecure: false
+  #       caSecretName: ""
+  #       scope: sub
+  #
+  #   - name: ldap
+  #     type: ldap
+  #     ldap:
+  #       url: "ldaps://ldap.example.com:636"
+  #       insecure: false
+  #       credentialsSecretName: ldap-bind-password
+  #       # Secret keys: username (bindDN), password (bindPassword)
+  #       caSecretName: ldap-ca
+  #       rfc2307:
+  #         groupBaseDN: "ou=groups,dc=example,dc=com"
+  #         userBaseDN: "ou=users,dc=example,dc=com"
+  #         groupFilter: "(objectClass=groupOfNames)"
+  #         groupNameAttributes:
+  #           - cn
+  #         groupMembershipAttributes:
+  #           - member
+  #         userNameAttributes:
+  #           - uid

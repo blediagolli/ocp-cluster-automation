@@ -91,6 +91,80 @@ oauth:
           - email
           - profile
 
+# --- group sync ---
+groupSync:
+  include: true
+  provider: keycloak
+  keycloak:
+    url: "https://sso.apps.cluster-c8444.dyn.redhatworkshops.io"
+    realm: sso
+    credentialsSecretName: keycloak-group-sync
+    groupMappings:
+      - keycloakGroup: admins
+        openshiftGroup: admins
+      - keycloakGroup: users
+        openshiftGroup: users
+
+# --- RBAC ---
+clusterRoles:
+  include: true
+  roles:
+    - include: true
+      name: cluster-viewer
+      rules:
+        - apiGroups: [""]
+          resources: ["nodes", "namespaces", "persistentvolumes", "events"]
+          verbs: ["get", "list", "watch"]
+        - apiGroups: ["storage.k8s.io"]
+          resources: ["storageclasses"]
+          verbs: ["get", "list", "watch"]
+        - apiGroups: ["machine.openshift.io"]
+          resources: ["machines", "machinesets"]
+          verbs: ["get", "list", "watch"]
+        - apiGroups: ["config.openshift.io"]
+          resources: ["*"]
+          verbs: ["get", "list", "watch"]
+clusterRoleBindings:
+  include: true
+  bindings:
+    - include: true
+      name: team-alpha-cluster-viewer
+      clusterRole: cluster-viewer
+      subjects:
+        - kind: Group
+          name: team-alpha
+    - include: true
+      name: team-beta-cluster-viewer
+      clusterRole: cluster-viewer
+      subjects:
+        - kind: Group
+          name: team-beta
+
+# --- image registry ---
+imageRegistry:
+  include: true
+  replicas: 2
+  managementState: Managed
+  rolloutStrategy: RollingUpdate
+  defaultRoute: false
+  storage:
+    type: s3
+    s3:
+      bucket: aws-test-wtxdp-image-registry-us-east-2
+      region: us-east-2
+      encrypt: true
+
+# --- image policy ---
+image:
+  include: true
+
+# --- marketplace ---
+catalogSource:
+  certifiedOperators:
+    include: false
+  communityOperators:
+    include: false
+
 # --- TLS ---
 provider: cert-manager
 certManager:

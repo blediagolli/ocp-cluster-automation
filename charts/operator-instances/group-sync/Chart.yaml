@@ -1,0 +1,4 @@
+apiVersion: v2
+name: group-sync
+description: GroupSync CR for the group-sync-operator (redhat-cop)
+version: 0.1.0

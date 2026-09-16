@@ -15,8 +15,8 @@ Manages the cluster `Image` CR (`config.openshift.io/v1`). Configures image regi
 
 ## Current state
 
-- **Not enabled** on any cluster (`include: false`)
-- Not listed in any ApplicationSet
+- **Enabled on aws-test** — no registry restrictions (allowed/blocked lists empty), no additional trusted CAs
+- Use `allowedRegistries` or `blockedRegistries` to enforce registry policies per-cluster
 
 ## Outstanding
 

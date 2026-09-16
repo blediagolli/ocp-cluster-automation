@@ -18,6 +18,11 @@ platformCharts:
   - chart: prometheus-rules
   - chart: alertmanager-config
   - chart: openshift-oauth
+  - chart: openshift-group-sync
+  - chart: rbac
+  - chart: openshift-image-registry
+  - chart: openshift-image
+  - chart: openshift-marketplace
 operatorInstanceCharts:
   - chart: cert-manager-certs
   - chart: acs-secured-cluster
