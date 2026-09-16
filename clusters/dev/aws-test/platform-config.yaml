@@ -1,0 +1,40 @@
+# Cluster-level platform config overrides. Configures cert-manager as the TLS
+# certificate provider with a self-signed CA chain (ClusterIssuer created by
+# the cert-manager-certs operator instance chart).
+apiServer:
+  include: true
+  servingCerts:
+    namedCertificates:
+      - names:
+          - api.aws-test.sandbox3321.opentlc.com
+        servingCertificate:
+          name: cert-manager-api-cert
+ingress:
+  controller:
+    include: true
+    manageDefault: true
+    default:
+      placement: node-role.kubernetes.io/worker
+      replicas: 2
+      endpointPublishingStrategy: LoadBalancerService
+      tolerations: []
+    defaultCertificate:
+      enabled: true
+      name: cert-manager-ingress-cert
+provider: cert-manager
+certManager:
+  issuerRef:
+    name: cluster-ca
+    kind: ClusterIssuer
+certificates:
+  api:
+    include: true
+    secretName: cert-manager-api-cert
+    dnsNames:
+      - api.aws-test.sandbox3321.opentlc.com
+  ingress:
+    include: true
+    secretName: cert-manager-ingress-cert
+    dnsNames:
+      - "*.apps.aws-test.sandbox3321.opentlc.com"
+      - apps.aws-test.sandbox3321.opentlc.com

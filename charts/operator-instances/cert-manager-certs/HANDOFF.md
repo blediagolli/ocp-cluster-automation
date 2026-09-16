@@ -4,10 +4,9 @@
 Creates cert-manager ClusterIssuers (self-signed and CA) and Certificate resources for API server and ingress TLS. Bootstraps a CA chain: self-signed root → CA issuer → leaf certs.
 
 ## Current state
-- **Not modified this session** — pre-existing chart
 - Disabled by default (all toggles `false`)
-- Commented out in `cluster-config.yaml` ApplicationSet
-- Not tested
+- Enabled for `aws-test` cluster (`clusters/dev/aws-test/operator-instances.yaml`) with self-signed + CA issuers
+- Used alongside `tls-certificates` platform chart: this chart creates the ClusterIssuers, `tls-certificates` creates the leaf Certificate CRs
 
 ## Outstanding
 - **Missing dnsNames/SANs** — API and ingress certificates have no `dnsNames` or `subject` fields; cert-manager will generate certs without SANs, which most TLS clients reject

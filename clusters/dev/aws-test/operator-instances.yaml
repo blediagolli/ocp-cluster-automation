@@ -1,0 +1,7 @@
+# Cluster-level operator instance overrides. Configures operator CRs deployed
+# by the cert-manager-certs chart. Enables a self-signed CA chain:
+# self-signed root → CA ClusterIssuer → leaf certificates.
+selfSignedIssuer:
+  include: true
+caIssuer:
+  include: true
