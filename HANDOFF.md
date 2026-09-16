@@ -19,6 +19,7 @@
 - Added `compliance-scans` to `operatorInstanceCharts` in conf.yaml
 - Enabled `scanSetting` and `scanSettingBinding` in `operator-instances.yaml` (STIG profiles, daily scans)
 - **Fixed**: ScanSetting and ScanSettingBinding templates had fields under `spec:` but the compliance CRDs use root-level fields — scans never ran because profiles weren't parsed
+- Added TailoredProfile support: `tailoredProfiles` list in values.yaml with `disableRules`, `enableRules`, `setValues` per profile; template iterates the list with `include` toggle per entry
 
 #### 9. Console CR fix
 - Console chart rendered empty `customization: null` and `developerCatalog.types.state: Enabled` causing perpetual OutOfSync
