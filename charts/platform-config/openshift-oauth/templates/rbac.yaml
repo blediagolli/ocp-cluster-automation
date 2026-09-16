@@ -1,11 +1,5 @@
 {{- range .Values.oauth.groupRBAC }}
 ---
-apiVersion: user.openshift.io/v1
-kind: Group
-metadata:
-  name: {{ .group }}
-users: []
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
