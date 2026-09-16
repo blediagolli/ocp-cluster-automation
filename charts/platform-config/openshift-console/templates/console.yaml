@@ -6,6 +6,9 @@ kind: Console
 metadata:
   name: cluster
 spec:
+  {{- if not (or $hasCustomization $hasDevCatalog) }}
+  customization: {}
+  {{- end }}
   {{- if $hasCustomization }}
   customization:
     {{- if .Values.console.branding.customProductName }}
