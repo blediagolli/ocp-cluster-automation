@@ -1,25 +1,36 @@
-{{- if .Values.tailoredProfile.include }}
+{{- range .Values.tailoredProfiles }}
+{{- if .include }}
+---
 apiVersion: compliance.openshift.io/v1alpha1
 kind: TailoredProfile
 metadata:
-  name: {{ .Values.tailoredProfile.name }}
-  namespace: {{ .Values.tailoredProfile.namespace }}
+  name: {{ .name }}
+  namespace: {{ $.Values.scanSettingBinding.namespace }}
 spec:
-  title: {{ .Values.tailoredProfile.title }}
-  description: {{ .Values.tailoredProfile.description }}
-  extends: {{ .Values.tailoredProfile.extends }}
-  {{- if .Values.tailoredProfile.enableRules }}
+  title: {{ .title }}
+  description: {{ .description | quote }}
+  extends: {{ .extends }}
+  {{- if .enableRules }}
   enableRules:
-    {{- range .Values.tailoredProfile.enableRules }}
+    {{- range .enableRules }}
     - name: {{ .name }}
-      rationale: {{ .rationale }}
+      rationale: {{ .rationale | quote }}
     {{- end }}
   {{- end }}
-  {{- if .Values.tailoredProfile.disableRules }}
+  {{- if .disableRules }}
   disableRules:
-    {{- range .Values.tailoredProfile.disableRules }}
+    {{- range .disableRules }}
     - name: {{ .name }}
-      rationale: {{ .rationale }}
+      rationale: {{ .rationale | quote }}
     {{- end }}
   {{- end }}
+  {{- if .setValues }}
+  setValues:
+    {{- range .setValues }}
+    - name: {{ .name }}
+      rationale: {{ .rationale | quote }}
+      value: {{ .value | quote }}
+    {{- end }}
+  {{- end }}
+{{- end }}
 {{- end }}

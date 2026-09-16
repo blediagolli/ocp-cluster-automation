@@ -53,23 +53,23 @@ scanSettingBinding:
     # - name: ocp4-pci-dss
     #   kind: Profile
     #   apiGroup: compliance.openshift.io/v1alpha1
-tailoredProfile:
-  include: false
-  name: custom-profile
-  namespace: openshift-compliance
-  title: Custom Compliance Profile
-  description: Customized compliance profile with site-specific rule adjustments
-  # Base profile to extend
-  extends: ocp4-cis
-  # Rules to explicitly enable (overrides disabled-by-default rules)
-  # Example:
-  #   enableRules:
-  #     - name: ocp4-scc-limit-root-containers
-  #       rationale: Required by security policy
-  enableRules: []
-  # Rules to disable from the base profile
-  # Example:
-  #   disableRules:
-  #     - name: ocp4-scheduler-no-bind-address
-  #       rationale: Not applicable in our environment
-  disableRules: []
+    # Use kind: TailoredProfile to reference a tailored profile:
+    # - name: custom-stig
+    #   kind: TailoredProfile
+    #   apiGroup: compliance.openshift.io/v1alpha1
+tailoredProfiles: []
+# - include: true
+#   name: custom-stig
+#   title: Custom STIG Profile
+#   description: STIG profile with site-specific exclusions
+#   extends: ocp4-stig
+#   disableRules:
+#     - name: ocp4-scheduler-no-bind-address
+#       rationale: Not applicable in our environment
+#     - name: ocp4-api-server-encryption-provider-cipher
+#       rationale: Using default encryption — etcd encryption not required
+#   enableRules: []
+#   setValues:
+#     - name: ocp4-var-openshift-audit-profile
+#       rationale: Audit profile must be WriteRequestBodies per policy
+#       value: WriteRequestBodies
