@@ -165,6 +165,35 @@ catalogSource:
   communityOperators:
     include: false
 
+# --- storage classes ---
+storageClasses:
+  include: true
+  classes:
+    - name: fast-ssd
+      include: true
+      provisioner: ebs.csi.aws.com
+      reclaimPolicy: Delete
+      volumeBindingMode: WaitForFirstConsumer
+      allowVolumeExpansion: true
+      parameters:
+        type: gp3
+        iops: "6000"
+        throughput: "250"
+        encrypted: "true"
+
+# --- DNS ---
+dns:
+  include: true
+
+# --- build ---
+build:
+  include: true
+
+# --- scheduler ---
+scheduler:
+  include: true
+  profile: LowNodeUtilization
+
 # --- TLS ---
 provider: cert-manager
 certManager:

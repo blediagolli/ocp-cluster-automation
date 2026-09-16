@@ -8,12 +8,10 @@ Deploys custom StorageClass resources. Supports multiple classes with per-class 
 
 ## Current state
 
-- **New chart, not enabled on any cluster**
-- Three AWS EBS example classes: fast-ssd (gp3 with IOPS), standard (gp3), archival (sc1 with Retain)
-- Provisioner defaults to `kubernetes.io/aws-ebs` — update per infrastructure
+- **Enabled on aws-test** — `fast-ssd` StorageClass (gp3, 6000 IOPS, 250 MB/s throughput, encrypted) via `ebs.csi.aws.com`
+- Complements operator-managed `gp2-csi` and `gp3-csi` (default) — does not conflict
 
 ## Outstanding
 
-- Replace example provisioners/parameters with actual cluster infrastructure
-- Add to `cluster-config.yaml` ApplicationSet when ready
+- Default values still use deprecated `kubernetes.io/aws-ebs` in-tree provisioner — per-cluster overrides should use `ebs.csi.aws.com`
 - Consider whether ODF-managed StorageClasses make this redundant on some clusters

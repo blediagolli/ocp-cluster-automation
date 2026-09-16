@@ -15,8 +15,7 @@ Manages the cluster `Scheduler` CR (`config.openshift.io/v1`). Configures the ku
 
 ## Current state
 
-- **Not enabled** on any cluster (`include: false`)
-- Not listed in any ApplicationSet
+- **Enabled on aws-test** — `LowNodeUtilization` profile (default), no custom profiles
 
 ## Outstanding
 

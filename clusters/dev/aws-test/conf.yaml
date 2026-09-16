@@ -23,6 +23,10 @@ platformCharts:
   - chart: openshift-image-registry
   - chart: openshift-image
   - chart: openshift-marketplace
+  - chart: storage-classes
+  - chart: openshift-dns
+  - chart: openshift-build
+  - chart: openshift-scheduler
 operatorInstanceCharts:
   - chart: cert-manager-certs
   - chart: acs-secured-cluster

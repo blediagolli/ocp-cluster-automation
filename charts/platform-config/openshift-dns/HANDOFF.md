@@ -4,9 +4,7 @@
 Configures the cluster `DNS` operator CR (`operator.openshift.io/v1`). Currently only sets `nodePlacement.tolerations` to `Exists` (tolerate all taints) so CoreDNS pods can run on any node.
 
 ## Current state
-- **Not enabled** — commented out in hub ApplicationSet, `include: false` in defaults
-- **Not tested** this session
-- Pre-existing chart, not modified this session
+- **Enabled on aws-test** — tolerate-all so CoreDNS runs on tainted nodes
 
 ## Outstanding
 - **Very minimal** — only configures tolerations, nothing else

@@ -16,8 +16,7 @@ Manages the cluster `Build` CR (`config.openshift.io/v1`). Configures build defa
 
 ## Current state
 
-- **Not enabled** on any cluster (`include: false`)
-- Not listed in any ApplicationSet
+- **Enabled on aws-test** — defaults only (no proxy, no env vars, no resource limits)
 
 ## Outstanding
 
