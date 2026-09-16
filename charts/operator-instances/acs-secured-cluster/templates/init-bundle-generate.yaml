@@ -115,21 +115,4 @@ spec:
               " | oc apply -n "${NAMESPACE}" -f -
 
               echo "Init bundle created and applied successfully."
-
-              echo "Creating tls-cert-* secrets for ACS 4.11+ compatibility..."
-              for COMPONENT in sensor collector admission-control; do
-                SECRET_NAME="tls-cert-${COMPONENT}"
-                if oc get secret "${SECRET_NAME}" -n "${NAMESPACE}" &>/dev/null; then
-                  echo "${SECRET_NAME} already exists, skipping."
-                  continue
-                fi
-                CA=$(oc get secret "${COMPONENT}-tls" -n "${NAMESPACE}" -o jsonpath='{.data.ca\.pem}' | base64 -d)
-                CERT=$(oc get secret "${COMPONENT}-tls" -n "${NAMESPACE}" -o jsonpath="{.data.${COMPONENT}-cert\.pem}" | base64 -d)
-                KEY=$(oc get secret "${COMPONENT}-tls" -n "${NAMESPACE}" -o jsonpath="{.data.${COMPONENT}-key\.pem}" | base64 -d)
-                oc create secret generic "${SECRET_NAME}" -n "${NAMESPACE}" \
-                  --from-literal=ca.pem="${CA}" \
-                  --from-literal=cert.pem="${CERT}" \
-                  --from-literal=key.pem="${KEY}"
-                echo "${SECRET_NAME} created."
-              done
 {{- end }}
