@@ -5,9 +5,8 @@ cluster:
   baseDomain: sandbox3321.opentlc.com
 platformCharts:
   - chart: tls-certificates
-  # Phase 2: enable after verifying certs are issued correctly
-  # - chart: openshift-apiserver
-  # - chart: openshift-ingress
+  - chart: openshift-apiserver
+  - chart: openshift-ingress
 operatorInstanceCharts:
   - chart: cert-manager-certs
 deployOperators: true
