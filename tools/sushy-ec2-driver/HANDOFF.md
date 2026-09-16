@@ -70,7 +70,7 @@ imperatively (not yet reflected in Terraform — see TODO).
 - **Agents:** none registered
 
 ### Credentials
-- **Ironic API:** `ironic-user` / `LTGsqyThd0QS07Y8` (via `localhost:6385`)
+- **Ironic API:** `ironic-user` / `<from ironic-auth secret>` (via `localhost:6385`)
 - **SSH key:** `~/.ssh/aws-none-prod` (EC2 key pair: `aws-none-prod-key`)
 - **BMC auth:** `admin` / `password` (dummy — the emulator ignores these)
 
@@ -92,7 +92,7 @@ imperatively (not yet reflected in Terraform — see TODO).
    - **Fix:** Used Ironic API to transition nodes to `deleted`:
      ```bash
      # From inside metal3-ironic pod:
-     curl -sk -u ironic-user:LTGsqyThd0QS07Y8 \
+     curl -sk -u ironic-user:$IRONIC_PASSWORD \
        -X PUT -H 'Content-Type: application/json' \
        -d '{"target":"deleted"}' \
        https://localhost:6385/v1/nodes/$NODE_UUID/states/provision
@@ -176,7 +176,7 @@ retry loops from repeatedly reimaging. If Ironic sends multiple power-on request
 - **Emulator logs:** `oc logs deployment/sushy-ec2-emulator -n aws-none-prod`
 - **Ironic node state:** exec into `metal3-ironic` pod and use:
   ```bash
-  curl -sk -u ironic-user:LTGsqyThd0QS07Y8 https://localhost:6385/v1/nodes | python3 -m json.tool
+  curl -sk -u ironic-user:$IRONIC_PASSWORD https://localhost:6385/v1/nodes | python3 -m json.tool
   ```
 - **SSH to instances:** `ssh -i ~/.ssh/aws-none-prod core@<private-ip>` (need VPN or
   bastion; instances are on private subnet 10.1.0.0/16)
