@@ -1,0 +1,246 @@
+# Example: vSphere control plane VMs + bare metal workers
+#
+# 3 vSphere VMs for control plane, 1 vSphere VM worker, 3 bare metal workers.
+# User-managed networking (platform: none), credentials from Vault via ExternalSecrets.
+#
+# Copy to clusters/<env>/<cluster>/provision.yaml and adjust values.
+
+provision:
+  include: true
+
+# ── Cluster identity ────────────────────────────────────────────────────────────
+
+cluster:
+  name: hybrid-prod-01
+  baseDomain: example.com
+  platform: none
+  environment: prod
+  clusterSet: production
+  imageSetRef: img4.22.13-x86-64-appsub
+  networkType: OVNKubernetes
+  sshPublicKey: "ssh-ed25519 AAAA..."
+  pullSecret: ""
+
+fleet:
+  operatorClusterType: prod
+  operatorProfile: ocp-4.22
+
+masters:
+  count: 3
+
+workers:
+  count: 4                               # total workers: 1 vSphere VM + 3 bare metal
+
+# ── vSphere control plane automation ────────────────────────────────────────────
+
+vsphereControlPlane:
+  enabled: true
+  automation: govc
+  vcenter: vcenter.internal.example.com
+  username: ""                           # sourced from ExternalSecret (see below)
+  password: ""                           # sourced from ExternalSecret (see below)
+  insecure: true
+  datacenter: DC1
+  datastore: vsanDatastore
+  cluster: Cluster1
+  network: "OCP-Prod-VLAN100"
+  folder: /DC1/vm/openshift/hybrid-prod-01
+  resourcePool: ""
+  masters:
+    count: 3
+    cpus: 8
+    memoryMB: 32768
+    diskGB: 120
+  workers:
+    count: 1
+    cpus: 16
+    memoryMB: 65536
+    diskGB: 200
+
+# ── Platform: None (agent-based, userManagedNetworking) ─────────────────────────
+
+none:
+  apiVIPs: []                            # managed externally (e.g. F5, DNS round-robin)
+  ingressVIPs: []
+  provisionRequirements:
+    controlPlaneAgents: 3
+    workerAgents: 4                      # 1 vSphere VM worker + 3 bare metal workers
+  bmc:
+    username: ""                         # sourced from ExternalSecret (see below)
+    password: ""                         # sourced from ExternalSecret (see below)
+  hosts:
+    - name: bm-worker-001
+      role: worker
+      bootMACAddress: "b4:96:91:e9:48:e4"
+      bmcAddress: "idrac-virtualmedia+https://10.206.220.101/redfish/v1/Systems/System.Embedded.1"
+      bmcInsecure: true
+      automatedCleaningMode: metadata
+      nmstate:
+        config:
+          interfaces:
+            - name: bond0
+              type: bond
+              state: up
+              ipv4:
+                enabled: true
+                address:
+                  - ip: 10.206.220.21
+                    prefix-length: 24
+                dhcp: false
+              link-aggregation:
+                mode: 802.3ad
+                options:
+                  miimon: "100"
+                slaves:
+                  - ens2f0
+                  - ens2f1
+          dns-resolver:
+            config:
+              search:
+                - internal.example.com
+              server:
+                - 10.206.220.1
+          routes:
+            config:
+              - destination: 0.0.0.0/0
+                next-hop-address: 10.206.220.1
+                next-hop-interface: bond0
+                table-id: 254
+        interfaces:
+          - name: ens2f0
+            macAddress: "b4:96:91:e9:48:e4"
+          - name: ens2f1
+            macAddress: "b4:96:91:e9:48:e5"
+
+    - name: bm-worker-002
+      role: worker
+      bootMACAddress: "b4:96:91:e9:49:e4"
+      bmcAddress: "idrac-virtualmedia+https://10.206.220.102/redfish/v1/Systems/System.Embedded.1"
+      bmcInsecure: true
+      automatedCleaningMode: metadata
+      nmstate:
+        config:
+          interfaces:
+            - name: bond0
+              type: bond
+              state: up
+              ipv4:
+                enabled: true
+                address:
+                  - ip: 10.206.220.22
+                    prefix-length: 24
+                dhcp: false
+              link-aggregation:
+                mode: 802.3ad
+                options:
+                  miimon: "100"
+                slaves:
+                  - ens2f0
+                  - ens2f1
+          dns-resolver:
+            config:
+              search:
+                - internal.example.com
+              server:
+                - 10.206.220.1
+          routes:
+            config:
+              - destination: 0.0.0.0/0
+                next-hop-address: 10.206.220.1
+                next-hop-interface: bond0
+                table-id: 254
+        interfaces:
+          - name: ens2f0
+            macAddress: "b4:96:91:e9:49:e4"
+          - name: ens2f1
+            macAddress: "b4:96:91:e9:49:e5"
+
+    - name: bm-worker-003
+      role: worker
+      bootMACAddress: "b4:96:91:e9:4a:e4"
+      bmcAddress: "idrac-virtualmedia+https://10.206.220.103/redfish/v1/Systems/System.Embedded.1"
+      bmcInsecure: true
+      automatedCleaningMode: metadata
+      nmstate:
+        config:
+          interfaces:
+            - name: bond0
+              type: bond
+              state: up
+              ipv4:
+                enabled: true
+                address:
+                  - ip: 10.206.220.23
+                    prefix-length: 24
+                dhcp: false
+              link-aggregation:
+                mode: 802.3ad
+                options:
+                  miimon: "100"
+                slaves:
+                  - ens2f0
+                  - ens2f1
+          dns-resolver:
+            config:
+              search:
+                - internal.example.com
+              server:
+                - 10.206.220.1
+          routes:
+            config:
+              - destination: 0.0.0.0/0
+                next-hop-address: 10.206.220.1
+                next-hop-interface: bond0
+                table-id: 254
+        interfaces:
+          - name: ens2f0
+            macAddress: "b4:96:91:e9:4a:e4"
+          - name: ens2f1
+            macAddress: "b4:96:91:e9:4a:e5"
+
+# ── Networking ──────────────────────────────────────────────────────────────────
+
+networking:
+  clusterNetwork:
+    - cidr: 10.128.0.0/14
+      hostPrefix: 23
+  serviceNetwork:
+    - 172.30.0.0/16
+  machineNetwork:
+    - cidr: 10.206.220.0/24
+
+# ── NTP ─────────────────────────────────────────────────────────────────────────
+
+ntp:
+  enabled: true
+  sources:
+    - ntp1.internal.example.com
+    - ntp2.internal.example.com
+
+# ── ExternalSecrets ─────────────────────────────────────────────────────────────
+
+externalSecrets:
+  enabled: true
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  refreshInterval: 1h
+  pullSecret:
+    path: secret/data/openshift/pull-secret
+    properties:
+      - secretKey: .dockerconfigjson
+        property: .dockerconfigjson
+  vsphereControlPlaneCreds:
+    path: secret/data/vsphere/hybrid-prod-01
+    properties:
+      - secretKey: username
+        property: username
+      - secretKey: password
+        property: password
+  bmcCreds:
+    path: secret/data/bmc/hybrid-prod-01
+    properties:
+      - secretKey: username
+        property: username
+      - secretKey: password
+        property: password
