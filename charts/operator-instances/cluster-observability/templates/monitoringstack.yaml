@@ -9,6 +9,12 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
+  {{- with .retention }}
+  retention: {{ . }}
+  {{- end }}
+  {{- with .logLevel }}
+  logLevel: {{ . }}
+  {{- end }}
   {{- with .namespaceSelector }}
   namespaceSelector:
     {{- toYaml . | nindent 4 }}

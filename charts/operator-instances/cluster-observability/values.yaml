@@ -30,6 +30,9 @@ monitoringStacks: []
 # - include: true
 #   name: my-stack
 #   namespace: my-namespace
+#   createNamespace: true
+#   retention: 24h
+#   logLevel: ""
 #   namespaceSelector:
 #     matchLabels: {}
 #   resourceSelector:
@@ -42,7 +45,6 @@ monitoringStacks: []
 #       cpu: "1"
 #       memory: 1Gi
 #   prometheusConfig:
-#     retention: 24h
 #     replicas: 1
 #     scrapeInterval: 30s
 #     persistentVolumeClaim:

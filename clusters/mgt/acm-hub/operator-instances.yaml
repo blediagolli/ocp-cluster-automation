@@ -181,8 +181,8 @@ monitoringStacks:
       limits:
         cpu: "2"
         memory: 4Gi
+    retention: 7d
     prometheusConfig:
-      retention: 7d
       replicas: 1
       persistentVolumeClaim:
         storageClassName: ocs-external-storagecluster-ceph-rbd
