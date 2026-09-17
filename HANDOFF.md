@@ -13,6 +13,10 @@
 - Both job templates (`govc` and `ansible`) pass `WORKER_COUNT`, `WORKER_CPUS`, `WORKER_MEMORY_MB`, `WORKER_DISK_GB` env vars
 - All VM workers boot from the `-cp` InfraEnv ISO (same vSphere infrastructure)
 
+#### Agent hostname assignment
+- govc script and ansible playbook now set `spec.hostname` on each Agent CR during approval (DHCP does not always set hostnames on discovery-booted VMs)
+- Masters get `<cluster>-master-<N>`, VM workers get `<cluster>-vsphere-worker-<N>` — matching the VM names in vSphere
+
 #### Files changed
 - `charts/cluster-provisioning/openshift-provisioning/values.yaml`
 - `charts/cluster-provisioning/openshift-provisioning/files/vsphere-cp-govc.sh`
