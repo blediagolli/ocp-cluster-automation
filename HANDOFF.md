@@ -4,6 +4,23 @@
 
 ## What changed this session
 
+### Session changes (2026-09-17) — vSphere worker VM support in provisioning chart
+
+#### Feature: `vsphereControlPlane.workers`
+- Added `workers` subsection under `vsphereControlPlane` with `count`, `cpus`, `memoryMB`, `diskGB` (defaults to count: 0 — no behavior change for existing configs)
+- govc script creates worker VMs named `<cluster>-vsphere-worker-<N>`, approves first N non-BMH agents as master, remainder as worker
+- Ansible playbook updated with matching `Create vSphere worker VMs` task and split master/worker approval
+- Both job templates (`govc` and `ansible`) pass `WORKER_COUNT`, `WORKER_CPUS`, `WORKER_MEMORY_MB`, `WORKER_DISK_GB` env vars
+- All VM workers boot from the `-cp` InfraEnv ISO (same vSphere infrastructure)
+
+#### Files changed
+- `charts/cluster-provisioning/openshift-provisioning/values.yaml`
+- `charts/cluster-provisioning/openshift-provisioning/files/vsphere-cp-govc.sh`
+- `charts/cluster-provisioning/openshift-provisioning/files/vsphere-cp-playbook.yml`
+- `charts/cluster-provisioning/openshift-provisioning/templates/job-vsphere-cp-govc.yaml`
+- `charts/cluster-provisioning/openshift-provisioning/templates/job-vsphere-cp-ansible.yaml`
+- `docs/reference/provision.yaml`
+
 ### Session changes (2026-09-17) — Quay chart: teams, repos, robot permissions, repo defaults
 
 #### Config bundle enhancements

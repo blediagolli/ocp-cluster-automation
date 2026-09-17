@@ -20,6 +20,11 @@
     master_cpus: "{{ lookup('env', 'MASTER_CPUS') | int }}"
     master_memory_mb: "{{ lookup('env', 'MASTER_MEMORY_MB') | int }}"
     master_disk_gb: "{{ lookup('env', 'MASTER_DISK_GB') | int }}"
+    worker_count: "{{ lookup('env', 'WORKER_COUNT') | default('0', true) | int }}"
+    worker_cpus: "{{ lookup('env', 'WORKER_CPUS') | default(master_cpus, true) | int }}"
+    worker_memory_mb: "{{ lookup('env', 'WORKER_MEMORY_MB') | default(master_memory_mb, true) | int }}"
+    worker_disk_gb: "{{ lookup('env', 'WORKER_DISK_GB') | default(master_disk_gb, true) | int }}"
+    total_vm_count: "{{ (master_count | int) + (worker_count | int) }}"
     non_bmh_query: "[?!contains(keys(metadata.labels || `{}`), 'agent-install.openshift.io/bmh')]"
 
   tasks:
@@ -109,6 +114,45 @@
             - disk
       loop: "{{ range(0, master_count | int) | list }}"
 
+    - name: Create vSphere worker VMs
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ vcenter_validate_certs }}"
+        datacenter: "{{ datacenter }}"
+        cluster: "{{ vc_cluster }}"
+        datastore: "{{ datastore }}"
+        folder: "{{ folder }}"
+        resource_pool: "{{ resource_pool }}"
+        name: "{{ cluster_name }}-vsphere-worker-{{ item }}"
+        state: poweredon
+        guest_id: rhel9_64Guest
+        hardware:
+          num_cpus: "{{ worker_cpus }}"
+          memory_mb: "{{ worker_memory_mb }}"
+          scsi: paravirtual
+        disk:
+          - size_gb: "{{ worker_disk_gb }}"
+            type: thin
+            controller_type: paravirtual
+        networks:
+          - name: "{{ network }}"
+            device_type: vmxnet3
+        cdrom:
+          - controller_type: ide
+            controller_number: 0
+            unit_number: 0
+            type: iso
+            iso_path: "[{{ datastore }}] {{ cluster_name }}/discovery.iso"
+            state: present
+        boot:
+          boot_order:
+            - cdrom
+            - disk
+      loop: "{{ range(0, worker_count | int) | list }}"
+      when: worker_count | int > 0
+
     - name: Wait for non-BMH agents to register
       kubernetes.core.k8s_info:
         api_version: agent-install.openshift.io/v1beta1
@@ -117,9 +161,13 @@
       register: all_agents
       until: >-
         (all_agents.resources | default([]) |
-         json_query(non_bmh_query) | length) >= (master_count | int)
+         json_query(non_bmh_query) | length) >= (total_vm_count | int)
       retries: 120
       delay: 15
+
+    - name: Set non-BMH agent list
+      set_fact:
+        non_bmh_agents: "{{ all_agents.resources | default([]) | json_query(non_bmh_query) }}"
 
     - name: Approve non-BMH agents as masters
       kubernetes.core.k8s:
@@ -132,6 +180,21 @@
           spec:
             approved: true
             role: master
-      loop: >-
-        {{ all_agents.resources | default([]) | json_query(non_bmh_query) }}
+      loop: "{{ non_bmh_agents[:master_count | int] }}"
       when: not (item.spec.approved | default(false) | bool)
+
+    - name: Approve non-BMH agents as workers
+      kubernetes.core.k8s:
+        api_version: agent-install.openshift.io/v1beta1
+        kind: Agent
+        name: "{{ item.metadata.name }}"
+        namespace: "{{ cluster_name }}"
+        merge_type: merge
+        definition:
+          spec:
+            approved: true
+            role: worker
+      loop: "{{ non_bmh_agents[master_count | int:] }}"
+      when:
+        - worker_count | int > 0
+        - not (item.spec.approved | default(false) | bool)

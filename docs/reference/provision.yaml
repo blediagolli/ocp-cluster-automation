@@ -196,6 +196,11 @@ aws:
 #     cpus: 4
 #     memoryMB: 16384
 #     diskGB: 120
+#   workers:                             # optional vSphere worker VMs (in addition to bare metal workers)
+#     count: 0                           # 0 = no VM workers (default)
+#     cpus: 4
+#     memoryMB: 16384
+#     diskGB: 120
 
 # ── Cross-platform options ─────────────────────────────────────────────────────
 

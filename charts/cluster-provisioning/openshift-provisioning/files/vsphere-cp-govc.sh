@@ -25,6 +25,7 @@ export GOVC_DATACENTER="${DATACENTER}"
 export GOVC_DATASTORE="${DATASTORE}"
 
 INFRAENV_NAME="${INFRAENV_NAME:-${CLUSTER_NAME}}"
+WORKER_COUNT="${WORKER_COUNT:-0}"
 
 echo "--- Waiting for InfraEnv ISO URL (${INFRAENV_NAME}) ---"
 ISO_URL=""
@@ -85,7 +86,41 @@ for i in $(seq 0 $((MASTER_COUNT - 1))); do
   fi
 done
 
-echo "--- Waiting for ${MASTER_COUNT} non-BMH agents ---"
+if [ "${WORKER_COUNT}" -gt 0 ]; then
+  echo "--- Creating vSphere worker VMs ---"
+  for i in $(seq 0 $((WORKER_COUNT - 1))); do
+    VM_NAME="${CLUSTER_NAME}-vsphere-worker-${i}"
+
+    if govc vm.info "${VM_NAME}" >/dev/null 2>&1; then
+      echo "${VM_NAME}: already exists, skipping creation"
+    else
+      echo "${VM_NAME}: creating (${WORKER_CPUS} CPU, ${WORKER_MEMORY_MB}MB RAM, ${WORKER_DISK_GB}GB disk)..."
+      govc vm.create \
+        -m="${WORKER_MEMORY_MB}" \
+        -c="${WORKER_CPUS}" \
+        -disk="${WORKER_DISK_GB}GB" \
+        -net="${NETWORK}" \
+        -pool="${RESOURCE_POOL}" \
+        -folder="${FOLDER}" \
+        -on=false \
+        -iso="[${DATASTORE}] ${ISO_DS_PATH}" \
+        -disk.controller=pvscsi \
+        -net.adapter=vmxnet3 \
+        "${VM_NAME}"
+      govc device.boot -vm="${VM_NAME}" -order=cdrom,disk
+    fi
+
+    POWER=$(govc vm.info -json "${VM_NAME}" 2>/dev/null | \
+      grep -o '"powerState":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "unknown")
+    if [ "${POWER}" != "poweredOn" ]; then
+      echo "${VM_NAME}: powering on..."
+      govc vm.power -on "${VM_NAME}"
+    fi
+  done
+fi
+
+TOTAL_VM_COUNT=$((MASTER_COUNT + WORKER_COUNT))
+echo "--- Waiting for ${TOTAL_VM_COUNT} non-BMH agents (${MASTER_COUNT} master + ${WORKER_COUNT} worker) ---"
 for attempt in $(seq 1 120); do
   AGENT_NAMES=$(oc get agents -n "${CLUSTER_NAME}" \
     -l '!agent-install.openshift.io/bmh' \
@@ -96,25 +131,38 @@ for attempt in $(seq 1 120); do
     COUNT=$(echo "${AGENT_NAMES}" | wc -w | tr -d ' ')
   fi
 
-  if [ "${COUNT}" -ge "${MASTER_COUNT}" ]; then
+  if [ "${COUNT}" -ge "${TOTAL_VM_COUNT}" ]; then
     echo "Found ${COUNT} non-BMH agents"
+    APPROVED_MASTERS=0
     for AGENT in ${AGENT_NAMES}; do
       APPROVED=$(oc get agent "${AGENT}" -n "${CLUSTER_NAME}" \
         -o jsonpath='{.spec.approved}' 2>/dev/null || echo "false")
-      if [ "${APPROVED}" != "true" ]; then
+      if [ "${APPROVED}" = "true" ]; then
+        echo "  ${AGENT}: already approved"
+        CURRENT_ROLE=$(oc get agent "${AGENT}" -n "${CLUSTER_NAME}" \
+          -o jsonpath='{.spec.role}' 2>/dev/null || echo "")
+        if [ "${CURRENT_ROLE}" = "master" ]; then
+          APPROVED_MASTERS=$((APPROVED_MASTERS + 1))
+        fi
+        continue
+      fi
+      if [ "${APPROVED_MASTERS}" -lt "${MASTER_COUNT}" ]; then
         echo "  Approving ${AGENT} as master..."
         oc patch agent "${AGENT}" -n "${CLUSTER_NAME}" \
           --type merge -p '{"spec":{"approved":true,"role":"master"}}'
+        APPROVED_MASTERS=$((APPROVED_MASTERS + 1))
       else
-        echo "  ${AGENT}: already approved"
+        echo "  Approving ${AGENT} as worker..."
+        oc patch agent "${AGENT}" -n "${CLUSTER_NAME}" \
+          --type merge -p '{"spec":{"approved":true,"role":"worker"}}'
       fi
     done
-    echo "All ${MASTER_COUNT} master agents processed"
+    echo "All ${TOTAL_VM_COUNT} VM agents processed (${MASTER_COUNT} master, ${WORKER_COUNT} worker)"
     echo "=== vSphere control plane automation complete ==="
     exit 0
   fi
 
-  echo "  Attempt ${attempt}/120: ${COUNT}/${MASTER_COUNT} agents registered..."
+  echo "  Attempt ${attempt}/120: ${COUNT}/${TOTAL_VM_COUNT} agents registered..."
   sleep 15
 done
 

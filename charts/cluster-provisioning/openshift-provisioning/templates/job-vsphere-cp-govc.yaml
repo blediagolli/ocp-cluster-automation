@@ -69,6 +69,14 @@ spec:
               value: {{ .Values.vsphereControlPlane.masters.memoryMB | quote }}
             - name: MASTER_DISK_GB
               value: {{ .Values.vsphereControlPlane.masters.diskGB | quote }}
+            - name: WORKER_COUNT
+              value: {{ .Values.vsphereControlPlane.workers.count | quote }}
+            - name: WORKER_CPUS
+              value: {{ .Values.vsphereControlPlane.workers.cpus | quote }}
+            - name: WORKER_MEMORY_MB
+              value: {{ .Values.vsphereControlPlane.workers.memoryMB | quote }}
+            - name: WORKER_DISK_GB
+              value: {{ .Values.vsphereControlPlane.workers.diskGB | quote }}
             - name: GOVC_VERSION
               value: {{ .Values.vsphereControlPlane.govcVersion | quote }}
 {{- end }}
