@@ -53,9 +53,10 @@ echo "==> Removing non-release files..."
 find . -name 'HANDOFF.md' -delete
 find . -name 'CLAUDE.md' -delete
 
-rm -rf .ai-work .ruler .claude
-rm -rf terraform tools docs/ai-dev
-rm -f TODO.md RECOMMENDATION-conf-split.md docs/architecture-operator-cr-coupling.md
+rm -rf .claude
+rm -rf terraform tools
+rm -f docs/architecture-operator-cr-coupling.md
+rm -f scripts/COMPLIANCE-REPORT-NEXT.md charts/cluster-provisioning/aws-platform-none-design.md
 
 # remove non-release clusters
 rm -rf clusters/dev/cluster-lz5bn*
@@ -183,7 +184,9 @@ base/               # ArgoCD Applications, ApplicationSets, bootstrap
 ## Documentation
 
 - [Part 1: Provisioning clusters with GitOps + ACM](docs/Part-1.md)
-- [Part 2: Configuring clusters with ApplicationSets](docs/Part-2.md)
+- [Part 2: Configuring clusters with ApplicationSets and Helm](docs/Part-2.md)
+- [Baremetal provisioning with agent-based installer](docs/Baremetal.md)
+- [Day 2 cluster configuration guide](docs/day2-cluster-config.md)
 
 ## License
 
@@ -196,8 +199,6 @@ cat > .gitignore <<'IGNEOF'
 *.swp
 *.swo
 *~
-.ai-work/
-.ruler/
 .claude/settings.local.json
 IGNEOF
 

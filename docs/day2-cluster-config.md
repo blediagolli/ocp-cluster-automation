@@ -22,7 +22,7 @@ These form the baseline platform configuration. A cluster without them is missin
 
 | Chart | What it does | Prerequisites | Config needed |
 |-------|-------------|---------------|---------------|
-| `cert-manager-certs` | ClusterIssuers (self-signed CA or Let's Encrypt ACME) | cert-manager operator | `operator-instances.yaml` — enable acmeIssuer or caIssuer. For LE: Route53 zone ID, region, email. See [letsencrypt-dns01-setup.md](ai-dev/letsencrypt-dns01-setup.md) |
+| `cert-manager-certs` | ClusterIssuers (self-signed CA or Let's Encrypt ACME) | cert-manager operator | `operator-instances.yaml` — enable acmeIssuer or caIssuer. For LE: Route53 zone ID, region, email. See [letsencrypt-dns01-setup.md](letsencrypt-dns01-setup.md) |
 | `acs-secured-cluster` | Connects cluster to ACS Central on the hub | ACS operator, Central endpoint | Set at env level. `centralEndpoint` must point to hub's ACS Central route. See [ACS setup](#acs-secured-cluster-setup) below |
 
 ### ACS Secured Cluster setup
@@ -97,7 +97,7 @@ The init bundle job is an ArgoCD PostSync hook. It requires Central to be reacha
 
 ### Post-TLS switch for ACM-managed clusters
 
-After switching to Let's Encrypt (or any non-default CA), patch the Hive admin kubeconfig secret on the hub to remove the old `certificate-authority-data`. See [letsencrypt-dns01-setup.md](ai-dev/letsencrypt-dns01-setup.md#post-switch-fixing-hiveacm-connectivity).
+After switching to Let's Encrypt (or any non-default CA), patch the Hive admin kubeconfig secret on the hub to remove the old `certificate-authority-data`. See [letsencrypt-dns01-setup.md](letsencrypt-dns01-setup.md#post-switch-fixing-hiveacm-connectivity).
 
 ---
 

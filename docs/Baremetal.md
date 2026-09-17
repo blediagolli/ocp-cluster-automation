@@ -1,68 +1,182 @@
-# Provisioning Baremetal OpenShift clusters using RHACM with GitOps leveraging on-premise Assisted Installer
+# Baremetal Provisioning with Agent-Based Installer
 
-Recently, I published the blog [Provisioning OpenShift clusters using GitOps with ACM](https://cloud.redhat.com/blog/provisioning-openshift-clusters-using-gitops-with-acm) explaining how to  create OpenShift clusters with RHACM using Gitops with ArgoCD. The OpenShift installation type was IPI, and valid for most of the platforms: Azure, AWS, GCP, vSphere… but not for baremetal. If you’ve ever installed an OpenShift cluster in baremetal and disconnected, you know how different it is from any other installation.
+This guide covers provisioning OpenShift clusters on baremetal (and platform-none) infrastructure using ACM's agent-based installer, driven entirely by GitOps.
 
-In this blog, I’ll explain how to deploy a baremetal OpenShift cluster with Assisted Installer using RHACM and GitOps with ArgoCD. If you are not familiar with deploying OpenShift clusters with RHACM and Gitops, I recommend reading the article I wrote: [GitOps for organizations: provisioning and configuring OpenShift clusters automatically](https://cloud.redhat.com/blog/gitops-for-organizations-provisioning-and-configuring-openshift-clusters-automatically). I also highly recommend reading the blog [Managing OCP Infrastructures Using GitOps](https://myopenshiftblog.com/managing-ocp-infrastructures-using-gitops-part-1/), which I used the first time I deployed this solution.
+## Overview
 
+Baremetal provisioning uses the same GitOps workflow as cloud provisioning ([Part 1](Part-1.md)) — define `conf.yaml` and `provision.yaml`, push to git, and the `cluster-provisioning` ApplicationSet handles the rest. The difference is the provisioning flow:
 
-## Solution Overview
+1. The Helm chart creates ACM/Hive resources including BareMetalHost and InfraEnv CRs
+2. The InfraEnv generates a discovery ISO customized for the cluster
+3. Each BareMetalHost connects to the physical server's BMC via Redfish
+4. The BMC boots the server from the discovery ISO (virtual media)
+5. The Assisted Installer agent registers the host with ACM
+6. Once all hosts are discovered and validated, the OpenShift install begins
 
-We’ll use OpenShift Gitops and RHACM in the same way as we did in [Provisioning OpenShift clusters using GitOps with ACM](https://cloud.redhat.com/blog/provisioning-openshift-clusters-using-gitops-with-acm): we’ll upload the Kubernetes objects to our git repository, ArgoCD will synchronize these object to our OpenShift cluster, and RHACM will deploy the cluster leveraging Baremetal Operator, Ironic and Assisted Installer. 
+```
+Git push → ArgoCD → ACM/Hive
+                       │
+                       ├── InfraEnv → discovery ISO
+                       ├── BareMetalHost → Redfish → BMC → boot ISO
+                       ├── Assisted Installer → validate hosts → install
+                       └── ClusterDeployment → import to ACM
+```
 
+## provision.yaml for baremetal
 
-![alt_text](../img/acm_assisted_installer_gitops.png "Diagram Provisioning Baremetal OpenShift clusters using GitOps with RHACM leveraging on-premise Assisted Installer")
+The `provision.yaml` for a baremetal cluster defines the platform, networking, and host inventory:
 
+```yaml
+provision:
+  include: true
 
-We’ll create the BareMetalHosts (BMH), which are Metal³ Custom Resource Definitions (CRDs) that define a physical host and its properties. The BMHs will connect to the baseboard management controller (BMC) physical nodes using the Redfish protocol. The node’s network will be statically configured using NMstateConfig. The OpenShift cluster will be deployed with Assisted Installer using the BareMetalHosts created.
+cluster:
+  name: edge-01
+  baseDomain: example.com
+  platform: baremetal
+  environment: prod
+  clusterSet: default
+  imageSetRef: img4.17.0-x86-64
+  networkType: OVNKubernetes
+  sshPublicKey: "ssh-ed25519 AAAA..."
 
-Don’t start creating all the objects. As there are many resources involved, we recommend creating them one at a time and checking their status. Start checking the [prerequisites](https://access.redhat.com/documentation/en-us/red_hat_advanced_cluster_management_for_kubernetes/2.8/html/clusters/cluster_mce_overview#infra-env-prerequisites) in the RHACM documentation before creating an infrastructure environment, and enable the Central Infrastructure Management service, which is provided with the Multicluster Engine. 
+masters:
+  count: 3
 
-Once prerequisites have been fulfilled, move to the RHACM console. In the Infrastructure Environment, create and connect the Baremetal Hosts to the host’s BMC with Redfish. And then, deploy a cluster using the Baremetal Hosts (existing discovered hosts) following [Creating your cluster in ACM with the console](https://access.redhat.com/documentation/en-us/red_hat_advanced_cluster_management_for_kubernetes/2.8/html/clusters/cluster_mce_overview#on-prem-creating-your-cluster-with-the-console). Check the objects created in the deployment, move to the command line, and deploy another cluster creating the same objects with other parameters following [Creating your cluster in ACM with the command line](https://access.redhat.com/documentation/en-us/red_hat_advanced_cluster_management_for_kubernetes/2.8/html/clusters/cluster_mce_overview#on-prem-creating-your-cluster-with-the-cli). After that, upload the yaml files to your git repo, and create an ArgoCD Application to sync the objects. 
+baremetal:
+  apiVIPs:
+    - 10.0.0.100
+  ingressVIPs:
+    - 10.0.0.101
+  hosts:
+    - name: master-0
+      role: master
+      bmcAddress: redfish-virtualmedia://bmc-01.example.com/redfish/v1/Systems/1
+      bootMACAddress: "aa:bb:cc:dd:ee:00"
+    - name: master-1
+      role: master
+      bmcAddress: redfish-virtualmedia://bmc-02.example.com/redfish/v1/Systems/1
+      bootMACAddress: "aa:bb:cc:dd:ee:01"
+    - name: master-2
+      role: master
+      bmcAddress: redfish-virtualmedia://bmc-03.example.com/redfish/v1/Systems/1
+      bootMACAddress: "aa:bb:cc:dd:ee:02"
 
-The last step would be to create a Helm chart with all the objects as templates, and an ApplicationSet to create an Application per cluster as we did in [Provisioning OpenShift clusters using GitOps with ACM](https://cloud.redhat.com/blog/provisioning-openshift-clusters-using-gitops-with-acm).
+networking:
+  clusterNetwork:
+    - cidr: 10.128.0.0/14
+      hostPrefix: 23
+  serviceNetwork:
+    - 172.30.0.0/16
+  machineNetwork:
+    - cidr: 10.0.0.0/24
 
+nmstate:
+  - name: master-0
+    interfaces:
+      - name: eno1
+        type: ethernet
+        state: up
+        ipv4:
+          enabled: true
+          address:
+            - ip: 10.0.0.10
+              prefix-length: 24
+          dhcp: false
+    routes:
+      config:
+        - destination: 0.0.0.0/0
+          next-hop-address: 10.0.0.1
+          next-hop-interface: eno1
+    dns-resolver:
+      config:
+        server:
+          - 10.0.0.1
+```
 
-## Baremetal Operator, Ironic and Assisted Installer in RHACM
+## Resources generated
 
-* [Bare Metal Operator](https://docs.openshift.com/container-platform/4.13/post_installation_configuration/bare-metal-configuration.html#bmo-about-the-bare-metal-operator_post-install-bare-metal-configuration) is the main component that interfaces with the Ironic API for all operations needed to provision bare-metal hosts, such as hardware capabilities inspection, operating system installation, and re-initialization when restoring a bare-metal machine to its original status.
-* [Ironic](https://book.metal3.io/ironic/introduction.html) is a service for automating provisioning and lifecycle management of bare metal machines.
-* The [OpenShift Assisted Installer](https://github.com/openshift/assisted-installer) provides for easy provisioning of new bare metal machines and creation of OpenShift clusters.  The Assisted Installer ensures that all the hosts meet the requirements and triggers the OpenShift Container Platform cluster deployment. All the nodes (BMHs) have the Red Hat Enterprise Linux CoreOS (RHCOS) image written to the disk. 
+The provisioning chart generates these resources for an agent-based install:
 
-  The [Assisted Image Service](https://github.com/openshift/assisted-image-service) customizes and serves RHCOS images for the Assisted Installer Service. It downloads a set of RHCOS images on startup based on config.
+| Resource | Purpose |
+|---|---|
+| Namespace | Cluster namespace on the hub |
+| ClusterDeployment | Hive cluster definition (`platform: none` or `baremetal`) |
+| AgentClusterInstall | Networking config (VIPs, cluster/service/machine networks) |
+| InfraEnv | Discovery ISO configuration, SSH key, pull secret |
+| NMStateConfig | Per-host static network configuration |
+| BareMetalHost | BMC connection (Redfish address, credentials, boot MAC) |
+| ManagedCluster | ACM registration |
+| KlusterletAddonConfig | ACM addon config |
+| Secrets | BMC credentials per host, pull secret, SSH key |
 
-  The assisted installer provisioning workflow:
+The chart uses `cluster.platform` to determine which templates to render. Agent-based templates are gated by the `isAgent` helper in `_helpers.tpl`.
 
-![alt_text](../img/acm_assisted_installer_workflow.png "RHACM assisted installer provisioning workflow")
+## BMC credentials
 
-## Objects
+Each BareMetalHost needs BMC credentials in a Secret. The chart generates these from `provision.yaml`. Each host references its own secret (`<host-name>-bmc-credentials`).
 
-In the RHACM documentation chapter [Creating your cluster with the command line](https://access.redhat.com/documentation/en-us/red_hat_advanced_cluster_management_for_kubernetes/2.8/html/clusters/cluster_mce_overview#on-prem-creating-your-cluster-with-the-cli), you can get all the objects needed to deploy the cluster with Assisted Installer:
+BMC addresses use the Redfish virtual media protocol:
+```
+redfish-virtualmedia://<bmc-host>/redfish/v1/Systems/1
+```
 
-* [Namespace](https://access.redhat.com/documentation/en-us/red_hat_advanced_cluster_management_for_kubernetes/2.8/html/clusters/cluster_mce_overview#on-prem-creating-your-cluster-with-the-cli-namespace)
-* [ClusterImageSet](https://access.redhat.com/documentation/en-us/red_hat_advanced_cluster_management_for_kubernetes/2.8/html/clusters/cluster_mce_overview#on-prem-creating-your-cluster-with-the-cli-cluster-image-set)
-* [ClusterDeployment](https://access.redhat.com/documentation/en-us/red_hat_advanced_cluster_management_for_kubernetes/2.8/html/clusters/cluster_mce_overview#on-prem-creating-your-cluster-with-the-cli-clusterdeployment)
-* [AgentClusterInstall](https://access.redhat.com/documentation/en-us/red_hat_advanced_cluster_management_for_kubernetes/2.8/html/clusters/cluster_mce_overview#on-prem-creating-your-cluster-with-the-cli-agentclusterinstall)
-* [NMStateConfig](https://access.redhat.com/documentation/en-us/red_hat_advanced_cluster_management_for_kubernetes/2.8/html/clusters/cluster_mce_overview#on-prem-creating-your-cluster-with-the-cli-nmstateconfig)
-* [BaremetalHost](https://access.redhat.com/documentation/en-us/red_hat_advanced_cluster_management_for_kubernetes/2.8/html/clusters/cluster_mce_overview#hosted-bare-metal-adding-agents-metal3)
-* [InfraEnv](https://access.redhat.com/documentation/en-us/red_hat_advanced_cluster_management_for_kubernetes/2.8/html/clusters/cluster_mce_overview#on-prem-creating-your-cluster-with-the-cli-infraenv)
-* [KlusterletAddonConfig](https://access.redhat.com/documentation/en-us/red_hat_advanced_cluster_management_for_kubernetes/2.8/html/clusters/cluster_mce_overview#importing-the-klusterlet)
-* [ManagedCluster](https://access.redhat.com/documentation/en-us/red_hat_advanced_cluster_management_for_kubernetes/2.8/html/clusters/cluster_mce_overview#preparing-cluster-import)
+## Sushy-EC2 emulator
 
-![alt_text](../img/kubeapi4.9_controllers.jpg "Assisted Service Kube API")
+For testing baremetal provisioning workflows without physical hardware, this repo includes a sushy-ec2 emulator chart at `charts/cluster-provisioning/sushy-ec2-emulator/`.
 
-## Useful Tips
+Sushy-EC2 translates Redfish BMC API calls into AWS EC2 API calls — it makes EC2 instances look like baremetal servers with BMC interfaces. This allows testing the full agent-based provisioning flow on AWS.
 
-* As I said before, start checking the prerequisites, and specially the connectivity between out-of-band management host IP addresses and RHACM. For virtualmedia, you’ll need to [open the port 6183](https://docs.openshift.com/container-platform/4.13/installing/installing_bare_metal_ipi/ipi-install-prerequisites.html#network-requirements-out-of-band_ipi-install-prerequisites). The troubleshooting with virtualmedia, assisted-agent and ignition can be difficult, so try to get access to the host ILO and a virtual terminal. This will make it much easier to troubleshoot.
+The emulator:
+- Exposes a Redfish API endpoint on the hub cluster
+- Maps EC2 instance IDs to virtual BMC UUIDs
+- Translates power-on/off, boot-from-ISO, and status operations to EC2 API calls
+- Builds from source using an OpenShift BuildConfig
 
-* Don’t create all the objects at the same time, create them one at a time and checking their status. 
+```yaml
+# sushy-ec2 emulator values
+instances:
+  i-0c7f5f12f9786b5f3:
+    uuid: my-cluster-master-0
+    role: master
+  i-0a1b2c3d4e5f67890:
+    uuid: my-cluster-master-1
+    role: master
+```
 
-* Contact Red Hat Professional services for assistance. Although we openly share knowledge publishing blogs, solutions and articles like this one, each environment has its own customizations and challenges, and we have wide experience with a lot of customers all over the world.
+BareMetalHost resources then point to the emulator's Redfish endpoint instead of a real BMC.
 
+## Troubleshooting
 
-## Summary
+### Host not discovering
 
-We’ve deployed a baremetal OpenShift cluster using RHACM and on-premise assisted installer.
+1. Check InfraEnv status — the discovery ISO URL should be populated
+2. Check BareMetalHost status — look for BMC connection errors
+3. Verify BMC network connectivity from the hub cluster (port 443 for Redfish, port 6183 for virtual media)
+4. Check that `bootMACAddress` matches the actual NIC
 
-First, we need to check the prerequisites. Once we've the prerequisites in place, we move to the RHACM console, and create the Baremetal hosts and check their status. After that, we can deploy an Openshift cluster using Assisted Installer and the Baremetal hosts. If the deployment is successful, we can move to the command line, and create the objects one at a time checking their status. At last, we can create the objects in our Git repository, and synchronize the objects to our RHACM cluster using ArgoCD.
+### Agent not registering
 
-If we want to automate baremetal OpenShift cluster deployments like a self-service, you can create a Helm Chart with all the objects, and an ArgoCD ApplicationSet to deploy each cluster using the Helm chart as we did in [Provisioning OpenShift clusters using GitOps with ACM](https://cloud.redhat.com/blog/provisioning-openshift-clusters-using-gitops-with-acm).
+1. Check that the discovery ISO booted successfully (BMC virtual console if available)
+2. Verify NMStateConfig gives the host network connectivity to the hub
+3. Check the assisted-service logs on the hub: `oc logs -n multicluster-engine deploy/assisted-service`
+
+### Install stuck
+
+1. Check AgentClusterInstall status and conditions
+2. Verify all hosts passed validation (minimum CPU, memory, disk)
+3. Check that API and ingress VIPs are reachable from the host network
+
+## Prerequisites
+
+- OpenShift hub cluster with ACM and the Central Infrastructure Management service enabled
+- BMC access via Redfish to all target hosts
+- Network connectivity: hub → BMC (Redfish), hosts → hub (assisted-service registration)
+- DNS records for API and ingress VIPs
+- For sushy-ec2: AWS credentials with EC2 permissions, EC2 instances pre-created
+
+## Further reading
+
+- [Part 1: Provisioning clusters with GitOps + ACM](Part-1.md)
+- [Part 2: Configuring clusters with ApplicationSets and Helm](Part-2.md)
+- [Day 2 cluster configuration guide](day2-cluster-config.md)

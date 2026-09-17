@@ -1,94 +1,78 @@
-# GitOps for organizations: provisioning and configuring Openshift clusters automatically
+# GitOps for Organizations
 
-When the organizations started to adopt Kubernetes platforms, like Openhsift, many years ago,  the most common scenario was a single cluster for all the workloads. However, as the rate of Openshift adoption got faster inside the organizations, more clusters were needed. And each organization started to work on its own automation: some of them used Ansible for the provisioning, others Terraform. Some of them used Ansible for the Day2 configuration and Cluster Life Cycle, others used GitOps tools like ArgoCD or Drone. Implementing the whole workflow of provisioning, day 2 configuration and Cluster Life Cycle in an automated way is not a simple task, and as there are no standards, each team defines its own solution.
-
-In this article, I’ll not just describe how to create the whole workflow of Provisioning, Day 2 configuration and Cluster Lifecycle; but I’ll do it from an enterprise perspective. And this is the most important part of this article: I’m not using any cool custom plugin, or an amazing tool just found in github. Don’t get me wrong, I love to try new tools, but organizations require tools which are supported, used by other companies, coming from a reliable source.
-
-## Overview
-
-“Gitops for organizations” is a solution for provisioning and configuring Openshift clusters using Red Hat products (ACM and Openshift Gitops), allowing the use of any orchestrator (AAP/Tower, Service Now, Jenkins…). In this solution, Git is the central integration point and the source of truth. ACM will be used for provisioning and applying policies, and Openshift Gitops (ArgoCD) as Continuous Delivery tool for applying all the configuration to each Openshift cluster.
-
-![Openshift Gitops Overview](img/gitops-for-organization-overview.png)
-
-## How it works
-
-The users fill in a form in a frontend (web application) to request a cluster, which is automatically provisioned and configured by ACM. This frontend can be any web application with a form, to fill in the cluster details, and able to push in a git repository the required yaml objects. This can be an AAP (Tower), Jenkins, or even ACM can be used. However, in my experience, most organizations prefer to have their own custom platform, like a “Marketplace”.
-
-Once the form is filled with all the cluster parameters, files are generated and written to a git repository, which is automatically synchronized to ACM with ArgoCD. On one side, ACM will provision the cluster. On the other side, the ArgoCD ApplicationSet will create an Application to synchronize all the configuration for the new cluster. 
-
-When the cluster is created, it’s automatically imported into ACM and added to Openshift Gitops. At this point, ArgoCD synchronizes all the configuration to the new cluster.
-
-![Openshift Gitops Overview](img/gitops-for-organization-solution.png)
-
-This solution is explained in more detail in these 2 parts:
-
-* Part I: [Provisioning Openshift clusters using GitOps with ACM](docs/Part-1.md)
-* Part II: [Configuring Openshift cluster with ApplicationSets using Helm+Kustomize and ACM Policies](docs/Part-2.md)
-
-The repository used for the solution demonstration purposes is: [Gitops for Organizations](https://github.com/albertogd/gitops-for-organizations)
+A production GitOps framework for provisioning and configuring OpenShift clusters at scale using Red Hat Advanced Cluster Management (ACM), OpenShift GitOps (ArgoCD), and Helm. Git is the source of truth — every cluster, operator, and platform configuration change flows through a git commit.
 
 ## Repository layout
 
-This repository also contains the day-2 operator fleet under `operators/`. The
-provisioning and ACM lifecycle resources remain under `base/provision`, `clusters/`,
-and `clusters/acm-hub.redhat.com/policies/`. Operator installation and instances are
-kept separate under `base/operators/`, and Argo CD deploys explicit targets
-from `operators/targets/<operator-profile>/<cluster-type>`.
-
-The operator ApplicationSet selects cluster inventory files in Git and uses their
-operator profile, cluster role, and registered Argo CD server address. See
-[operators/README.md](operators/README.md) for the inventory contract.
-
-Provisioned clusters should opt into day-2 operator management only after they are
-registered in OpenShift GitOps. Add an `operator-conf.yaml` beside the cluster's
-`conf.yaml`:
-
-```yaml
-operator:
-	managed: true
-	clusterType: prod
-	profile: ocp-4.22
+```
+clusters/                      Per-cluster configuration
+  mgt/acm-hub/                 Hub cluster (ApplicationSets, bootstrap, policies)
+  dev/aws-test/                Development cluster
+  prod/                        Production clusters
+env/                           Environment-level defaults (dev/, mgt/, prod/)
+charts/                        Helm charts
+  platform-config/             31 day-2 platform charts (TLS, OAuth, etcd, ingress, ...)
+  operator-instances/          31 operator CR charts (ACS, Keycloak, Quay, cert-manager, ...)
+  operator-deployment/         Single chart — all operator Subscriptions via OLM
+  onboarding/                  Team onboarding (ArgoCD projects, namespace provisioning)
+  cluster-provisioning/        Cluster provisioning (ACM/Hive, sushy-ec2 emulator)
+teams/                         Team definitions
+docs/                          Documentation
+scripts/                       Utility scripts
 ```
 
-The `cluster.address` field must contain the destination server from the Argo CD cluster
-registration. Do not use `https://kubernetes.default.svc` for a remote spoke.
+## How it works
 
-The ACM hub must also provide a `ManagedClusterSet` named `vmware`; the provisioning
-chart assigns new `ManagedCluster` objects to that set and the GitOps placement binds to
-it. Create or choose the set as part of ACM hub bootstrap rather than duplicating it in
-the provisioning chart.
+Eight ApplicationSets on the hub cluster drive everything:
 
-The legacy 4.11 policy bundle is no longer active. Operator channels and instances are
-managed by the versioned targets under `operators/targets/`; cluster lifecycle policies
-should be reintroduced only with a tested OpenShift-version profile.
+| ApplicationSet | What it does | Trigger |
+|---|---|---|
+| `cluster-platform-config` | Deploys platform-config charts per cluster | `platformCharts` list in conf.yaml |
+| `cluster-operator-instances` | Deploys operator CR charts per cluster | `operatorInstanceCharts` list in conf.yaml |
+| `cluster-operators-appset` | Deploys operator Subscriptions per cluster | `deployOperators: true` |
+| `cluster-config-overlays` | Deploys cluster-specific overlays | `deployOverlay: true` |
+| `cluster-import` | Imports clusters into ACM | `deployImport: true` |
+| `cluster-provisioning` | Provisions clusters via ACM/Hive | `deployProvision: true` |
+| `cluster-onboarding-gitops` | Creates ArgoCD projects for teams | `teams` list |
+| `cluster-onboarding-namespaces` | Creates team namespaces with quotas and policies | `teams` list |
 
-## AI development setup
+Each cluster is defined by a directory under `clusters/<env>/<name>/` containing:
 
-This repository includes a lean Ruler setup under `.ruler/` for generating shared
-Claude and Codex project guidance, skills, and read-only specialist agents. See
-[docs/ai-dev/README.md](docs/ai-dev/README.md) for bootstrap instructions and the
-OpenShift/GitOps validation workflow. The default handoff flow is Claude for
-research/planning and review, with Codex owning implementation.
+- **conf.yaml** — cluster identity, chart lists, deploy toggles, team assignments
+- **platform-config.yaml** — values for platform-config charts
+- **operator-instances.yaml** — values for operator CR charts
+- **operator-deployment.yaml** — values for operator Subscriptions
+- **provision.yaml** — provisioning values (if deploying a new cluster)
 
-## Secrets and credentials
+### Values precedence
 
-Provisioning values under `conf/` are examples and must not contain real credentials.
-The provisioning chart currently renders provider credentials, pull-secret data, and SSH
-material into Kubernetes Secrets, so production deployments must supply those values
-through a protected secret workflow and avoid committing them to Git. External Secrets,
-Vault, or an equivalent secret manager should be integrated before using the provisioning
-flow with real infrastructure credentials.
+```
+chart defaults (values.yaml)
+  → env/<env>/conf.yaml + env/<env>/platform-config.yaml
+  → clusters/<env>/<name>/conf.yaml + clusters/<env>/<name>/platform-config.yaml
+```
 
+More specific files override less specific ones. Missing files are silently skipped.
 
-### Tools
+### Adding a chart to a cluster
 
-#### Frontend
-Web application with a form to fill in the cluster details. This can be AAP (Tower), Service Now, Jenkins or any custom web application. All the cluster parameters must be written in a yaml/json file and pushed to Git.
+1. Add the chart name to `platformCharts` or `operatorInstanceCharts` in the cluster's `conf.yaml`
+2. Set values in the corresponding values file (`platform-config.yaml` or `operator-instances.yaml`)
+3. Push to git — ArgoCD creates an Application and syncs it
 
-#### Red Hat Advanced Cluster Management for Kubernetes (RHACM)
-ACM is used for provisioning Openshift clusters and also for applying policies to the clusters.
+All chart features default to `include: false`. Enable them explicitly.
 
-#### Openshift GitOps (ArgoCD)
-Openshift GitOps (ArgoCD) is used as a Continuous Delivery tool for applying all the configuration to all out Openshift clusters.
+## Documentation
 
+- [Part 1: Provisioning clusters with GitOps + ACM](docs/Part-1.md)
+- [Part 2: Configuring clusters with ApplicationSets and Helm](docs/Part-2.md)
+- [Baremetal provisioning with agent-based installer](docs/Baremetal.md)
+- [Day 2 cluster configuration guide](docs/day2-cluster-config.md)
 
+## Public repository
+
+A sanitized copy of this repo is published to [ocp-cluster-automation](https://github.com/blediagolli/ocp-cluster-automation). A GitHub Action runs nightly to replace org-specific values with `YOUR_*` placeholders and secrets with `CHANGEME_*` placeholders. See `.github/workflows/sync-release.yml`.
+
+## License
+
+Apache 2.0 — see [LICENSE](LICENSE).

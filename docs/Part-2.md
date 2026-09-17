@@ -1,338 +1,197 @@
-# Configuring Openshift cluster with ApplicationSets using Helm+Kustomize and ACM Policies
+# Part 2: Configuring Clusters with ApplicationSets and Helm
 
-There are multiple articles about GitOps describing how to use ArgoCD with Kustomize to configure multiple clusters or environments. They show a nice way to apply some kustomizations, but when you try you implement it in your organization, you’ll probably face the following “How can I” challenges:
+This guide covers how clusters are configured after provisioning — operators, platform settings, and team onboarding — all driven by Helm charts and ArgoCD ApplicationSets.
 
-* Dynamically add new clusters?
-* Use templating (replace vars) in an easy way?
-* Add any custom configuration to any of the clusters?  
-* Specify the configuration I want to add to each cluster?  
+## Overview
 
-Maybe you also read a cool post about creating a kustomize plugin. But organizations don’t want to rely on a custom plugin which is not supported. And the answer to all these questions is a really nice combination: ApplicationSets + Helm + Kustomize. 
+Eight ApplicationSets on the hub cluster drive the entire cluster lifecycle. Each watches `clusters/**/conf.yaml` for cluster definitions and uses conditional generators to decide what to deploy.
 
-![Openshift Gitops Overview](../img/gitops-for-organization-config-applicationsets.png)
+| ApplicationSet | Deploys | Gate |
+|---|---|---|
+| `cluster-platform-config` | Platform Helm charts (TLS, OAuth, etcd, ingress, monitoring, ...) | `platformCharts` list |
+| `cluster-operator-instances` | Operator CR charts (ACS, cert-manager, Keycloak, Quay, ...) | `operatorInstanceCharts` list |
+| `cluster-operators-appset` | Operator Subscriptions via OLM | `deployOperators: true` |
+| `cluster-config-overlays` | Cluster-specific raw manifests | `deployOverlay: true` |
+| `cluster-import` | ManagedCluster + KlusterletAddonConfig | `deployImport: true` |
+| `cluster-provisioning` | ACM/Hive provisioning resources | `deployProvision: true` |
+| `cluster-onboarding-gitops` | ArgoCD AppProjects per team | `teams` list |
+| `cluster-onboarding-namespaces` | Team namespaces with quotas and policies | `teams` list |
 
-The big picture of this solution is:
+## How ApplicationSets generate Applications
 
-* Create an ApplicationSet which auto generates Helm Applications to configure the clusters
-  * Leverage Helm templating to define all the configuration templates
-  * Define conditional blocks in each template to control what templates can be included in which cluster
-* Create an ApplicationSet which auto generate kustomize Applications to add any overlay
-  * Patch, add other configurations using kustomize
+### Matrix generator with elementsYaml
 
-> **Note**
-> Creating only an ApplicationSet with a plugin of kustomize+Helm can be an alternative solution, however it’d duplicate the same kustomization overlay to all the Cluster applications. So it’s better to have an ApplicationSet for all the configurations based on templates, and an ApplicationSet for the kustomization for each cluster. 
-
-
-## Cluster-config ApplicationSet
-
-With an ApplicationSet, we can automate the generation of Argo CD Applications, which will be the placeholders for each of our cluster configurations. 
-
-This is the ApplicationSet we’ll use in this solution to configure the clusters using Helm templates:
+The platform-config and operator-instances ApplicationSets use a matrix generator that crosses the git file generator (discovers clusters) with a dynamic list from the cluster's `conf.yaml`.
 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ApplicationSet
-metadata:
- name: cluster-config
- namespace: openshift-gitops
-spec:
- generators:
-   - matrix:
-       generators:
-         - git:
-             repoURL: https://github.com/albertogd/gitops-for-organizations.git
-             revision: main
-             files:
-               - path: "clusters/**/conf.yaml"
-         - list:
-             elements:
-               - template: openshift-machine-config
-               - template: openshift-ingress
-               - template: openshift-marketplace
- template:
-   metadata:
-     name: "config-{{cluster.environment}}-{{cluster.name}}-{{template}}"
-     labels:
-       environment: "{{cluster.environment}}"
-       cluster: "{{cluster.fqdn}}"
-       region: "{{cluster.region}}"
-       cloud: "{{cluster.cloud}}"
-   spec:
-     project: default
-     source:
-       repoURL: https://github.com/albertogd/gitops-for-organizations.git
-       targetRevision: main
-       path: base/config/{{template}}
-       helm:
-         valueFiles:
-           - /conf/{{cluster.environment}}/conf.yaml
-           - /clusters/{{cluster.environment}}/{{cluster.fqdn}}/conf.yaml
-     destination:
-       server: "{{cluster.address}}"
-     syncPolicy: {}
+generators:
+  - matrix:
+      generators:
+        - git:
+            repoURL: git@github.com:YOUR_ORG/gitops-for-organizations.git
+            revision: main
+            files:
+              - path: "clusters/**/conf.yaml"
+        - list:
+            elementsYaml: "{{ .platformCharts | toJson }}"
 ```
 
-### Generator
+For a cluster with `platformCharts: [{chart: tls-certificates}, {chart: openshift-ingress}]`, this generates two ArgoCD Applications:
+- `platform-dev-my-cluster-tls-certificates`
+- `platform-dev-my-cluster-openshift-ingress`
 
-There are several generators, but we’ll use a combination of 2 generators to show the power and flexibility of applicationset generators: git and list.
+### Boolean gates with conditional lists
 
-* With the **git generator**, we get all the conf.yaml objects. Each of them defines a cluster.
-* With the **list generator**, we define all the argo Applications we have for each cluster. Each configuration type will become an Application.
-
-With the **matrix generator**, we create all the list elements for each cluster. For example, for the cluster zamora.dev.redhat.com, we’ll have 3 Argo Applications:
-
-* openshift-machine-config application for the cluster 
-* openshift-ingress application for the cluster 
-* openshift-marketplace application for the cluster  
-
-### Template
-
-In the template section, we define the Applications that will be created by the ApplicationSet:
-
-* metadata:
-  * name:  ArgoCD Application name `config-{{cluster.environment}}-{{cluster.name}} -{{template}}`
-* spec:
-  * source:
-    * path: Helm chart path `base/config/{{template}}`
-    * helm: type of the application
-      * valueFiles: configuration files with the parameters of the cluster
-        * `/conf/{{cluster.environment}}/conf.yaml`
-        * `/clusters/{{cluster.environment}}/{{cluster.fqdn}}/conf.yaml`
-    * repoURL: URL of the git repository
-  * destination:
-    * server: the API address of the cluster `{{cluster.address}}`
-
-## Cluster-config-overlay ApplicationSet
-
-This is the ApplicationSet we’ll use in this solution to apply the overlay configuration (all the configuration not based on templates) using kustomize:
+The provisioning, import, overlay, and operators ApplicationSets use a conditional pattern to gate on a boolean:
 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: ApplicationSet
-metadata:
- name: cluster-config-overlays
- namespace: openshift-gitops
-spec:
- generators:
- - git:
-     repoURL: https://github.com/albertogd/gitops-for-organizations.git
-     revision: main
-     files:
-       - path: "clusters/**/conf.yaml"
- template:
-   metadata:
-     name: "config-{{cluster.environment}}-{{cluster.name}}-overlay"
-     labels:
-       environment: "{{cluster.environment}}"
-       cluster: "{{cluster.fqdn}}"
-       region: "{{cluster.region}}"
-       cloud: "{{cluster.cloud}}"
-   spec:
-     project: default
-     source:
-       repoURL: https://github.com/albertogd/gitops-for-organizations.git
-       targetRevision: main
-       path: clusters/{{cluster.environment}}/{{cluster.fqdn}}/overlay
-     destination:
-       server: "{{cluster.address}}"
-     syncPolicy: {}
+elementsYaml: "{{ if .deployProvision }}[{}]{{ else }}[]{{ end }}"
 ```
 
-### Generator
+If `deployProvision: false` (or absent), the list is empty and no Application is generated.
 
-With the **git generator**, we get all the conf.yaml objects. Each of them defines an Application for each cluster.
+## Chart categories
 
-### Template
+### Platform config (`charts/platform-config/`)
 
-In the template we define the Applications that will be created by the ApplicationSet:
+Day-2 platform configuration charts. Each chart manages a specific OpenShift subsystem.
 
-* metadata:
-  * name: ArgoCD Application name `config-{{cluster.environment}}-{{cluster.name}}-overlay`
-* spec:
-  * source:
-    * path: cluster overlay path `clusters/{{cluster.environment}}/{{cluster.fqdn}}/overlay`
-    * repoURL: URL of the git repository
-  * destination:
-    + server: the API address of the cluster `{{cluster.address}}`
+Examples: `tls-certificates`, `openshift-apiserver`, `openshift-ingress`, `openshift-oauth`, `etcd-backup`, `etcd-defrag`, `user-workload-monitoring`, `project-request-template`, `prometheus-rules`, `alertmanager-config`, `openshift-console`, `machine-health-checks`, `image-pruner`, `rbac`, `storage-classes`, `admin-network-policy`.
 
-## Git repository structure
+### Operator instances (`charts/operator-instances/`)
 
-There are 3 main directories:
+Charts that deploy Custom Resources for operators — the operator's actual workload configuration (not the operator itself).
 
-* **base**: all the Helm templates are stored in this directory. It has two subfolders:
-  * **config**: we create a directory for each Chart (ArgoCD Application). In the example, we have the machine-config, oauth and 
-  * **provision**: we have one openshift-provisioning application. This application is the one defined in the first part of provisioning Openshift clusters.
-* clusters: the orchestrator, defined in the first part, will write the objects conf.yaml and provision.yaml in the subdirectory <clustername> . For the acm-hub, we’ll keep the configuration of the own ACM cluster:
-  * **applications**: app-argocd, the initial argo, to synchronize all the cluster configuration
-  * **applicationsets**: 3 applicationsets
-    * `cluster-config-overlays.yaml`: cluster-config ApplicationSet for kustomize applications 
-    * `cluster-config.yaml`: cluster-config ApplicationSet for Helm applications
-    * `cluster-provisioning.yaml`: cluster-provisioning ApplicationSet for ACM cluster provisioning
-  * **argocd**: ArgoCD instance
-  * **gitops-cluster**: objects to register ManagedClusters in ArgoCD
-    * `GitOpsCluster.yaml`: GitOpsCluster object to register the ManagedClusters to ArgoCD
-    * `ManagedClusterSetBinding.yaml`: Binding for the ClusterSet
-    * `Placement.yaml`: Placement to select ManagedClusters
-  * **policies**: policies used to configure the ManagedClusters
-  * **conf**: here we’ll keep the default values (`conf.yaml` and `provision.yaml`) for each environment (dev and prod).
+Examples: `cert-manager-certs`, `acs-secured-cluster`, `compliance-scans`, `keycloak-instance`, `quay-registry`, `odf-storagecluster`, `logging-lokistack`.
+
+### Operator deployment (`charts/operator-deployment/`)
+
+A single chart that manages all operator Subscriptions via OLM. Controlled by `deployOperators: true` and values in `operator-deployment.yaml`.
+
+### Onboarding (`charts/onboarding/`)
+
+Team onboarding charts. The `teams` list in `conf.yaml` drives these — each team gets an ArgoCD AppProject and a set of namespaces with ResourceQuotas, LimitRanges, and NetworkPolicies.
+
+### Cluster provisioning (`charts/cluster-provisioning/`)
+
+Covered in [Part 1](Part-1.md).
+
+## Values precedence
+
+Every ApplicationSet merges Helm values from multiple files, with more-specific files overriding less-specific ones:
 
 ```
-├── base
-│   ├── config
-│   |   ├── openshift-ingress
-│   |   |   ├── Chart.yaml
-│   |   |   └── templates
-│   |   |       ├── ingress.yaml
-│   |   |       └── service.yaml
-│   |   ├── openshift-machine-config
-│   |   |   ├── Chart.yaml
-│   |   |   └── templates
-│   |   |       ├── 05-worker-kernelarg-selinuxpermissive.yaml
-│   |   |       └── master-kubeletconfig.yaml
-│   |   └── openshift-marketplace
-│   |       ├── Chart.yaml
-│   |       └── templates
-│   |           ├── local-certified-operators.yaml
-│   |           └── local-community-operators.yaml
-│   └── provision
-│       └── openshift-provisioning
-│           ├── Chart.yaml
-│           └── templates
-│               ├── clusterdeployment.yaml
-│               ├── klusteraddonconfig.yaml
-│               ├── machinepool.yaml
-│               ├── managedcluster.yaml
-│               ├── managedclusterinfo.yaml
-│               └── namespace.yaml
-├── clusters
-│   ├── acm-hub
-│   │   ├── applications
-│   |   |   ├── app-argocd.yaml
-│   |   |   └── kustomization.yaml
-│   │   ├── applicationsets
-│   |   |   ├── cluster-config-overlays.yaml
-│   |   |   ├── cluster-config.yaml
-│   |   |   ├── cluster-provisioning.yaml
-│   |   |   └── kustomization.yaml
-│   │   ├── argocd
-│   |   |   ├── argocd.yaml
-│   |   |   └── kustomization.yaml
-│   │   ├── gitops-cluster
-│   |   |   ├── GitOpsCluster.yaml
-│   |   |   ├── ManagedClusterSetBinding.yaml
-│   |   |   ├── Placement.yaml
-│   |   |   └── kustomization.yaml
-│   │   └── policies
-│   |       └── 4.11
-│   │           ├── odf-operator
-│   │           |   ├── binding-odf-operator-411.yaml
-│   │           |   ├── kustomization.yaml
-│   │           |   ├── placement-odf-operator-411.yaml
-│   │           |   └── policy-odf-operator-411.yaml
-│   │           └── upgrade-ocp
-│   │               ├── binding-upgrade-cluster-411.yaml
-│   │               ├── kustomization.yaml
-│   │               ├── placement-upgrade-cluster-411.yaml
-│   │               └── policy-upgrade-cluster-411.yaml
-│   ├── dev
-│   │   └── zamora.dev.redhat.com
-│   |       ├──  provision.yaml
-│   |       ├──  conf.yaml
-│   |       ├──  operator-conf.yaml
-│   |       └──  overlay
-│   |            ├── kustomization.yaml
-│   |            └── project.yaml
-│   └── prod
-│       └── leon.pro.redhat.com
-│           ├──  provision.yaml
-│           ├──  conf.yaml
-│           ├──  operator-conf.yaml
-│           └──  overlay
-│   
-└── conf
-    ├── dev
-    │   ├── conf.yaml
-    │   └── provision.yaml
-    └── prod
-        ├── conf.yaml
-        └── provision.yaml
+chart defaults (values.yaml)
+  → env/<env>/<values-file>.yaml       (environment-level)
+  → clusters/<env>/<name>/<values-file>.yaml  (cluster-level)
 ```
 
-## Initial ArgoCD application
+The values file name depends on the ApplicationSet:
 
-There are multiple ways of bootstrapping all the configuration: using a policy, creating an Argo Application… If we have another cluster with ArgoCD, we can synchronize all the configurations from there using Openshift GitOps. However, we’re considering in this solution that we’re starting from 0, and we have only the ACM hub cluster. In this case, we need to create the initial application manually. After this, this initial application will be synchronized with ArgoCD
+| ApplicationSet | Values files merged |
+|---|---|
+| `cluster-platform-config` | `conf.yaml` + `platform-config.yaml` |
+| `cluster-operator-instances` | `conf.yaml` + `operator-instances.yaml` |
+| `cluster-operators-appset` | `conf.yaml` + `operator-deployment.yaml` |
+| `cluster-provisioning` | `provision.yaml` |
 
-```bash
-$ oc apply -f clusters/acm-hub/applications/app-argocd.yaml
+All ApplicationSets use `ignoreMissingValueFiles: true`, so absent files are silently skipped.
+
+## The include pattern
+
+Every feature in every chart defaults to `include: false` in the chart's `values.yaml`. Nothing deploys unless explicitly enabled.
+
+```yaml
+# charts/platform-config/openshift-oauth/values.yaml
+oauth:
+  include: false
+
+# clusters/dev/my-cluster/platform-config.yaml
+oauth:
+  include: true
+  identityProviders:
+    - name: keycloak
+      type: OpenID
+      ...
 ```
 
-## Why 2 ApplicationSets instead of using a custom plugin of Helm + Kustomize
+This makes charts safe to add to `platformCharts` — adding the chart name doesn't deploy anything until you set `include: true` for the relevant features.
 
-Before explaining about Helm + Kustomize, let’s start with the feature we want:
+## conf.yaml structure
 
-* Base manifest templates:
-  * Common manifest to apply to all the clusters (i.e. machine-config template)
-  * Be able to include/exclude any base manifest (i.e. exclude oauth template)
-* Custom manifests per cluster:
-  * Be able to add any custom manifest to a specific cluster (i.e. add an Ingress) 
-* Default values per environment:
-  * Have a default configuration file per environment (i.e. development configuration)
-* Custom values per cluster
-  * Have a custom configuration file per cluster
-* Avoid any custom/unsupported plugin
+The `conf.yaml` file is the cluster identity. It controls which ApplicationSets generate Applications for this cluster.
 
-With Kustomize, it’s really easy to add kustom manifests, but it’s a tool for templating. Yes, you can add a Kustomize plugin to do the templating. But let’s not forget, this is about “GitOps for organizations”, and we want something OOB supported. And kustomize is not a templating tool OOB. But Helm is a templating engine. With helm we have a really powerful templating engine, but we don’t have the flexibility to add custom manifests as with Kustomize.
+```yaml
+cluster:
+  name: aws-test
+  environment: dev
+  address: "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/aws-test"
+  baseDomain: example.com
 
-So, why don’t we use the templating feature of Helm with one ApplicationSet, and the flexibility to add customizations with Kustomize with other ApplicationSet?
+# Charts to deploy
+platformCharts:
+  - chart: tls-certificates
+  - chart: openshift-apiserver
+  - chart: openshift-ingress
+  - chart: openshift-proxy
+  - chart: etcd-backup
+  - chart: openshift-oauth
 
-## Helm Templates
+operatorInstanceCharts:
+  - chart: cert-manager-certs
+  - chart: acs-secured-cluster
 
-Helm is a really powerful tool for templating. We’ll define templates for all the objects we need to create, using the vars defined in the default environment config (config/<environment>/conf.yaml) and in the own cluster (clusters/<clustername>/conf.yaml). The cluster variables will override environment variables.
+# Boolean gates
+deployOperators: true
+deployOverlay: false
+deployImport: true
+deployProvision: true
 
-## Kustomize
-
-We can add any kustomization we want for each cluster using kustomize. We’ll use the folder overlay to add any custom objects we want.  
-
-## Cluster Lifecycle with ACM policies
-
-For the cluster lifecycle, we’ll use ACM policies, which are stored in the [policies folder ](../clusters/acm-hub.redhat.com/policies) in the git repository under clusters/acm-hub. 
-
-```
-└── clusters
-    └── acm-hub
-        └── policies
-            └── 4.11
-                ├── odf-operator
-                |   ├── binding-odf-operator-411.yaml
-                |   ├── kustomization.yaml
-                |   ├── placement-odf-operator-411.yaml
-                |   └── policy-odf-operator-411.yaml
-                └── upgrade-ocp
-                    ├── binding-upgrade-cluster-411.yaml
-                    ├── kustomization.yaml
-                    ├── placement-upgrade-cluster-411.yaml
-                    └── policy-upgrade-cluster-411.yaml
+# Team onboarding
+teams:
+  - team: team-alpha
+  - team: team-beta
 ```
 
-Policies are storeg in the git repository, synchronized with ArgoCD and applied by ACM.
+### Adding a chart to a cluster
 
-![Openshift Gitops Overview](../img/gitops-for-organization-policies.png)
+1. Add the chart name to `platformCharts` or `operatorInstanceCharts` in `conf.yaml`
+2. Set values in the corresponding file (`platform-config.yaml` or `operator-instances.yaml`)
+3. Push to git — ArgoCD creates the Application and syncs it
 
-In [this repository](https://github.com/open-cluster-management-io/policy-collection/tree/main/community) there are many policy examples for Access Control, Audit and Accountability, Security Assessment and Authorization, Configuration Management… 
+### Removing a chart from a cluster
 
-## Operators
+Remove the chart entry from `platformCharts` or `operatorInstanceCharts`. The Application is deleted, but `preserveResourcesOnDeletion` keeps the deployed resources intact on the target cluster.
 
-Installing operators using ArgoCD can be tricky, as they need to resolve dependencies and it’s not. There are some workarounds like using a Job. But in this solution we’re using a much better approach: ACM policies. With an ACM policy we can enforce any cluster to have the operators we want.
+## Environment-level defaults
 
-Operators can be installed using a policy like [this one](https://github.com/open-cluster-management-io/policy-collection/blob/main/community/CM-Configuration-Management/policy-openshift-gitops.yaml) which is used to install the Compliance Operator. 
+The `env/<env>/` directory holds shared defaults for all clusters in an environment. Cluster-level files override these.
 
-## Cluster upgrades
+```
+env/
+  dev/
+    conf.yaml                  # shared cluster identity defaults
+    platform-config.yaml       # shared platform chart values
+    operator-instances.yaml    # shared operator instance values
+    operator-deployment.yaml   # shared operator subscription values
+  mgt/
+    ...
+  prod/
+    ...
+```
 
-As we are doing with operators, we can use [this policy](https://github.com/open-cluster-management-io/policy-collection/blob/main/community/CM-Configuration-Management/policy-upgrade-openshift-cluster.yaml) to set the version we want for any cluster.
+This avoids repeating the same values across every cluster in an environment.
 
-<br />
-<br />
+## preserveResourcesOnDeletion
 
->Return to the first part: [Provisioning Openshift clusters using GitOps with ACM](Part-1.md)
+All 8 ApplicationSets set `preserveResourcesOnDeletion: true` at both the ApplicationSet and Application level. This means:
 
->Return to the Introduction: [GitOps for organizations: provisioning and configuring Openshift clusters automatically](../README.md)
+- Deleting a chart from `conf.yaml` removes the ArgoCD Application but **not** the resources on the target cluster
+- Deleting the ApplicationSet itself removes Applications but preserves deployed resources
+- This prevents accidental resource deletion from git changes
+
+## Further reading
+
+- [Day 2 cluster configuration guide](day2-cluster-config.md) — what to enable on each cluster, organized by priority tier
+- [Part 1: Provisioning clusters](Part-1.md) — how clusters are provisioned with ACM/Hive
+- [Baremetal provisioning](Baremetal.md) — agent-based installer for baremetal and platform-none
