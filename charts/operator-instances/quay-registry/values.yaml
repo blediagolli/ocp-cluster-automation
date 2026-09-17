@@ -15,6 +15,11 @@ quayRegistry:
     browserApiCallsXhrOnly: true
     allowPullsWithoutStrictLogging: false
     proxyStorage: true
+    createPrivateOnPush: true
+
+    restrictedUsers:
+      include: false
+      whitelist: []
 
     quotas:
       include: true
@@ -239,4 +244,6 @@ quayRegistry:
     oauthToken: ""
     image: "registry.access.redhat.com/ubi9/ubi:latest"
     organizations: []
+    teams: []
+    repositories: []
     robotAccounts: []

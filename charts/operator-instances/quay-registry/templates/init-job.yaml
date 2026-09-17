@@ -53,13 +53,49 @@ spec:
                 -d '{"name": "{{ .name }}", "email": "{{ .email | default "" }}"}'
               echo ""
               {{- end }}
+              {{- range .Values.quayRegistry.init.teams }}
+              {{- $org := .org }}
+              {{- $team := .name }}
+              echo "Creating team: {{ $org }}/{{ $team }}"
+              curl -sk -X PUT "$QUAY_URL/api/v1/organization/{{ $org }}/team/{{ $team }}" \
+                -H "Authorization: Bearer $QUAY_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d '{"role": "{{ .role | default "member" }}", "description": "{{ .description | default "" }}"}'
+              echo ""
+              {{- if .syncGroup }}
+              echo "Enabling team sync: {{ $org }}/{{ $team }} -> {{ .syncGroup }}"
+              curl -sk -X POST "$QUAY_URL/api/v1/organization/{{ $org }}/team/{{ $team }}/syncing" \
+                -H "Authorization: Bearer $QUAY_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d '{"group_dn": "{{ .syncGroup }}"}'
+              echo ""
+              {{- end }}
+              {{- end }}
+              {{- range .Values.quayRegistry.init.repositories }}
+              echo "Creating repository: {{ .org }}/{{ .name }}"
+              curl -sk -X POST "$QUAY_URL/api/v1/repository" \
+                -H "Authorization: Bearer $QUAY_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d '{"repository": "{{ .name }}", "namespace": "{{ .org }}", "visibility": "{{ .visibility | default "private" }}", "description": "{{ .description | default "" }}"}'
+              echo ""
+              {{- end }}
               {{- range .Values.quayRegistry.init.robotAccounts }}
-              echo "Creating robot account: {{ .org }}+{{ .name }}"
-              curl -sk -X PUT "$QUAY_URL/api/v1/organization/{{ .org }}/robots/{{ .name }}" \
+              {{- $org := .org }}
+              {{- $robot := .name }}
+              echo "Creating robot account: {{ $org }}+{{ $robot }}"
+              curl -sk -X PUT "$QUAY_URL/api/v1/organization/{{ $org }}/robots/{{ $robot }}" \
                 -H "Authorization: Bearer $QUAY_TOKEN" \
                 -H "Content-Type: application/json" \
                 -d '{"description": "{{ .description | default "" }}"}'
               echo ""
+              {{- range .permissions }}
+              echo "Granting {{ .role }} on {{ $org }}/{{ .repo }} to {{ $org }}+{{ $robot }}"
+              curl -sk -X PUT "$QUAY_URL/api/v1/repository/{{ $org }}/{{ .repo }}/permissions/user/{{ $org }}+{{ $robot }}" \
+                -H "Authorization: Bearer $QUAY_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d '{"role": "{{ .role }}"}'
+              echo ""
+              {{- end }}
               {{- end }}
               echo "Init complete."
 {{- end }}

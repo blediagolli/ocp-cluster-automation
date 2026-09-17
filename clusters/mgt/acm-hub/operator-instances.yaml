@@ -76,6 +76,11 @@ quayRegistry:
       - admin
     actionLogRotation:
       include: true
+    restrictedUsers:
+      include: true
+      whitelist:
+        - quayadmin
+        - admin
   oidc:
     include: true
     server: "https://sso.apps.cluster-c8444.dyn.redhatworkshops.io/realms/sso/"
@@ -95,13 +100,43 @@ quayRegistry:
         email: team-alpha@demo.redhat.com
       - name: team-beta
         email: team-beta@demo.redhat.com
+    teams:
+      - org: platform
+        name: admins
+        role: admin
+        description: "Platform administrators"
+        syncGroup: "admins"
+      - org: platform
+        name: devs
+        role: member
+        description: "Platform developers"
+        syncGroup: "users"
+      - org: team-alpha
+        name: devs
+        role: member
+        description: "Team Alpha developers"
+      - org: team-beta
+        name: devs
+        role: member
+        description: "Team Beta developers"
+    repositories:
+      - org: platform
+        name: base-images
+        visibility: private
+        description: "Curated base images"
     robotAccounts:
       - org: platform
         name: cicd
         description: "CI/CD pipeline push/pull"
+        permissions:
+          - repo: base-images
+            role: write
       - org: platform
         name: pull
         description: "Read-only pull access"
+        permissions:
+          - repo: base-images
+            role: read
 keycloak:
   include: true
   createNamespace: true

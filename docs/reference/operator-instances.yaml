@@ -1,0 +1,1304 @@
+# =============================================================================
+# Reference: operator-instances.yaml
+# =============================================================================
+# All operator-instance chart values, grouped by chart and ordered by priority
+# tier (Critical → Recommended → Nice to Have).
+#
+# Copy this file to clusters/<env>/<name>/operator-instances.yaml and enable
+# only the sections you need. Everything defaults to include: false.
+#
+# Values precedence:
+#   chart defaults → env/<env>/operator-instances.yaml → this file
+# =============================================================================
+
+
+
+# #############################################################################
+# CRITICAL — enable on every cluster
+# #############################################################################
+
+# --- openshift-gitops-instance: ArgoCD instance configuration ---
+argocd:
+  include: false
+  name: openshift-gitops
+  namespace: openshift-gitops
+  applicationSet:
+    resources:
+      limits:
+        cpu: "2"
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+  controller:
+    resources:
+      limits:
+        cpu: "2"
+        memory: 6Gi
+      requests:
+        cpu: 250m
+        memory: 1Gi
+  ha:
+    enabled: false
+  rbac:
+    defaultPolicy: role:admin
+    policy: |
+      g, system:cluster-admins, role:admin
+      g, cluster-admins, role:admin
+    scopes: '[groups, preferred_username]'
+  redis:
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 250m
+        memory: 128Mi
+  repo:
+    resources:
+      limits:
+        cpu: "1"
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+  resourceExclusions: |
+    - apiGroups:
+      - tekton.dev
+      clusters:
+      - '*'
+      kinds:
+      - TaskRun
+      - PipelineRun
+  server:
+    autoscale:
+      enabled: false
+    route:
+      enabled: true
+    resources:
+      limits:
+        cpu: "1"
+        memory: 1Gi
+      requests:
+        cpu: 125m
+        memory: 128Mi
+clusterRoleBinding:
+  include: false
+appProject:
+  include: false
+  name: platform
+  description: Provisioning, cluster configuration, and operator management
+  sourceRepos:
+    - git@github.com:YOUR_ORG/ocp-cluster-automation.git
+consolePlugin:
+  include: false
+  plugins:
+    - gitops-plugin
+
+
+# #############################################################################
+# RECOMMENDED — enable on most clusters
+# #############################################################################
+
+# --- acs-secured-cluster: connects cluster to ACS Central on the hub ---
+securedCluster:
+  include: false
+  createNamespace: false
+  name: stackrox-secured-cluster-services
+  namespace: stackrox
+  centralEndpoint: ""                        # e.g. central-stackrox.apps.hub.example.com:443
+  # Secret modes:
+  #   "job"         — PostSync job on same cluster as Central
+  #   "preExisting" — secrets pre-created (external-secrets / sealed-secrets)
+  #   "external"    — out-of-band init bundle, chart skips secret creation
+  #   "generate"    — PostSync job calls Central API from managed cluster
+  secretMode: "preExisting"
+  secrets:
+    admissionControl:
+      name: admission-control-tls
+      ca: ""
+      cert: ""
+      key: ""
+    sensor:
+      name: sensor-tls
+      ca: ""
+      cert: ""
+      key: ""
+      acsHost: ""
+    collector:
+      name: collector-tls
+      ca: ""
+      cert: ""
+      key: ""
+  auditLogs:
+    collection: Auto
+  admissionControl:
+    listenOnCreates: false
+    listenOnUpdates: false
+    listenOnEvents: true
+    contactImageScanners: ScanIfMissing
+    failurePolicy: Ignore                    # Ignore or Fail when admission controller is unavailable
+  perNode:
+    collector:
+      collection: CORE_BPF
+      imageFlavor: Regular                   # Regular or Slim
+    taintToleration: TolerateTaints
+  scannerV4:
+    scannerComponent: AutoSense              # AutoSense, Enabled, or Disabled
+  network:
+    policies: ""                             # empty = default ACS NetworkPolicy behavior
+  customize:
+    envVars: []                              # custom env vars (e.g. ROX_VIRTUAL_MACHINES)
+  vmScanning: false
+  sensor: {}
+  monitoring:
+    openshift:
+      enabled: true
+
+# --- compliance-scans: CIS/NIST compliance scanning ---
+scanSetting:
+  include: false
+  name: default
+  namespace: openshift-compliance
+  autoApplyRemediations: false
+  rawResultStorage:
+    pvAccessModes:
+      - ReadWriteOnce
+    rotation: 3
+    size: 1Gi
+    tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+        operator: Exists
+      - effect: NoExecute
+        key: node.kubernetes.io/not-ready
+        operator: Exists
+        tolerationSeconds: 300
+      - effect: NoExecute
+        key: node.kubernetes.io/unreachable
+        operator: Exists
+        tolerationSeconds: 300
+  roles:
+    - master
+    - worker
+  scanTolerations:
+    - operator: Exists
+  schedule: "0 1 * * *"
+  showNotApplicable: false
+  strictNodeScan: true
+scanSettingBinding:
+  include: false
+  name: stig
+  namespace: openshift-compliance
+  profiles:
+    - name: ocp4-stig
+      kind: Profile
+      apiGroup: compliance.openshift.io/v1alpha1
+    - name: ocp4-stig-node
+      kind: Profile
+      apiGroup: compliance.openshift.io/v1alpha1
+    - name: rhcos4-stig
+      kind: Profile
+      apiGroup: compliance.openshift.io/v1alpha1
+    # Additional profiles: ocp4-cis, ocp4-cis-node, ocp4-pci-dss
+    # Use kind: TailoredProfile for custom profiles
+tailoredProfiles: []
+# - include: true
+#   name: custom-stig
+#   title: Custom STIG Profile
+#   description: STIG profile with site-specific exclusions
+#   extends: ocp4-stig
+#   disableRules:
+#     - name: ocp4-scheduler-no-bind-address
+#       rationale: Not applicable in our environment
+#   enableRules: []
+#   setValues:
+#     - name: ocp4-var-openshift-audit-profile
+#       rationale: Audit profile must be WriteRequestBodies per policy
+#       value: WriteRequestBodies
+
+# --- acm-multiclusterhub: ACM hub configuration (hub cluster only) ---
+multiClusterHub:
+  include: false
+  name: multiclusterhub
+  namespace: open-cluster-management
+  availabilityConfig: High
+  disableHubSelfManagement: false
+  localClusterName: local-cluster
+  overrides:
+    components:
+      - name: app-lifecycle
+        enabled: true
+      - name: cluster-lifecycle
+        enabled: true
+      - name: console
+        enabled: true
+      - name: grc
+        enabled: true
+      - name: insights
+        enabled: true
+      - name: multicluster-engine
+        enabled: true
+      - name: multicluster-observability
+        enabled: true
+      - name: search
+        enabled: true
+      - name: submariner-addon
+        enabled: true
+      - name: volsync
+        enabled: true
+      - name: cluster-backup
+        enabled: false
+      - name: fine-grained-rbac
+        enabled: false
+      - name: siteconfig
+        enabled: false
+      - name: cnv-mtv-integrations
+        enabled: false
+assistedService:
+  include: false
+  databaseStorage: 10Gi
+  filesystemStorage: 100Gi
+  imageStorage: 50Gi
+  logLevel: info
+  isoImageType: minimal-iso
+hiveConfig:
+  include: false
+  logLevel: debug
+  targetNamespace: hive
+  featureGates:
+    - AlphaAgentInstallStrategy
+  provisioning:
+    provisioningNetwork: Disabled
+    watchAllNamespaces: true
+gitopsCluster:
+  include: false
+  name: argo-acm-clusters
+  argoNamespace: openshift-gitops
+  placementName: default
+  clusterSet: default
+  matchEnvironments:
+    - dev
+    - prod
+consolePlugins:
+  include: false
+  plugins:
+    - acm
+    - mce
+
+# --- acm-observability: ACM multi-cluster observability (hub cluster) ---
+multiClusterObservability:
+  include: false
+  createNamespace: true
+  name: observability
+  namespace: open-cluster-management-observability
+  enableDownsampling: true
+  alertmanagerStorageSize: 1Gi
+  compactStorageSize: 50Gi
+  receiveStorageSize: 50Gi
+  ruleStorageSize: 50Gi
+  storeStorageSize: 50Gi
+  observabilityAddonSpec:
+    interval: 300
+    scrapeSizeLimitBytes: 1073741824
+    workers: 1
+setupImage: registry.redhat.io/openshift4/ose-cli:latest
+pullSecret:
+  include: true
+  secretName: multiclusterhub-operator-pull-secret
+  sourceNamespace: openshift-config
+  sourceSecretName: pull-secret
+objectStorage:
+  include: true
+  secretName: thanos-object-storage
+  key: thanos.yaml
+  bucket: observability
+  endpoint: s3.openshift-storage.svc
+  insecure: false
+  accessKey: ""
+  secretKey: ""
+  httpConfig:
+    tlsConfig:
+      caFile: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+  objectBucketClaim:
+    include: true
+    name: observability-obc
+    bucketName: observability
+    storageClassName: openshift-storage.noobaa.io
+observabilityConsoleLink:
+  include: false
+  name: observability
+  href: ""
+  location: ApplicationMenu
+  section: Red Hat applications
+  text: Red Hat Advanced Cluster Management Observability
+
+# --- acs-central: ACS Central services (hub cluster only) ---
+central:
+  include: false
+  createNamespace: false
+  name: stackrox-central-services
+  namespace: stackrox
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2
+      memory: 4Gi
+  exposure:
+    route:
+      enabled: true
+    loadBalancer:
+      enabled: false
+      port: 443
+    nodePort:
+      enabled: false
+  persistence:
+    claimName: stackrox-db
+    size: 100Gi
+  db:
+    isEnabled: Default
+    persistence:
+      claimName: central-db
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2
+        memory: 6Gi
+  telemetry:
+    enabled: true
+  monitoring:
+    openshift:
+      enabled: true
+  egress:
+    connectivityPolicy: Online               # Online or Offline
+  scanner:
+    scannerComponent: Enabled
+    analyzer:
+      scaling:
+        autoScaling: Enabled
+        minReplicas: 2
+        maxReplicas: 5
+        replicas: 2
+    monitoring:
+      exposeEndpoint: Enabled
+  scannerV4:
+    scannerComponent: Default
+    indexer:
+      scaling:
+        autoScaling: Enabled
+        minReplicas: 2
+        maxReplicas: 5
+        replicas: 3
+    matcher:
+      scaling:
+        autoScaling: Enabled
+        minReplicas: 2
+        maxReplicas: 5
+        replicas: 3
+    db:
+      claimName: scanner-v4-db
+      persistence:
+        size: 50Gi
+initBundle:
+  include: false
+  mode: "job"                                # "job" = PostSync job calls Central API
+  password: ""
+  distributeAuth: false                      # distribute Central admin password via ACM Policy
+  targetEnvironments:
+    - dev
+    - prod
+oidc:
+  include: false
+  name: "Keycloak SSO"
+  issuer: ""                                 # e.g. https://sso.apps.hub.example.com/realms/sso
+  clientId: stackrox
+  clientSecret: CHANGEME_STACKROX_OIDC_CLIENT_SECRET
+  mode: auto                                 # auto, fragment, post, or query
+  realm: sso
+  groupMappings:
+    - key: groups
+      value: admins
+      role: Admin
+    - key: groups
+      value: users
+      role: Analyst
+defaultTLS:
+  include: false
+  secretName: central-default-tls-cert
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault
+    kind: ClusterSecretStore
+  vault:
+    path: openshift/wildcard-cert
+    properties:
+      - secretKey: tls.crt
+        property: tls.crt
+      - secretKey: tls.key
+        property: tls.key
+trustedCA:
+  include: false
+  name: trusted-ca-bundle
+centralConsoleLink:
+  include: false
+  centralUrl: ""                             # e.g. https://central-stackrox.apps.hub.example.com
+
+# --- logging-lokistack: cluster and application log aggregation ---
+lokiStack:
+  include: false
+  name: logging-lokistack
+  namespace: openshift-logging
+  size: 1x.extra-small
+  storageClassName: YOUR_STORAGE_CLASS
+  storageSize: 10Gi
+  secretName: logging-loki-odf
+  storageSecretType: s3                      # s3, azure, gcs, swift
+  ingestionRate: 8
+  ingestionBurstSize: 16
+  queryTimeout: 3m
+clusterLogForwarder:
+  include: false
+  name: logging
+  namespace: openshift-logging
+  collectAuditLogs: true
+
+# --- odf-storagecluster: OpenShift Data Foundation (Ceph) ---
+storageCluster:
+  include: false
+  name: ocs-storagecluster
+  namespace: openshift-storage
+  deviceSets:
+    count: 1
+    replicas: 3
+    storageSize: 512Gi
+    storageClassName: YOUR_STORAGE_CLASS
+  encryption:
+    clusterWide: true
+  resourceProfile: balanced
+csiTolerations:
+  include: false
+  tolerations:
+    - key: node-role.kubernetes.io/master
+      operator: Exists
+      effect: NoSchedule
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+
+# --- local-storage-volumes: local disk provisioning ---
+localVolumeSet:
+  include: false
+  name: nvme-localvolumeset
+  namespace: openshift-local-storage
+  storageClassName: nvme-storageclass
+  deviceTypes:
+    - disk
+  minSize: 200Gi
+  volumeMode: Block
+  nodeSelector:
+    key: cluster.ocs.openshift.io/openshift-storage
+    value: ""
+
+
+# #############################################################################
+# NICE TO HAVE — enable based on workload needs
+# #############################################################################
+
+# --- cluster-observability: Cluster Observability Operator ---
+# Requires: cluster-observability-operator deployed via operator-deployment
+# Provides: UIPlugins (cluster-scoped), MonitoringStack, ThanosQuerier
+uiPlugins:
+  dashboards:
+    include: false                          # Observability dashboards console plugin
+  troubleshootingPanel:
+    include: false                          # Troubleshooting panel console plugin
+  distributedTracing:
+    include: false                          # Distributed tracing console plugin (auto-discovers TempoStack)
+    timeout: ""                             # Query timeout e.g. "30s", "5m" (empty = default)
+  logging:
+    include: false                          # Logging console plugin (requires LokiStack)
+    lokiStack:
+      name: logging-lokistack               # LokiStack CR name
+    logsLimit: 0                            # Max log entries returned (0 = default)
+    timeout: ""                             # Query timeout e.g. "30s" (empty = default)
+    schema: ""                              # Log schema: "viaq" (default), "otel", or "select"
+  monitoring:
+    include: false                          # Monitoring console plugin
+    acm:
+      enabled: false                        # Enable ACM alertmanager/thanos proxy
+      alertmanager:
+        url: ""                             # e.g. https://alertmanager.open-cluster-management-observability.svc:9095
+      thanosQuerier:
+        url: ""                             # e.g. https://rbac-query-proxy.open-cluster-management-observability.svc:8443
+    clusterHealthAnalyzer:
+      enabled: false                        # Incident detection (requires openshift.io/cluster-monitoring label)
+    perses:
+      enabled: false                        # Enable Perses dashboards UI
+
+# MonitoringStack — per-namespace Prometheus + Alertmanager (multi-tenancy)
+monitoringStacks: []
+# - include: true
+#   name: team-alpha
+#   namespace: team-alpha-monitoring
+#   namespaceSelector:
+#     matchLabels:
+#       team: alpha
+#   resourceSelector:
+#     matchLabels:
+#       monitoring: enabled
+#   resources:
+#     requests:
+#       cpu: 500m
+#       memory: 512Mi
+#   prometheusConfig:
+#     retention: 24h
+#     replicas: 1
+#     persistentVolumeClaim:
+#       storageClassName: gp3-csi
+#       resources:
+#         requests:
+#           storage: 50Gi
+#     remoteWrite: []
+#   alertmanagerConfig: {}
+#   tolerations: []
+
+# ThanosQuerier — federated queries across MonitoringStack instances
+thanosQueriers: []
+# - include: true
+#   name: federated-query
+#   namespace: observability
+#   selector:
+#     matchLabels:
+#       stack-type: federated
+#   namespaceSelector:
+#     matchLabels:
+#       observability: enabled
+
+# --- cert-manager-certs: ClusterIssuers for TLS automation ---
+selfSignedIssuer:
+  include: false
+  name: selfsigned
+caIssuer:
+  include: false
+  name: cluster-ca
+  secretName: cluster-ca-key-pair
+  duration: 17520h                           # 2 years
+  renewBefore: 2160h                         # 90 days
+caBundle:
+  include: false
+  configMapName: custom-ca-bundle
+  namespace: openshift-config
+acmeIssuer:
+  include: false
+  name: letsencrypt
+  server: https://acme-v02.api.letsencrypt.org/directory
+  email: your-email@example.com
+  privateKeySecretName: letsencrypt-account-key
+  dns01:
+    region: us-east-1
+    hostedZoneID: YOUR_HOSTED_ZONE_ID
+    credentialsSecretName: cert-manager-dns01-credentials
+    recursiveNameserversOnly: false
+apiCert:
+  include: false
+  namespace: openshift-config
+  duration: 8760h                            # 1 year
+  renewBefore: 720h                          # 30 days
+  issuerName: cluster-ca
+ingressCert:
+  include: false
+  namespace: openshift-ingress
+  duration: 8760h
+  renewBefore: 720h
+  issuerName: cluster-ca
+
+# --- gatekeeper-instance: OPA Gatekeeper policy admission control ---
+gatekeeper:
+  include: false
+  name: gatekeeper
+  namespace: openshift-gatekeeper-system
+  audit:
+    auditChunkSize: 500
+    logLevel: INFO
+    replicas: 1
+  validatingWebhook: Enabled
+  mutatingWebhook: Disabled
+  webhook:
+    emitAdmissionEvents: Enabled
+    logLevel: INFO
+    replicas: 2
+
+# --- kyverno-instance: Kyverno policy engine ---
+kyverno:
+  include: false
+  name: enterprisekyverno
+  namespace: openshift-operators
+  antiAffinity:
+    enable: true
+  config:
+    generateSuccessEvents: false
+    resourceFilters:
+      - '[Event,*,*]'
+      - '[*,kube-system,*]'
+      - '[*,kube-public,*]'
+      - '[*,kube-node-lease,*]'
+      - '[Node,*,*]'
+      - '[APIService,*,*]'
+      - '[TokenReview,*,*]'
+      - '[SubjectAccessReview,*,*]'
+      - '[SelfSubjectAccessReview,*,*]'
+      - '[Binding,*,*]'
+      - '[ReplicaSet,*,*]'
+      - '[AdmissionReport,*,*]'
+      - '[ClusterAdmissionReport,*,*]'
+      - '[BackgroundScanReport,*,*]'
+      - '[ClusterBackgroundScanReport,*,*]'
+  createSelfSignedCert: false
+  excludeKyvernoNamespace: true
+  extraArgs:
+    - '--autogenInternals=true'
+    - '--loggingFormat=text'
+  installCRDs: true
+  image:
+    pullPolicy: IfNotPresent
+    repository: ghcr.io/nirmata/kyverno
+    tag: v1.8.1-n4kbuild.1
+
+# --- aap-instance: Ansible Automation Platform ---
+aap:
+  include: false
+  name: aap
+  namespace: ansible-automation-platform
+  controller:
+    enabled: true
+  hub:
+    enabled: false
+  eda:
+    enabled: false
+  lightspeed:
+    enabled: false
+  redis:
+    mode: standalone
+  routeTlsTermination: Edge
+
+# --- keycloak-instance: Keycloak SSO (hub cluster) ---
+keycloak:
+  include: false
+  createNamespace: false
+  name: keycloak
+  namespace: keycloak
+  instances: 1
+  hostname: ""                               # e.g. sso.apps.hub.example.com
+  db:
+    vendor: postgres
+    host: ""
+    database: keycloak
+    usernameSecret:
+      name: ""
+      key: username
+    passwordSecret:
+      name: ""
+      key: password
+realm:
+  include: false
+  name: sso
+  groups:
+    - name: admins
+    - name: users
+  users:
+    - username: admin
+      email: admin@example.com
+      firstName: Admin
+      lastName: User
+      realmRoles:
+        - admin
+      groups:
+        - admins
+      credentials:
+        - type: password
+          value: CHANGEME_KEYCLOAK_ADMIN_PASSWORD
+          temporary: false
+    - username: user1
+      email: user1@example.com
+      firstName: User1
+      lastName: User
+      realmRoles:
+        - user
+      groups:
+        - users
+      credentials:
+        - type: password
+          value: CHANGEME_KEYCLOAK_USER_PASSWORD
+          temporary: false
+  clients:
+    quay:
+      include: false
+      clientId: quay
+      clientSecret: CHANGEME_QUAY_OIDC_CLIENT_SECRET
+      publicClient: false
+      standardFlowEnabled: true
+      directAccessGrantsEnabled: false
+      redirectUris:
+        - "https://registry-quay-quay-enterprise.apps.hub.example.com/oauth2/callback"
+      webOrigins:
+        - "https://registry-quay-quay-enterprise.apps.hub.example.com"
+    openshift:
+      include: false
+      clientId: openshift
+      clientSecret: CHANGEME_OPENSHIFT_OIDC_CLIENT_SECRET
+      publicClient: false
+      standardFlowEnabled: true
+      directAccessGrantsEnabled: false
+      redirectUris:
+        - "https://oauth-openshift.apps.example.com/oauth2callback/keycloak"
+      webOrigins:
+        - "https://oauth-openshift.apps.example.com"
+      defaultClientScopes:
+        - web-origins
+        - acr
+        - profile
+        - email
+      protocolMappers:
+        - name: groups
+          protocol: openid-connect
+          protocolMapper: oidc-group-membership-mapper
+          config:
+            claim.name: groups
+            full.path: "false"
+            id.token.claim: "true"
+            access.token.claim: "true"
+            userinfo.token.claim: "true"
+    stackrox:
+      include: false
+      clientId: stackrox
+      clientSecret: CHANGEME_STACKROX_OIDC_CLIENT_SECRET
+      publicClient: false
+      standardFlowEnabled: true
+      directAccessGrantsEnabled: false
+      serviceAccountsEnabled: true
+      redirectUris:
+        - "https://central-stackrox.apps.hub.example.com/sso/providers/oidc/callback"
+      webOrigins:
+        - "https://central-stackrox.apps.hub.example.com"
+      defaultClientScopes:
+        - web-origins
+        - acr
+        - profile
+        - email
+      protocolMappers:
+        - name: groups
+          protocol: openid-connect
+          protocolMapper: oidc-group-membership-mapper
+          config:
+            claim.name: groups
+            full.path: "false"
+            id.token.claim: "true"
+            access.token.claim: "true"
+            userinfo.token.claim: "true"
+
+# --- quay-registry: Red Hat Quay private registry (hub cluster) ---
+quayRegistry:
+  include: false
+  name: registry
+  namespace: quay-enterprise
+  createNamespace: false
+  config:
+    serverHostname: ""                       # e.g. registry-quay-quay-enterprise.apps.hub.example.com
+    userInitialize: false
+    superUsers:
+      - quayadmin
+    userCreation: false
+    anonymousAccess: false
+    ociSupport: true
+    browserApiCallsXhrOnly: true
+    proxyStorage: true
+    createPrivateOnPush: true               # repos created via push default to private
+    restrictedUsers:
+      include: false                        # when true, only superusers + whitelist can create repos/orgs
+      whitelist: []                         # usernames exempt from restriction
+    quotas:
+      include: true
+      defaultSystemRejectBytes: 10737418240  # 10 GiB
+    autoPrune: true
+    garbageCollection: true
+    tagExpiration:
+      default: "2w"
+      options: [1d, 1w, 2w, 4w, 8w, 26w, 52w]
+    rateLimits:
+      include: true
+    actionLogRotation:
+      include: false
+      archivePath: "action_log_archive/"
+      archiveLocation: "local_us"
+    teamSyncing:
+      include: true
+      nonSuperuserSetup: false
+      resyncStaleTime: "30m"
+  components:
+    quay:
+      managed: true
+      replicas: 1
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+    clair:
+      managed: true
+      replicas: 1
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+    clairPostgres:
+      managed: true
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+      volumeSize: ""
+    postgres:
+      managed: true
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+      volumeSize: ""
+    objectstorage:
+      managed: true
+    redis:
+      managed: true
+      resources:
+        requests:
+          cpu: 50m
+          memory: 32Mi
+    hpa:
+      managed: false
+    route:
+      managed: true
+    mirror:
+      managed: false
+      replicas: 1
+    monitoring:
+      managed: false
+    tls:
+      managed: true
+  scheduling:
+    include: false
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: node-role.kubernetes.io/infra
+                  operator: Exists
+    tolerations:
+      - key: node-role.kubernetes.io/infra
+        effect: NoSchedule
+  customTls:
+    include: false
+    cert: ""
+    key: ""
+  externalDatabase:
+    include: false
+    host: ""
+    port: 5432
+    name: "quay"
+    username: ""
+    password: ""
+    sslMode: "prefer"
+  externalStorage:
+    include: false
+    type: "S3Storage"
+    storageName: "default"
+    config:
+      s3_bucket: ""
+      s3_access_key: ""
+      s3_secret_key: ""
+      host: ""
+      port: 443
+      s3_region: ""
+      storage_path: "/datastorage/registry"
+  oidc:
+    include: false
+    provider: "keycloak"
+    server: ""                               # e.g. https://sso.apps.hub.example.com/realms/sso/
+    clientId: "quay"
+    clientSecret: CHANGEME_QUAY_OIDC_CLIENT_SECRET
+    loginScopes: [openid, email, profile]
+    verifiedEmailClaimName: "email"
+  bridge:
+    include: false
+    hostname: ""
+    oauthToken: CHANGEME_QUAY_BRIDGE_OAUTH_TOKEN
+    namespaceCreationDefault: false
+    insecureRegistry: false
+    scheduledImageStreamImport: true
+  init:
+    include: false
+    quayUrl: ""                              # e.g. https://registry-quay-quay-enterprise.apps.hub.example.com
+    oauthToken: CHANGEME_QUAY_INIT_OAUTH_TOKEN
+    image: "registry.access.redhat.com/ubi9/ubi:latest"
+    organizations:
+      - name: platform
+        email: platform@example.com
+    teams:
+      - org: platform
+        name: admins
+        role: admin                         # member, creator, admin
+        description: "Platform administrators"
+      - org: platform
+        name: devs
+        role: member
+        description: "Development team"
+        syncGroup: "platform-devs"          # OIDC/LDAP group for team sync
+    repositories:
+      - org: platform
+        name: base-images
+        visibility: private                 # private (default), public
+        description: "Curated base images"
+    robotAccounts:
+      - org: platform
+        name: cicd
+        description: "CI/CD pipeline push/pull"
+        permissions:
+          - repo: base-images
+            role: write                     # read, write, admin
+
+# --- opentelemetry-instance: distributed tracing collector ---
+otel:
+  include: false
+  name: otel
+  namespace: istio-system
+  mode: deployment
+  config:
+    exporters:
+      otlp:
+        endpoint: tempo-servicemesh-distributor.tracing-system.svc.cluster.local:4317
+        tls:
+          insecure: true
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http: {}
+    service:
+      pipelines:
+        traces:
+          exporters: [otlp]
+          receivers: [otlp]
+
+# --- tempo-instance: distributed tracing backend ---
+tempo:
+  include: false
+  name: tempo-servicemesh
+  namespace: tracing-system
+  storageSize: 10Gi
+  storage:
+    secret:
+      name: tempo-s3-secret
+      type: s3
+    tls:
+      enabled: true
+      caName: tempo-s3-ca-bundle
+  template:
+    queryFrontend:
+      jaegerQuery:
+        enabled: true
+        ingress:
+          type: route
+
+# --- lvm-cluster: LVM thin-provisioning for SNO / compact clusters ---
+lvmCluster:
+  include: false
+  name: lvmcluster
+  namespace: openshift-storage
+  deviceClassName: vg1
+  default: true
+  fsType: xfs
+  thinPool:
+    name: thin-pool-1
+    sizePercent: 90
+    overprovisionRatio: 10
+
+# --- metallb-config: bare-metal load balancer ---
+metallb:
+  include: false
+  name: metallb
+  namespace: metallb-system
+ipAddressPools:
+  include: false
+  pools: []
+  # - name: default-pool
+  #   addresses: ["192.168.1.240-192.168.1.250"]
+l2Advertisements:
+  include: false
+  advertisements: []
+bgpPeers:
+  include: false
+  peers: []
+bgpAdvertisements:
+  include: false
+  advertisements: []
+
+# --- nmstate-config: declarative node network config ---
+nmstate:
+  include: false
+  name: nmstate
+
+# --- node-feature-discovery-instance: auto-label nodes by hardware ---
+nodeFeatureDiscovery:
+  include: false
+  name: nfd-instance
+  namespace: openshift-nfd
+
+# --- openshift-virtualization-instance: KubeVirt for VMs ---
+hyperConverged:
+  include: false
+  name: kubevirt-hyperconverged
+  namespace: openshift-cnv
+  liveMigration:
+    parallelMigrationsPerCluster: 5
+    parallelOutboundMigrationsPerNode: 2
+  vmiCPUAllocationRatio: 10
+
+# --- mtv-controller: Migration Toolkit for Virtualization ---
+forkliftController:
+  include: false
+  name: forklift-controller
+  namespace: openshift-mtv
+
+# --- servicemesh3-instance: Istio service mesh (SMCP-based) ---
+mesh:
+  include: false
+  name: basic
+  namespace: istio-system
+  version: "3.0"
+  mode: ambient
+  addons:
+    grafana:
+      enabled: true
+    jaeger:
+      name: jaeger
+      install:
+        storage:
+          type: Memory
+          memory:
+            maxTraces: 100000
+        ingress:
+          enabled: true
+    kiali:
+      enabled: true
+      name: kiali
+    prometheus:
+      enabled: true
+  gateways:
+    egress:
+      enabled: true
+    ingress:
+      enabled: true
+      namespace: istio-system
+      type: ClusterIP
+  general:
+    logging:
+      componentLevels:
+        default: info
+    validationMessages: true
+  proxy:
+    logging:
+      level: info
+    networking:
+      trafficControl:
+        outbound:
+          policy: ALLOW_ANY
+
+# --- servicemesh-ambient: Istio ambient mesh (sail-based) ---
+istioCNI:
+  include: false
+  name: default
+  namespace: istio-cni
+  version: v1.28-latest
+  profile: ambient
+istio:
+  include: false
+  name: default
+  namespace: istio-system
+  version: v1.28-latest
+  profile: ambient
+ztunnel:
+  include: false
+  name: default
+  namespace: ztunnel
+  profile: ambient
+kiali:
+  include: false
+  name: kiali
+  namespace: istio-system
+  authStrategy: openshift
+namespaces:
+  include: false
+
+# --- trident-config: NetApp Trident CSI driver ---
+tridentOrchestrator:
+  include: false
+  name: trident
+  namespace: trident
+  debug: true
+snapshotClass:
+  include: false
+  name: trident-csi-snapclass
+
+# --- external-secrets: ExternalSecret CRs (Vault, AWS SM, etc.) ---
+cluster:
+  name: ""
+  baseDomain: ""
+secretStoreRef:
+  name: vault
+  kind: ClusterSecretStore
+secrets: []
+# - include: true
+#   name: my-tls-cert
+#   namespace: openshift-ingress
+#   type: kubernetes.io/tls
+#   refreshInterval: 1h
+#   vault:
+#     path: secret/data/clusters/my-cluster/ingress-cert
+#     properties:
+#       - secretKey: tls.crt
+#         property: tls.crt
+#       - secretKey: tls.key
+#         property: tls.key
+
+# --- group-sync: LDAP/Keycloak group sync CronJob ---
+groupSync:
+  include: false
+  name: group-sync
+  namespace: group-sync-operator
+  schedule: "*/30 * * * *"
+  providers: []
+  # - name: keycloak
+  #   type: keycloak
+  #   keycloak:
+  #     url: "https://sso.apps.hub.example.com"
+  #     realm: sso
+  #     loginRealm: master
+  #     credentialsSecretName: keycloak-group-sync
+  #     insecure: false
+  #     scope: sub
+  #
+  # - name: ldap
+  #   type: ldap
+  #   ldap:
+  #     url: "ldaps://ldap.example.com:636"
+  #     insecure: false
+  #     credentialsSecretName: ldap-bind-password
+  #     rfc2307:
+  #       groupBaseDN: "ou=groups,dc=example,dc=com"
+  #       userBaseDN: "ou=users,dc=example,dc=com"
+  #       groupFilter: "(objectClass=groupOfNames)"
+  #       groupNameAttributes: [cn]
+  #       groupMembershipAttributes: [member]
+  #       userNameAttributes: [uid]
+
+# --- oadp-config: OpenShift API for Data Protection ---
+oadp:
+  include: false
+  namespace: openshift-adp
+  velero:
+    defaultPlugins:
+      - openshift
+      - csi
+    customPlugins: []
+    featureFlags: []
+    resources:
+      requests:
+        cpu: 500m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+  nodeAgent:
+    enable: false
+    uploaderType: kopia                      # restic or kopia
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    tolerations: []
+    nodeSelector: {}
+  backupLocations: []
+  # - name: default
+  #   provider: aws
+  #   default: true
+  #   bucket: my-backup-bucket
+  #   prefix: velero
+  #   region: us-east-1
+  #   credentialName: cloud-credentials
+  #   credentialKey: cloud
+  snapshotLocations: []
+  # - name: default
+  #   provider: aws
+  #   region: us-east-1
+
+# --- velero-config: Velero backup schedules and storage ---
+velero:
+  include: false
+  namespace: openshift-adp
+  backupStorageLocation:
+    include: false
+    name: default
+    provider: aws
+    bucket: ""
+    prefix: velero
+    region: us-east-1
+    credentialSecretName: cloud-credentials
+    config: {}
+  volumeSnapshotLocation:
+    include: false
+    name: default
+    provider: aws
+    region: us-east-1
+    config: {}
+  schedules:
+    - name: daily-full
+      include: false
+      schedule: "0 2 * * *"
+      ttl: 720h                              # 30 days
+      includedNamespaces: []
+      excludedNamespaces:
+        - openshift-*
+        - kube-*
+      includeClusterResources: true
+      snapshotVolumes: true
+      storageLocation: default
+      volumeSnapshotLocations:
+        - default
+    - name: weekly-full
+      include: false
+      schedule: "0 3 * * 0"
+      ttl: 2160h                             # 90 days
+      includedNamespaces: []
+      excludedNamespaces:
+        - openshift-*
+        - kube-*
+      includeClusterResources: true
+      snapshotVolumes: true
+      storageLocation: default
+      volumeSnapshotLocations:
+        - default
+
+# --- trusted-artifact-signer-instance: Sigstore-based artifact signing ---
+tas:
+  include: false
+  name: tas-instance
+  namespace: openshift-rhtas-operator
+  fulcioEnabled: true
+  rekoEnabled: true
+  tufEnabled: true
