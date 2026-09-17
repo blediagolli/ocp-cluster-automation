@@ -180,7 +180,11 @@
           spec:
             approved: true
             role: master
+            hostname: "{{ cluster_name }}-master-{{ idx }}"
       loop: "{{ non_bmh_agents[:master_count | int] }}"
+      loop_control:
+        index_var: idx
+        label: "{{ item.metadata.name }}"
       when: not (item.spec.approved | default(false) | bool)
 
     - name: Approve non-BMH agents as workers
@@ -194,7 +198,11 @@
           spec:
             approved: true
             role: worker
+            hostname: "{{ cluster_name }}-vsphere-worker-{{ idx }}"
       loop: "{{ non_bmh_agents[master_count | int:] }}"
+      loop_control:
+        index_var: idx
+        label: "{{ item.metadata.name }}"
       when:
         - worker_count | int > 0
         - not (item.spec.approved | default(false) | bool)

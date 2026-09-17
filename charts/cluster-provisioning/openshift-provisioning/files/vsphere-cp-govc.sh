@@ -134,6 +134,7 @@ for attempt in $(seq 1 120); do
   if [ "${COUNT}" -ge "${TOTAL_VM_COUNT}" ]; then
     echo "Found ${COUNT} non-BMH agents"
     APPROVED_MASTERS=0
+    APPROVED_WORKERS=0
     for AGENT in ${AGENT_NAMES}; do
       APPROVED=$(oc get agent "${AGENT}" -n "${CLUSTER_NAME}" \
         -o jsonpath='{.spec.approved}' 2>/dev/null || echo "false")
@@ -143,18 +144,23 @@ for attempt in $(seq 1 120); do
           -o jsonpath='{.spec.role}' 2>/dev/null || echo "")
         if [ "${CURRENT_ROLE}" = "master" ]; then
           APPROVED_MASTERS=$((APPROVED_MASTERS + 1))
+        else
+          APPROVED_WORKERS=$((APPROVED_WORKERS + 1))
         fi
         continue
       fi
       if [ "${APPROVED_MASTERS}" -lt "${MASTER_COUNT}" ]; then
-        echo "  Approving ${AGENT} as master..."
+        HOSTNAME="${CLUSTER_NAME}-master-${APPROVED_MASTERS}"
+        echo "  Approving ${AGENT} as master (hostname: ${HOSTNAME})..."
         oc patch agent "${AGENT}" -n "${CLUSTER_NAME}" \
-          --type merge -p '{"spec":{"approved":true,"role":"master"}}'
+          --type merge -p "{\"spec\":{\"approved\":true,\"role\":\"master\",\"hostname\":\"${HOSTNAME}\"}}"
         APPROVED_MASTERS=$((APPROVED_MASTERS + 1))
       else
-        echo "  Approving ${AGENT} as worker..."
+        HOSTNAME="${CLUSTER_NAME}-vsphere-worker-${APPROVED_WORKERS}"
+        echo "  Approving ${AGENT} as worker (hostname: ${HOSTNAME})..."
         oc patch agent "${AGENT}" -n "${CLUSTER_NAME}" \
-          --type merge -p '{"spec":{"approved":true,"role":"worker"}}'
+          --type merge -p "{\"spec\":{\"approved\":true,\"role\":\"worker\",\"hostname\":\"${HOSTNAME}\"}}"
+        APPROVED_WORKERS=$((APPROVED_WORKERS + 1))
       fi
     done
     echo "All ${TOTAL_VM_COUNT} VM agents processed (${MASTER_COUNT} master, ${WORKER_COUNT} worker)"
