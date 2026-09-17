@@ -6,8 +6,6 @@ metadata:
   namespace: {{ .Values.argocd.namespace }}
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-    argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -15,8 +13,6 @@ metadata:
   name: gitops-console-plugin
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-    argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 rules:
   - apiGroups:
       - operator.openshift.io
@@ -39,8 +35,6 @@ metadata:
   name: gitops-console-plugin-binding
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-    argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -57,9 +51,9 @@ metadata:
   namespace: {{ .Values.argocd.namespace }}
   annotations:
     argocd.argoproj.io/sync-wave: "2"
-    argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-options: Replace=true
 spec:
+  backoffLimit: 4
   template:
     spec:
       serviceAccountName: gitops-console-plugin
@@ -71,21 +65,25 @@ spec:
             - /bin/bash
             - -c
             - |
+              CURRENT=$(oc get console.operator.openshift.io cluster -o jsonpath='{.spec.plugins}')
               {{- range .Values.consolePlugin.plugins }}
               echo "Waiting for ConsolePlugin {{ . }}..."
               until oc get consoleplugin "{{ . }}" &>/dev/null; do
                 echo "ConsolePlugin {{ . }} not yet available, retrying in 10s..."
                 sleep 10
               done
-              echo "ConsolePlugin {{ . }} is available."
 
-              echo "Enabling {{ . }} console plugin..."
-              oc patch console.operator.openshift.io cluster \
-                --type=json \
-                -p '[{"op": "add", "path": "/spec/plugins/-", "value": "{{ . }}"}]' 2>/dev/null || true
+              if echo "${CURRENT}" | grep -q "{{ . }}"; then
+                echo "Plugin {{ . }} already registered."
+              else
+                echo "Enabling {{ . }} console plugin..."
+                oc patch console.operator.openshift.io cluster \
+                  --type=json \
+                  -p '[{"op": "add", "path": "/spec/plugins/-", "value": "{{ . }}"}]' 2>/dev/null || true
+                CURRENT=$(oc get console.operator.openshift.io cluster -o jsonpath='{.spec.plugins}')
+              fi
               {{- end }}
 
-              CURRENT=$(oc get console.operator.openshift.io cluster -o jsonpath='{.spec.plugins}')
               echo "Current console plugins: ${CURRENT}"
           securityContext:
             runAsNonRoot: true

@@ -6,8 +6,6 @@ metadata:
   namespace: {{ .Values.multiClusterHub.namespace }}
   annotations:
     argocd.argoproj.io/sync-wave: "3"
-    argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -15,8 +13,6 @@ metadata:
   name: acm-console-plugins
   annotations:
     argocd.argoproj.io/sync-wave: "3"
-    argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 rules:
   - apiGroups:
       - operator.openshift.io
@@ -39,8 +35,6 @@ metadata:
   name: acm-console-plugins-binding
   annotations:
     argocd.argoproj.io/sync-wave: "3"
-    argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -57,9 +51,9 @@ metadata:
   namespace: {{ .Values.multiClusterHub.namespace }}
   annotations:
     argocd.argoproj.io/sync-wave: "4"
-    argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-options: Replace=true
 spec:
+  backoffLimit: 4
   template:
     spec:
       serviceAccountName: acm-console-plugins
@@ -72,23 +66,24 @@ spec:
             - -c
             - |
               PLUGINS="{{ join " " .Values.consolePlugins.plugins }}"
+              CURRENT=$(oc get console.operator.openshift.io cluster -o jsonpath='{.spec.plugins}')
               for plugin in $PLUGINS; do
                 echo "Waiting for ConsolePlugin ${plugin}..."
                 until oc get consoleplugin "${plugin}" &>/dev/null; do
                   echo "ConsolePlugin ${plugin} not yet available, retrying in 10s..."
                   sleep 10
                 done
-                echo "ConsolePlugin ${plugin} is available."
+                if echo "${CURRENT}" | grep -q "${plugin}"; then
+                  echo "Plugin ${plugin} already registered."
+                else
+                  echo "Enabling ${plugin} console plugin..."
+                  oc patch console.operator.openshift.io cluster \
+                    --type=json \
+                    -p "[{\"op\": \"add\", \"path\": \"/spec/plugins/-\", \"value\": \"${plugin}\"}]" 2>/dev/null || true
+                  CURRENT=$(oc get console.operator.openshift.io cluster -o jsonpath='{.spec.plugins}')
+                fi
               done
 
-              echo "Enabling console plugins: ${PLUGINS}"
-              for plugin in $PLUGINS; do
-                oc patch console.operator.openshift.io cluster \
-                  --type=json \
-                  -p "[{\"op\": \"add\", \"path\": \"/spec/plugins/-\", \"value\": \"${plugin}\"}]" 2>/dev/null || true
-              done
-
-              CURRENT=$(oc get console.operator.openshift.io cluster -o jsonpath='{.spec.plugins}')
               echo "Current console plugins: ${CURRENT}"
           securityContext:
             runAsNonRoot: true

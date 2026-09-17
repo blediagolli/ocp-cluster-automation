@@ -1,0 +1,252 @@
+# Reference: provision.yaml
+#
+# Provisioning values for ACM/Hive cluster creation. Only needed for clusters
+# with deployProvision: true in conf.yaml.
+#
+# Precedence: chart defaults < env/<env>/provision.yaml < clusters/<env>/<name>/provision.yaml
+#
+# Choose ONE platform section below (aws, vsphere, baremetal, none) and delete
+# the others. Cross-platform options (proxy, ntp, ignition, custom manifests,
+# networking, disconnected registry) apply to any platform.
+
+provision:
+  include: false                      # set true to provision this cluster
+
+# ── Cluster identity ────────────────────────────────────────────────────────────
+
+cluster:
+  name: example-cluster               # cluster name (used in ClusterDeployment/AgentClusterInstall)
+  baseDomain: example.com             # base domain (cluster API: api.<name>.<baseDomain>)
+  platform: aws                       # vsphere | aws | baremetal | none
+  environment: dev                    # environment label
+  clusterSet: default                 # ManagedClusterSet membership
+  imageSetRef: img4.22.13-x86-64-appsub  # ClusterImageSet reference
+  networkType: OVNKubernetes          # OVNKubernetes | OpenShiftSDN
+  sshPublicKey: "ssh-ed25519 AAAA..." # SSH public key for node access
+  sshPrivateKey: ""                   # SSH private key (IPI platforms — stored in ClusterDeployment secret)
+  pullSecret: ""                      # Red Hat pull secret JSON (usually set at env level)
+  additionalTrustBundle: ""           # PEM CA bundle for private registries or corporate CAs
+  fips: false                         # enable FIPS-validated cryptography
+
+# ── Fleet labels ────────────────────────────────────────────────────────────────
+
+fleet:
+  operatorClusterType: dev            # label for operator profile selection
+  operatorProfile: ocp-4.22           # label for operator channel profile
+
+# ── Node counts ─────────────────────────────────────────────────────────────────
+
+masters:
+  count: 3                            # control plane nodes (3 for HA, 1 for SNO)
+
+workers:
+  count: 3                            # worker nodes (0 for compact/SNO)
+
+# ── Platform: AWS (IPI) ────────────────────────────────────────────────────────
+
+aws:
+  accessKeyID: ""                     # AWS access key (usually injected via ExternalSecret)
+  secretAccessKey: ""                 # AWS secret key (usually injected via ExternalSecret)
+  region: us-east-2                   # AWS region
+  masters:
+    instanceType: m5.xlarge           # EC2 instance type for control plane
+    zones: []                         # AZs (empty = auto-select; e.g. [us-east-2a, us-east-2b, us-east-2c])
+    rootVolume:
+      size: 120                       # root volume size in GB
+      type: gp3                       # EBS volume type
+  workers:
+    instanceType: m5.xlarge           # EC2 instance type for workers
+    zones: []                         # AZs (empty = auto-select)
+    rootVolume:
+      size: 120                       # root volume size in GB
+      type: gp3                       # EBS volume type
+
+# ── Platform: vSphere (IPI) ────────────────────────────────────────────────────
+
+# vsphere:
+#   vcenter: vcenter.example.com      # vCenter FQDN
+#   username: administrator@vsphere.local
+#   password: ""                      # vCenter password (usually injected via ExternalSecret)
+#   datacenter: DC1                   # vSphere datacenter
+#   datastore: datastore1             # default datastore
+#   cluster: Cluster1                 # vSphere compute cluster
+#   folder: /DC1/vm/openshift         # VM folder path
+#   network: VM Network               # port group for VM networking
+#   cacertificate: ""                 # vCenter CA cert (PEM, if using self-signed)
+#   apiVIP: 10.0.0.10                 # API VIP (must be pre-allocated in DNS)
+#   ingressVIP: 10.0.0.11            # ingress VIP (must be pre-allocated in DNS)
+#   masters:
+#     cpus: 4                         # vCPUs per control plane VM
+#     coresPerSocket: 2               # cores per socket
+#     memoryMB: 16384                 # memory in MB
+#     diskGB: 120                     # disk size in GB
+#   workers:
+#     cpus: 4                         # vCPUs per worker VM
+#     coresPerSocket: 2
+#     memoryMB: 16384
+#     diskGB: 120
+
+# ── Platform: Bare Metal (agent-based) ─────────────────────────────────────────
+
+# baremetal:
+#   apiVIPs:                          # API VIPs (leave empty if managed externally, e.g. F5)
+#     - 10.206.220.10
+#     # - "2610:30:401C:2352::10"     # dual-stack
+#   ingressVIPs:                      # ingress VIPs
+#     - 10.206.220.11
+#     # - "2610:30:401C:2352::11"     # dual-stack
+#   provisionRequirements:
+#     controlPlaneAgents: 3           # required control plane agents before install
+#     workerAgents: 0                 # required worker agents (0 = compact cluster)
+#   bmc:
+#     username: admin                 # default BMC username (per-host overrides below)
+#     password: ""                    # default BMC password
+#   hosts:
+#     - name: host001
+#       role: master                  # master | worker
+#       bootMACAddress: "b4:96:91:e9:48:e4"
+#       bmcAddress: "idrac-virtualmedia+https://10.0.0.1/redfish/v1/Systems/System.Embedded.1"
+#       bmcInsecure: true             # skip BMC TLS verification
+#       bmcUsername: ""               # per-host override (falls back to baremetal.bmc.username)
+#       bmcPassword: ""               # per-host override (falls back to baremetal.bmc.password)
+#       automatedCleaningMode: metadata  # metadata | disabled
+#       nmstate:                      # NMState static networking for this host
+#         config:
+#           interfaces:
+#             - name: bond0
+#               type: bond
+#               state: up
+#               ipv4:
+#                 enabled: true
+#                 address:
+#                   - ip: 10.206.220.2
+#                     prefix-length: 24
+#                 dhcp: false
+#               link-aggregation:
+#                 mode: 802.3ad
+#                 options:
+#                   miimon: "100"
+#                 slaves:
+#                   - ens2f0
+#                   - ens2f1
+#           dns-resolver:
+#             config:
+#               search:
+#                 - internal.example.com
+#               server:
+#                 - 10.0.0.53
+#           routes:
+#             config:
+#               - destination: 0.0.0.0/0
+#                 next-hop-address: 10.206.220.1
+#                 next-hop-interface: bond0
+#                 table-id: 254
+#         interfaces:                 # MAC-to-interface mapping
+#           - name: ens2f0
+#             macAddress: "b4:96:91:e9:48:e4"
+#           - name: ens2f1
+#             macAddress: "b4:96:91:e9:48:e5"
+
+# ── Platform: None (agent-based, userManagedNetworking) ────────────────────────
+
+# none:
+#   apiVIPs:                          # API VIPs (leave empty if managed externally)
+#     - 192.168.1.10
+#   ingressVIPs:
+#     - 192.168.1.11
+#   provisionRequirements:
+#     controlPlaneAgents: 3
+#     workerAgents: 0
+#   bmc:
+#     username: ""
+#     password: ""
+#   hosts:
+#     - name: host001
+#       role: master
+#       bootMACAddress: "02:ff:dc:94:79:5f"
+#       bmcAddress: "redfish-virtualmedia+https://sushy-ec2.cluster.svc:8000/redfish/v1/Systems/i-0123456789abcdef0"
+
+# ── vSphere control plane automation (agent-based mixed cluster) ───────────────
+# Use with platform: baremetal or none when control plane VMs run on vSphere
+# and workers are bare metal.
+
+# vsphereControlPlane:
+#   enabled: false
+#   automation: govc                  # govc | ansible
+#   simulator:
+#     enabled: false                  # deploy vcsim for testing (no real vCenter)
+#     image: "docker.io/vmware/vcsim:latest"
+#   ignitionConfigOverride: ""        # optional ignition override for CP InfraEnv
+#   images:
+#     govc: "quay.io/openshift/origin-cli:latest"
+#     ansible: "quay.io/ansible/ansible-runner:latest"
+#   govcVersion: "v0.46.2"
+#   vcenter: vcenter.example.com
+#   username: administrator@vsphere.local
+#   password: ""
+#   insecure: true                    # skip vCenter TLS verification
+#   datacenter: DC1
+#   datastore: datastore1
+#   cluster: Cluster1
+#   network: VM Network
+#   folder: /DC1/vm/openshift
+#   resourcePool: ""                  # vSphere resource pool (empty = cluster default)
+#   masters:
+#     count: 3
+#     cpus: 4
+#     memoryMB: 16384
+#     diskGB: 120
+
+# ── Cross-platform options ─────────────────────────────────────────────────────
+
+# Proxy (all platforms — IPI: install-config; agent-based: AgentClusterInstall + InfraEnv)
+proxy:
+  enabled: false
+  # httpProxy: "http://proxy.internal.example.com:3128"
+  # httpsProxy: "http://proxy.internal.example.com:3128"
+  # noProxy: ".internal.example.com,.cluster.local,10.128.0.0/14,172.30.0.0/16"
+
+# NTP (agent-based platforms — added to InfraEnv)
+ntp:
+  enabled: false
+  # sources:
+  #   - ntp1.internal.example.com
+  #   - ntp2.internal.example.com
+
+# Ignition override for discovery ISO (agent-based platforms — added to InfraEnv)
+ignitionConfigOverride:
+  enabled: false
+  # config: '{"ignition":{"version":"3.1.0"},"storage":{"files":[...]}}'
+
+# Day-0 custom manifests (IPI platforms — referenced by ClusterDeployment)
+customManifests:
+  enabled: false
+  # data:
+  #   99-chrony-masters.yaml: |
+  #     apiVersion: machineconfiguration.openshift.io/v1
+  #     kind: MachineConfig
+  #     ...
+
+# Networking (agent-based platforms)
+networking:
+  clusterNetwork:
+    - cidr: 10.128.0.0/14
+      hostPrefix: 23
+    # - cidr: "fd01::/48"            # dual-stack
+    #   hostPrefix: 64
+  serviceNetwork:
+    - 172.30.0.0/16
+    # - "fd02::/112"                 # dual-stack
+  machineNetwork: []
+  # machineNetwork:
+  #   - cidr: 10.206.220.0/24
+  #   - cidr: "2610:30:401C:2352::/64"  # dual-stack
+
+# Disconnected registry (optional — image mirroring for air-gapped installs)
+imageContentSources:
+  enabled: false
+  # mirror: registry.disconnected.example.com/openshift4
+  # registry: registry.disconnected.example.com
+  # username: registry-user
+  # password: registry-password
+  # email: platform@example.com

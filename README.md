@@ -64,10 +64,10 @@ All chart features default to `include: false`. Enable them explicitly.
 
 ## Documentation
 
-- [Part 1: Provisioning clusters with GitOps + ACM](docs/Part-1.md)
-- [Part 2: Configuring clusters with ApplicationSets and Helm](docs/Part-2.md)
-- [Baremetal provisioning with agent-based installer](docs/Baremetal.md)
-- [Day 2 cluster configuration guide](docs/day2-cluster-config.md)
+- [Cluster Provisioning](docs/cluster-provisioning/) — AWS, vSphere, baremetal, platform-none, hybrid vSphere CP
+- [Cluster Configuration](docs/cluster-configuration/) — ApplicationSets, Helm charts, values precedence
+- [Day 2 cluster configuration guide](docs/day2-cluster-config/) — what to enable on each cluster, organized by priority tier
+- [Reference values files](docs/reference/) — fully-commented example files for defining a new cluster
 
 ## Public repository
 

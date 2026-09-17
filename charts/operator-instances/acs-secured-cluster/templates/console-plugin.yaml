@@ -6,8 +6,6 @@ metadata:
   namespace: {{ .Values.securedCluster.namespace }}
   annotations:
     argocd.argoproj.io/sync-wave: "3"
-    argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -15,8 +13,6 @@ metadata:
   name: acs-console-plugin
   annotations:
     argocd.argoproj.io/sync-wave: "3"
-    argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 rules:
   - apiGroups:
       - operator.openshift.io
@@ -39,8 +35,6 @@ metadata:
   name: acs-console-plugin-binding
   annotations:
     argocd.argoproj.io/sync-wave: "3"
-    argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -57,9 +51,9 @@ metadata:
   namespace: {{ .Values.securedCluster.namespace }}
   annotations:
     argocd.argoproj.io/sync-wave: "4"
-    argocd.argoproj.io/hook: Sync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-options: Replace=true
 spec:
+  backoffLimit: 4
   template:
     spec:
       serviceAccountName: acs-console-plugin

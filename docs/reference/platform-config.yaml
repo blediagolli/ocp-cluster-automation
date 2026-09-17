@@ -1,0 +1,764 @@
+# =============================================================================
+# Platform Config Reference
+# =============================================================================
+# All values for charts in charts/platform-config/. Copy the sections you need
+# into your cluster's platform-config.yaml. Every feature defaults to
+# include: false — nothing deploys unless explicitly enabled.
+#
+# Precedence: chart defaults → env/<env>/platform-config.yaml → clusters/<env>/<name>/platform-config.yaml
+# =============================================================================
+
+
+# =============================================================================
+# CRITICAL — enable on every cluster
+# =============================================================================
+
+# --- tls-certificates ---------------------------------------------------------
+# TLS certificate provisioning for API server and ingress.
+# Supports: cert-manager, manual, sealed-secret, external-secret, vault.
+provider: cert-manager                        # cert-manager | manual | sealed-secret | external-secret | vault
+certManager:
+  issuerRef:
+    name: YOUR_CLUSTER_ISSUER                 # ClusterIssuer name (e.g. letsencrypt)
+    kind: ClusterIssuer
+  duration: 2160h                             # certificate lifetime
+  renewBefore: 360h                           # renew this long before expiry
+  privateKey:
+    algorithm: ECDSA
+    size: 384
+certificates:
+  api:
+    include: false
+    secretName: cert-manager-api-cert
+    dnsNames:
+      - api.CLUSTER_NAME.example.com
+  ingress:
+    include: false
+    secretName: cert-manager-ingress-cert
+    dnsNames:
+      - "*.apps.CLUSTER_NAME.example.com"
+      - apps.CLUSTER_NAME.example.com
+  ca:
+    include: false
+    configMapName: custom-ca-bundle
+# For manual, sealed-secret, external-secret, vault providers see
+# charts/platform-config/tls-certificates/values.yaml for provider-specific fields
+
+# --- openshift-apiserver ------------------------------------------------------
+apiServer:
+  include: false
+  audit:
+    profile: Default                          # Default | WriteRequestBodies | AllRequestBodies | None
+    customRules: []
+  servingCerts:
+    namedCertificates:
+      - names:
+          - api.CLUSTER_NAME.example.com
+        servingCertificate:
+          name: cert-manager-api-cert         # must match certificates.api.secretName
+  tlsSecurityProfile:
+    type: ""                                  # Modern | Intermediate | Old | Custom
+  encryption:
+    type: ""                                  # aescbc | aesgcm
+  additionalCORSAllowedOrigins: []
+
+# --- openshift-ingress --------------------------------------------------------
+ingress:
+  controller:
+    include: false
+    manageDefault: true                       # manage the default IngressController
+    default:
+      placement: node-role.kubernetes.io/worker
+      replicas: 2
+      endpointPublishingStrategy: LoadBalancerService  # LoadBalancerService | HostNetwork | NodePort
+      tolerations: []
+    logging:
+      enabled: false
+      destination:
+        type: Syslog
+        syslog:
+          address: ""
+          port: 10514
+    tlsSecurityProfile:
+      enabled: false
+      type: Custom
+      custom:
+        ciphers:
+          - TLS_AES_128_GCM_SHA256
+          - ECDHE-ECDSA-AES128-GCM-SHA256
+        minTLSVersion: VersionTLS12
+    http2:
+      enabled: false
+    hsts:
+      enabled: false
+      value: "max-age=31536000; includeSubDomains; preload"
+    defaultCertificate:
+      enabled: false
+      name: cert-manager-ingress-cert         # must match certificates.ingress.secretName
+
+# --- openshift-proxy ----------------------------------------------------------
+proxy:
+  include: false
+  httpProxy: ""
+  httpsProxy: ""
+  noProxy: ""                                 # comma-separated domains/CIDRs to exclude
+  trustedCA:
+    name: ""                                  # ConfigMap in openshift-config with ca-bundle.crt
+
+
+# --- openshift-oauth ----------------------------------------------------------
+oauth:
+  include: false
+  tokenConfig:
+    accessTokenMaxAgeSeconds: 86400           # 24 hours
+  groupRBAC: []
+  # - group: admins
+  #   clusterRole: cluster-admin
+  # - group: users
+  #   clusterRole: edit
+  identityProviders: []
+  # OIDC example:
+  # - name: keycloak
+  #   type: OpenID
+  #   mappingMethod: claim
+  #   openID:
+  #     clientID: openshift
+  #     clientSecret:
+  #       name: openshift-oidc-client-secret
+  #     issuer: "https://sso.apps.HUB_DOMAIN/realms/sso"
+  #     claims:
+  #       preferredUsername: [preferred_username]
+  #       name: [name]
+  #       email: [email]
+  #       groups: [groups]
+  #     extraScopes: [email, profile]
+  #
+  # LDAP example:
+  # - name: ldap
+  #   type: LDAP
+  #   mappingMethod: claim
+  #   ldap:
+  #     url: "ldaps://ldap.example.com:636/ou=users,dc=example,dc=com?uid"
+  #     insecure: false
+  #     ca:
+  #       name: ldap-ca-configmap
+  #     bindDN: "cn=admin,dc=example,dc=com"
+  #     bindPassword:
+  #       name: ldap-bind-password
+
+# --- openshift-image-registry -------------------------------------------------
+imageRegistry:
+  include: false
+  replicas: 1
+  managementState: Managed                    # Managed | Removed | Unmanaged
+  rolloutStrategy: RollingUpdate
+  defaultRoute: false
+  storage:
+    type: pvc                                 # pvc | s3
+    pvc:
+      claim: image-registry-storage
+    s3:
+      bucket: YOUR_IMAGE_REGISTRY_BUCKET
+      region: us-east-1
+      encrypt: true
+
+# --- global-pull-secrets ------------------------------------------------------
+pullSecrets:
+  include: false
+  globalPullSecret:
+    include: false
+    registries: []
+    # - registry: quay.io
+    #   username: ""
+    #   password: ""
+    #   email: ""
+  namespaces: []
+
+# --- openshift-machine-config -------------------------------------------------
+kubeletConfigWorker:
+  include: false
+  maxPods: 250
+  podsPerCore: 0
+  kubeAPIQPS: 50
+  kubeAPIBurst: 100
+  imageGCHighThresholdPercent: 85
+  imageGCLowThresholdPercent: 80
+  imageMinimumGCAge: 5m
+  evictionHard:
+    memory.available: 500Mi
+    nodefs.available: 10%
+    nodefs.inodesFree: 5%
+    imagefs.available: 15%
+    imagefs.inodesFree: 5%
+  evictionSoft:
+    memory.available: 1Gi
+    nodefs.available: 15%
+    nodefs.inodesFree: 10%
+    imagefs.available: 20%
+    imagefs.inodesFree: 10%
+kubeletConfigMaster:
+  include: false
+  maxPods: 250
+  podsPerCore: 0
+  imageGCHighThresholdPercent: 75
+  imageGCLowThresholdPercent: 60
+containerRuntimeConfig:
+  include: false
+  machineConfigPoolSelector: worker
+  pidsLimit: 4096
+  logSizeMax: "-1"
+  logLevel: info
+machineConfigChrony:
+  include: false
+  role: worker
+  ntpServers:
+    - 0.rhel.pool.ntp.org
+    - 1.rhel.pool.ntp.org
+    - 2.rhel.pool.ntp.org
+    - 3.rhel.pool.ntp.org
+machineConfigKernel:
+  include: false
+  role: worker
+  kernelArguments: []
+  sysctls: {}
+  # vm.max_map_count: "262144"
+  # net.core.somaxconn: "32768"
+selinuxPermissive:
+  include: false
+machineConfigPoolInfra:
+  include: false
+  nodeSelector:
+    node-role.kubernetes.io/infra: ""
+  maxUnavailable: 1
+  paused: false
+customMachineConfigs: []
+
+# --- acm-managed-cluster -----------------------------------------------------
+managedCluster:
+  include: false
+  registerArgoCD: false
+  vendor: OpenShift
+  cloudProvider: auto-detect
+  clusterSet: default
+  labels: {}
+  hubAcceptsClient: true
+  autoImport:
+    include: false
+    mode: kubeconfig                          # kubeconfig | token
+    kubeconfig:
+      secretName: ""
+  addons:
+    include: true
+    config-policy-controller: true
+    governance-policy-framework: true
+    work-manager: true
+    application-manager: true
+    cert-policy-controller: true
+    search-collector: true
+    cluster-proxy: false
+    managed-serviceaccount: false
+
+
+# =============================================================================
+# RECOMMENDED — enable on most clusters
+# =============================================================================
+
+# --- etcd-backup --------------------------------------------------------------
+etcdBackup:
+  include: false
+  schedule: "0 */6 * * *"                     # every 6 hours
+  retentionCount: 7
+  image: registry.redhat.io/openshift4/ose-cli:latest
+  storage:
+    type: pvc                                 # pvc | obc (ObjectBucketClaim for ODF)
+    pvc:
+      name: etcd-backup-pvc
+      storageClass: YOUR_STORAGE_CLASS
+      size: 50Gi
+    obc:
+      name: etcd-backup-bucket
+      storageClass: openshift-storage.noobaa.io
+      bucketPrefix: etcd-backup
+
+# --- etcd-defrag --------------------------------------------------------------
+etcdDefrag:
+  include: false
+  schedule: "0 3 * * 0"                       # weekly Sunday 3am
+  fragmentationThreshold: 50                  # percentage — 0 to always defrag
+  image: registry.redhat.io/openshift4/ose-cli:latest
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  activeDeadlineSeconds: 600
+  alert:
+    include: true
+    noSuccessThresholdHours: 168              # alert if no successful defrag in 7 days
+
+# --- user-workload-monitoring -------------------------------------------------
+userWorkloadMonitoring:
+  include: false
+  prometheus:
+    retention: 24h
+    storageClass: YOUR_STORAGE_CLASS
+    pvcSize: 40Gi
+    resources:
+      requests:
+        cpu: 200m
+        memory: 1Gi
+      limits:
+        cpu: "1"
+        memory: 4Gi
+  thanosRuler:
+    enabled: false
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+  alertmanager:
+    enabled: false
+  remoteWrite: []                             # list of {url, authorization} for external Prometheus
+
+# --- project-request-template -------------------------------------------------
+projectConfig:
+  include: false
+  projectRequestMessage: ""                   # message shown when project creation is denied
+selfProvisioners:
+  include: false                              # allow users to create projects
+networkPolicy:
+  include: false
+  defaultDenyIngress: true
+  allowSameNamespace: true
+  allowFromOpenShiftIngress: true
+  allowFromOpenShiftMonitoring: true
+  allowFromKubeApiserver: true
+resourceQuota:
+  include: false
+  name: default
+  hard:
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
+    pods: "20"
+    persistentvolumeclaims: "10"
+    requests.storage: 50Gi
+limitRange:
+  include: false
+  name: default
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 256Mi
+      max:
+        cpu: "4"
+        memory: 8Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+roleBindings:
+  include: false
+  adminForRequestingUser: true
+  additional: []
+serviceAccount:
+  include: false
+  name: default
+  annotations: {}
+  imagePullSecrets: []
+egressFirewall:
+  include: false
+  rules: []
+
+# --- machine-health-checks ---------------------------------------------------
+machineHealthChecks:
+  include: false
+  checks:
+    - name: worker-healthcheck
+      include: true
+      selector:
+        matchLabels:
+          machine.openshift.io/cluster-api-machine-role: worker
+      unhealthyConditions:
+        - type: Ready
+          status: "False"
+          timeout: 5m
+        - type: Ready
+          status: "Unknown"
+          timeout: 5m
+      maxUnhealthy: "40%"
+      nodeStartupTimeout: 10m
+
+# --- image-pruner -------------------------------------------------------------
+imagePruner:
+  include: false
+  schedule: "0 0 * * *"                       # daily at midnight
+  suspend: false
+  keepTagRevisions: 3
+  keepYoungerThanDuration: "60m"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# --- openshift-console --------------------------------------------------------
+console:
+  include: false
+  branding:
+    customLogoFile:
+      name: ""                                # ConfigMap name with logo
+      key: ""                                 # key in ConfigMap
+    customProductName: ""
+  developerCatalog:
+    categories: []
+    types:
+      state: Enabled
+      enabled: []
+      disabled: []
+  notifications: []
+  # - text: "Cluster maintenance window: Sunday 02:00-06:00 UTC"
+  #   location: BannerTop
+  #   color: "#fff"
+  #   backgroundColor: "#0066cc"
+consoleLinks: []
+# - name: documentation
+#   include: false
+#   text: "Internal Documentation"
+#   href: "https://docs.example.com"
+#   location: HelpMenu                        # HelpMenu | UserMenu | ApplicationMenu | NamespaceDashboard
+
+# --- prometheus-rules ---------------------------------------------------------
+prometheusRules:
+  include: false
+  etcd:
+    include: true
+    highCommitDuration: 0.025
+    highFsyncDuration: 0.025
+    memberCommunicationSlow: 0.15
+  apiServer:
+    include: true
+    errorRateThreshold: 0.05
+    latencyThreshold: 1
+  kubelet:
+    include: true
+    podStartupLatency: 60
+    runtimeErrorRate: 0.05
+  node:
+    include: true
+    cpuThreshold: 90
+    memoryThreshold: 90
+    diskThreshold: 85
+    diskPredictionDays: 7
+  pvc:
+    include: true
+    usageThreshold: 85
+  pod:
+    include: true
+    restartThreshold: 5
+    oomKillThreshold: 0
+  cluster:
+    include: true
+    nodeNotReadyMinutes: 5
+    clockSkewSeconds: 0.05
+
+# --- alertmanager-config ------------------------------------------------------
+alertmanager:
+  include: false
+  receivers:
+    - name: default
+      slack: {}
+      # slackConfigs:
+      # - apiURL:
+      #     name: alertmanager-slack
+      #     key: url
+      #   channel: "#alerts"
+      #   sendResolved: true
+      pagerduty: {}
+      email: {}
+      webhook: {}
+  route:
+    groupBy: [alertname, namespace]
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 4h
+    receiver: default
+    routes: []
+  inhibitRules: []
+
+# --- rbac ---------------------------------------------------------------------
+clusterRoles:
+  include: false
+  roles: []
+  # - include: true
+  #   name: cluster-viewer
+  #   rules:
+  #     - apiGroups: [""]
+  #       resources: ["nodes", "namespaces"]
+  #       verbs: ["get", "list", "watch"]
+roles:
+  include: false
+  roles: []
+clusterRoleBindings:
+  include: false
+  bindings: []
+  # - include: true
+  #   name: admins-cluster-admin
+  #   clusterRole: cluster-admin
+  #   subjects:
+  #     - kind: Group
+  #       name: admins
+
+# --- openshift-build ----------------------------------------------------------
+build:
+  include: false
+  defaultProxy:
+    httpProxy: ""
+    httpsProxy: ""
+    noProxy: ""
+    gitProxy:
+      httpProxy: ""
+      httpsProxy: ""
+      noProxy: ""
+  env: []
+  resources:
+    requests:
+      cpu: ""
+      memory: ""
+    limits:
+      cpu: ""
+      memory: ""
+  nodeSelector: {}
+  tolerations: []
+
+# --- openshift-group-sync ----------------------------------------------------
+groupSync:
+  include: false
+  provider: keycloak                          # ldap | keycloak
+  schedule: "*/30 * * * *"
+  image: registry.redhat.io/openshift4/ose-cli:v4.22
+  ldap:
+    url: "ldaps://ldap.example.com:636"
+    insecure: false
+    bindDN: "cn=admin,dc=example,dc=com"
+    bindPasswordSecretName: ldap-bind-password
+    caConfigMapName: ldap-ca
+    groupBaseDN: "ou=groups,dc=example,dc=com"
+    userBaseDN: "ou=users,dc=example,dc=com"
+    groupFilter: "(objectClass=groupOfNames)"
+    groupNameAttributes: [cn]
+    groupMembershipAttributes: [member]
+    userNameAttributes: [uid]
+  keycloak:
+    url: "https://sso.apps.HUB_DOMAIN"
+    realm: sso
+    credentialsSecretName: keycloak-group-sync
+    insecure: false
+    caConfigMapName: ""
+    groupMappings: []
+    # - keycloakGroup: admins
+    #   openshiftGroup: cluster-admins
+
+
+# --- acm-policies -------------------------------------------------------------
+policies:
+  include: false
+  podSecurity:
+    include: false
+    remediationAction: inform
+    severity: high
+    enforcementLevel: restricted
+    namespaceSelector:
+      include: ["*"]
+      exclude: ["openshift-*", "kube-*", "default"]
+    placement:
+      clusterSelector:
+        matchExpressions:
+          - key: environment
+            operator: In
+            values: [production, staging]
+  networkPolicy:
+    include: false
+    remediationAction: enforce
+    severity: high
+  resourceQuotas:
+    include: false
+    remediationAction: inform
+    severity: medium
+  complianceOperator:
+    include: false
+    remediationAction: enforce
+    severity: high
+  imagePolicy:
+    include: false
+    remediationAction: inform
+    severity: high
+    allowedRegistries:
+      - registry.redhat.io
+      - quay.io
+      - registry.access.redhat.com
+  etcdEncryption:
+    include: false
+    remediationAction: inform
+    severity: critical
+
+
+# =============================================================================
+# NICE TO HAVE — enable based on workload needs
+# =============================================================================
+
+# --- storage-classes ----------------------------------------------------------
+storageClasses:
+  include: false
+  classes:
+    - name: fast-ssd
+      include: false
+      provisioner: ebs.csi.aws.com            # CSI driver for your platform
+      reclaimPolicy: Delete
+      volumeBindingMode: WaitForFirstConsumer
+      allowVolumeExpansion: true
+      parameters:
+        type: gp3
+        iops: "3000"
+        throughput: "125"
+        encrypted: "true"
+
+# --- volume-snapshot-classes --------------------------------------------------
+volumeSnapshotClasses:
+  include: false
+  classes:
+    - name: csi-aws-ebs-snapclass
+      include: false
+      driver: ebs.csi.aws.com
+      deletionPolicy: Delete
+      parameters: {}
+
+# --- openshift-image ---------------------------------------------------------
+image:
+  include: false
+  additionalTrustedCA:
+    name: ""
+  allowedRegistries: []
+  blockedRegistries: []
+  registrySources:
+    insecureRegistries: []
+    containerRuntimeSearchRegistries: []
+
+# --- image-mirror-config ------------------------------------------------------
+imageMirror:
+  include: false
+  mirrors:
+    - source: registry.redhat.io
+      include: false
+      mirrors:
+        - mirror.example.com/redhat
+
+# --- openshift-dns ------------------------------------------------------------
+dns:
+  include: false
+  tolerateAll: true
+
+# --- openshift-scheduler ------------------------------------------------------
+scheduler:
+  include: false
+  profile: LowNodeUtilization                 # LowNodeUtilization | HighNodeUtilization | NoScoring
+  customProfiles: []
+
+# --- openshift-marketplace ----------------------------------------------------
+catalogSource:
+  certifiedOperators:
+    include: false
+    name: local-certified-operators
+    imageRepository: redhat/certified-operator
+    imageTag: v4.14
+    registryPollInterval: 1440m
+  communityOperators:
+    include: false
+    name: local-community-operators
+    imageRepository: redhat/community-operator
+    imageTag: v4.14
+    registryPollInterval: 1440m
+
+# --- admin-network-policy ----------------------------------------------------
+adminNetworkPolicies:
+  - name: allow-monitoring
+    include: false
+    priority: 10
+    subject:
+      namespaceSelector:
+        matchLabels: {}
+    ingress:
+      - name: allow-prometheus
+        action: Allow
+        from:
+          - namespaces:
+              namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: openshift-monitoring
+        ports:
+          - portNumber:
+              port: 9090
+              protocol: TCP
+    egress: []
+  - name: allow-ingress-controller
+    include: false
+    priority: 20
+    subject:
+      namespaceSelector:
+        matchLabels: {}
+    ingress:
+      - name: allow-router
+        action: Allow
+        from:
+          - namespaces:
+              namespaceSelector:
+                matchLabels:
+                  policy-group.network.openshift.io/ingress: ""
+        ports:
+          - portNumber:
+              port: 8080
+              protocol: TCP
+          - portNumber:
+              port: 8443
+              protocol: TCP
+    egress: []
+
+# --- vault-server -------------------------------------------------------------
+vault:
+  include: false
+  replicas: 3
+  image: docker.io/hashicorp/vault:1.17.2
+  route:
+    enabled: true
+    hostname: ""                              # auto-derived from cluster.baseDomain
+  storage:
+    size: 10Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  audit:
+    enabled: false
+  kubernetesAuth:
+    enabled: true
+    path: kubernetes
+secretStore:
+  include: false
+  name: vault
+  kind: ClusterSecretStore
+  server: ""                                  # auto-derived from vault namespace
+  kvVersion: "2"
+  path: secret
+  auth:
+    serviceAccountRef:
+      name: external-secrets-sa
+      namespace: vault
+    role: external-secrets

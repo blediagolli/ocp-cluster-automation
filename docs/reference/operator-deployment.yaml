@@ -1,0 +1,201 @@
+# Reference: operator-deployment.yaml
+#
+# Controls which OLM operators are installed on a cluster. Each key under
+# 'operators' creates a Namespace, OperatorGroup, and Subscription.
+#
+# Precedence: chart defaults < env/<env>/operator-deployment.yaml < clusters/<env>/<name>/operator-deployment.yaml
+#
+# To override a channel or disable an operator inherited from the environment
+# level, redefine the key here with the desired values.
+#
+# Fields per operator:
+#   include            — deploy this operator (true/false)
+#   namespace          — target namespace for the Subscription
+#   operatorGroup      — OperatorGroup name (omit with skipOperatorGroup)
+#   package            — OLM package name
+#   channel            — subscription channel (e.g. stable, stable-v1, release-2.17)
+#   source             — CatalogSource name (redhat-operators, certified-operators, community-operators)
+#   sourceNamespace    — CatalogSource namespace (always openshift-marketplace)
+#   clusterScoped      — true = AllNamespaces install mode (OperatorGroup spec: {})
+#   skipNamespace      — true = don't create the namespace (operator uses an existing one like openshift-operators)
+#   skipOperatorGroup  — true = don't create the OperatorGroup (namespace already has one)
+#   namespaceLabels    — extra labels on the created Namespace
+#   namespaceAnnotations — extra annotations on the created Namespace
+
+operators:
+
+  # ── Critical ──────────────────────────────────────────────────────────────────
+
+  openshift-gitops:
+    include: false
+    channel: gitops-1.21              # ArgoCD for GitOps delivery
+
+  compliance-operator:
+    include: false
+    channel: stable                   # CIS/NIST compliance scanning
+
+  # ── Recommended ───────────────────────────────────────────────────────────────
+
+  advanced-cluster-security:
+    include: false
+    channel: stable                   # StackRox container security
+
+  advanced-cluster-management:
+    include: false
+    channel: release-2.17             # ACM hub — multi-cluster management
+
+  openshift-logging:
+    include: false
+    channel: stable-6.6               # cluster logging (pairs with loki)
+
+  loki:
+    include: false
+    channel: stable                   # Loki log storage backend
+
+  odf-operator:
+    include: false
+    channel: stable                   # OpenShift Data Foundation (Ceph)
+
+  openshift-local-storage:
+    include: false
+    channel: stable                   # local disk provisioning
+
+  # ── Nice to Have ──────────────────────────────────────────────────────────────
+
+  # --- Certificate management ---
+  cert-manager:
+    include: false
+    channel: stable-v1                # certificate lifecycle management
+
+  # --- Policy admission ---
+  gatekeeper:
+    include: false
+    channel: stable                   # OPA Gatekeeper policy admission
+
+  kyverno:
+    include: false
+    channel: alpha                    # Kyverno policy admission (alternative to gatekeeper)
+
+  # --- Secret management ---
+  external-secrets-operator:
+    include: false
+    channel: stable-v1                # ExternalSecret CRs (Vault, AWS SM, etc.)
+
+  # --- Identity & SSO ---
+  keycloak:
+    include: false
+    channel: stable-v26               # Red Hat build of Keycloak (RHBK)
+
+  # --- CI/CD & developer tools ---
+  openshift-pipelines:
+    include: false
+    channel: latest                   # Tekton CI/CD pipelines
+
+  dev-spaces:
+    include: false
+    channel: stable                   # Eclipse Che cloud IDE
+
+  developer-hub:
+    include: false
+    channel: fast                     # Red Hat Developer Hub (Backstage)
+
+  # --- Registry ---
+  quay:
+    include: false
+    channel: stable-3.17              # Quay private container registry
+
+  quay-bridge:
+    include: false
+    channel: stable-3.17              # Quay-OpenShift integration
+
+  # --- Observability ---
+  opentelemetry:
+    include: false
+    channel: stable                   # OpenTelemetry collector
+
+  tempo:
+    include: false
+    channel: stable                   # Tempo distributed tracing backend
+
+  cluster-observability:
+    include: false
+    channel: stable                   # COO dashboards and observability UI
+
+  # --- Storage ---
+  lvm:
+    include: false
+    channel: stable                   # LVM thin-provisioning (SNO, compact)
+
+  trident:
+    include: false
+    channel: stable                   # NetApp Trident CSI
+
+  # --- Networking ---
+  metallb:
+    include: false
+    channel: stable                   # bare-metal load balancer
+
+  nmstate:
+    include: false
+    channel: stable                   # declarative node network config
+
+  # --- Virtualization & migration ---
+  openshift-virtualization:
+    include: false
+    channel: stable                   # KubeVirt for running VMs
+
+  mtv:
+    include: false
+    channel: release-v2.6             # Migration Toolkit for Virtualization
+
+  # --- Service mesh ---
+  servicemesh3:
+    include: false
+    channel: stable                   # Istio service mesh
+
+  kiali:
+    include: false
+    channel: stable                   # Kiali service mesh console
+
+  # --- Node management ---
+  node-feature-discovery:
+    include: false
+    channel: stable                   # auto-label nodes by hardware features
+
+  node-maintenance:
+    include: false
+    channel: stable                   # cordoning + maintenance mode
+
+  # --- Automation ---
+  ansible-automation-platform:
+    include: false
+    channel: stable-2.6               # Ansible Controller + Hub
+
+  # --- Supply chain ---
+  trusted-artifact-signer:
+    include: false
+    channel: stable                   # Sigstore-based artifact signing
+
+  # --- LDAP ---
+  group-sync-operator:
+    include: false
+    channel: alpha                    # LDAP/AD group sync (community)
+
+  # --- Databases ---
+  cloudnative-pg:
+    include: false
+    channel: stable                   # CloudNativePG PostgreSQL operator
+
+  # --- Git ---
+  gitlab:
+    include: false
+    channel: stable                   # GitLab instance
+
+  gitlab-runner:
+    include: false
+    channel: stable                   # GitLab CI runner
+
+  # --- Artifact management ---
+  jfrog:
+    include: false
+    channel: stable                   # JFrog Artifactory HA
