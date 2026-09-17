@@ -161,5 +161,39 @@ uiPlugins:
     include: true
   troubleshootingPanel:
     include: true
+  monitoring:
+    include: true
+    clusterHealthAnalyzer:
+      enabled: true
+monitoringStacks:
+  - include: true
+    name: platform-monitoring
+    namespace: platform-monitoring
+    createNamespace: true
+    namespaceSelector:
+      matchExpressions:
+        - key: openshift.io/cluster-monitoring
+          operator: DoesNotExist
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: "2"
+        memory: 4Gi
+    prometheusConfig:
+      retention: 7d
+      replicas: 1
+      persistentVolumeClaim:
+        storageClassName: ocs-external-storagecluster-ceph-rbd
+        resources:
+          requests:
+            storage: 50Gi
+thanosQueriers:
+  - include: true
+    name: platform-querier
+    namespace: platform-monitoring
+    selector:
+      matchLabels: {}
 aap:
   include: true

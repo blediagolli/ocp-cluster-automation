@@ -6,6 +6,8 @@ kind: MonitoringStack
 metadata:
   name: {{ .name }}
   namespace: {{ .namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   {{- with .namespaceSelector }}
   namespaceSelector:

@@ -6,6 +6,8 @@ kind: ThanosQuerier
 metadata:
   name: {{ .name }}
   namespace: {{ .namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   {{- with .selector }}
   selector:
