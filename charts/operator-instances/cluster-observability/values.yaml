@@ -1,0 +1,20 @@
+uiPlugins:
+  dashboards:
+    include: false
+  troubleshootingPanel:
+    include: false
+  distributedTracing:
+    include: false
+    timeout: ""
+  logging:
+    include: false
+    lokiStack:
+      name: logging-lokistack
+  monitoring:
+    include: false
+    acm:
+      enabled: false
+      alertmanager:
+        url: ""
+      thanosQuerier:
+        url: ""

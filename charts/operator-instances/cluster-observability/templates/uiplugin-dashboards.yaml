@@ -1,0 +1,8 @@
+{{- if .Values.uiPlugins.dashboards.include }}
+apiVersion: observability.openshift.io/v1alpha1
+kind: UIPlugin
+metadata:
+  name: dashboards
+spec:
+  type: Dashboards
+{{- end }}

@@ -59,7 +59,7 @@ operators:
     include: false
     namespace: openshift-operators
     package: cluster-observability-operator
-    channel: change-me
+    channel: stable
     source: redhat-operators
     sourceNamespace: openshift-marketplace
     skipNamespace: true

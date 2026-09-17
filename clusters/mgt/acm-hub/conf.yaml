@@ -25,6 +25,7 @@ operatorInstanceCharts:
   - chart: acm-observability
   - chart: keycloak-instance
   - chart: quay-registry
+  - chart: cluster-observability
 deployOperators: true
 deployOverlay: true
 deployImport: false

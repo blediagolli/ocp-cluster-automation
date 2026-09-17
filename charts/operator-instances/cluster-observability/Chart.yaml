@@ -1,0 +1,4 @@
+apiVersion: v2
+name: cluster-observability
+description: Cluster Observability Operator UIPlugin instances
+version: 0.1.0

@@ -1,8 +1,102 @@
 # Session Handoff
 
-**Modified:** 2026-09-16
+**Modified:** 2026-09-17
 
 ## What changed this session
+
+### Session changes (2026-09-17) — Cluster Observability Operator instance chart
+
+#### New chart: `charts/operator-instances/cluster-observability/`
+- Creates UIPlugin CRs for the Cluster Observability Operator (COO)
+- 5 UIPlugin types supported: Dashboards, TroubleshootingPanel, DistributedTracing, Logging, Monitoring
+- Each type togglable via `include` flag (all default to `false`)
+- UIPlugin CRs are cluster-scoped — no namespace needed
+- `distributedTracing` auto-discovers TempoStack instances (only optional `timeout` config)
+- `logging` references a LokiStack by name (default: `logging-lokistack`)
+- `monitoring` supports optional ACM alertmanager/thanos-querier proxy config
+- API version: `observability.openshift.io/v1alpha1` (confirmed from live CRD on hub)
+- Template tests: 25/25 pass
+- E2E tests: operator CSV Succeeded, CRD exists on hub; UIPlugin resources pending first ArgoCD sync
+
+#### Hub cluster config updated
+- Added `- chart: cluster-observability` to `operatorInstanceCharts` in `clusters/mgt/acm-hub/conf.yaml`
+- Enabled `uiPlugins.dashboards` and `uiPlugins.troubleshootingPanel` in `clusters/mgt/acm-hub/operator-instances.yaml`
+
+#### Operator-deployment default fixed
+- Changed `cluster-observability` default channel from `change-me` to `stable` in `charts/operator-deployment/values.yaml`
+
+#### Reference docs updated
+- Added `cluster-observability` to `docs/reference/conf.yaml` under Recommended tier
+- Added full `uiPlugins` section to `docs/reference/operator-instances.yaml`
+
+### Session changes (2026-09-17) — Tier reclassification across all reference + day2 files
+
+#### Tier review completed for all 3 categories
+- Reviewed every chart/operator across platformCharts (31), operatorInstanceCharts (28), and operator-deployment (35) with user input on tier placement
+- Final tier assignments:
+  - **platformCharts** — Critical: 9 (tls-certificates, openshift-apiserver, openshift-ingress, openshift-proxy, openshift-oauth, openshift-image-registry, global-pull-secrets, openshift-machine-config, acm-managed-cluster), Recommended: 13 (etcd-backup, etcd-defrag, user-workload-monitoring, project-request-template, machine-health-checks, image-pruner, openshift-console, prometheus-rules, alertmanager-config, rbac, openshift-build, openshift-group-sync, acm-policies), Nice to Have: 9
+  - **operatorInstanceCharts** — Critical: 1 (openshift-gitops-instance), Recommended: 8 (acs-secured-cluster, compliance-scans, acm-multiclusterhub, acm-observability, acs-central, logging-lokistack, odf-storagecluster, local-storage-volumes), Nice to Have: 22
+  - **operator-deployment** — Critical: 2 (openshift-gitops, compliance-operator), Recommended: 6 (ACS, ACM, logging, loki, ODF, local-storage), Nice to Have: 27
+
+#### Files updated
+- `docs/reference/conf.yaml` — reorganized platformCharts and operatorInstanceCharts into tier sections
+- `docs/reference/platform-config.yaml` — fixed orphaned section dividers, charts properly grouped under Critical/Recommended/Nice to Have headers
+- `docs/reference/operator-deployment.yaml` — reorganized all 35 operators into tier sections, removed duplicates
+- `docs/reference/operator-instances.yaml` — reorganized all 31 chart blocks into tier sections, fixed duplicate section headers
+- `docs/reference/README.md` — updated tier description table to reflect final classifications
+- `docs/day2-cluster-config/README.md` — updated all tier tables (Critical/Recommended/Nice to Have) and cluster examples (Minimal, Full recommended)
+
+### Session changes (2026-09-17) — Reference values files + documentation restructure
+
+#### Reference values files created in `docs/reference/`
+- Created fully-commented example files for defining a cluster from scratch:
+  - `conf.yaml` — cluster identity, all 31 platformCharts + 28 operatorInstanceCharts listed, deploy toggles, team onboarding
+  - `platform-config.yaml` — all 31 platform-config charts with every field documented, organized by tier (Critical/Recommended/Nice to Have)
+  - `operator-instances.yaml` — all operator instance charts with full CR configuration examples (ACS, Quay, Keycloak OIDC, compliance, ODF, service mesh, etc.)
+  - `operator-deployment.yaml` — all available OLM operators with field reference (include, namespace, channel, source, clusterScoped, etc.)
+  - `provision.yaml` — all 4 provisioning platforms (AWS IPI, vSphere IPI, baremetal agent-based, platform-none) plus cross-platform options (proxy, NTP, networking, disconnected registry)
+  - `README.md` — index with quick-start copy workflow, file descriptions, values precedence, placeholder conventions
+- Files use placeholder values (YOUR_*, CHANGEME_*, example.com) — already sanitized by design, no sanitize.sh additions needed
+- Located in `docs/reference/` (not `clusters/`) to stay out of ApplicationSet generators
+
+#### Documentation restructure
+
+#### Cluster provisioning docs split into per-platform guides
+- Replaced single `docs/cluster-provisioning.md` and `docs/Baremetal.md` with `docs/cluster-provisioning/` directory:
+  - `README.md` — overview, provisioning models (IPI vs agent-based), cross-platform features (proxy, NTP, ignition, custom manifests, trust bundle, disconnected registry, FIPS), ApplicationSet mechanics, cluster definition files
+  - `aws.md` — AWS IPI provisioning (instance types, AZs, root volumes)
+  - `vsphere.md` — vSphere IPI provisioning (vCenter config, VM sizing, field reference)
+  - `baremetal.md` — agent-based baremetal (BMC/Redfish, NMState static networking, dual-stack, per-host BMC credentials)
+  - `platform-none.md` — agent-based platform:none (userManagedNetworking, sushy-EC2 emulator)
+  - `vsphere-control-plane.md` — hybrid mode (vSphere CP VMs + baremetal workers, split InfraEnvs, govc Job, vcsim simulator)
+- Removed old files: `docs/cluster-provisioning.md`, `docs/Baremetal.md`
+- Updated cross-references in: `README.md`, `docs/cluster-configuration.md`, `.github/scripts/sanitize.sh` (public README template)
+
+#### Cluster configuration docs split into per-topic guides
+- Replaced single `docs/cluster-configuration.md` with `docs/cluster-configuration/` directory:
+  - `README.md` — overview, 8 ApplicationSets table, chart categories summary, adding/removing charts, preserveResourcesOnDeletion
+  - `applicationsets.md` — matrix generator with elementsYaml, boolean gates, team-driven generators
+  - `chart-categories.md` — platform-config (31 charts), operator-instances (31 charts), operator-deployment, onboarding with full chart listings
+  - `values-precedence.md` — values chain, ignoreMissingValueFiles, include pattern, environment-level defaults
+  - `conf-yaml.md` — conf.yaml structure, field reference table, cluster directory layout
+- Removed old file: `docs/cluster-configuration.md`
+- Updated cross-references in: `README.md`, `docs/cluster-provisioning/README.md`, `.github/scripts/sanitize.sh` (public README template)
+
+#### Day 2 cluster config docs split into checklist + setup guides
+- Replaced single `docs/day2-cluster-config.md` with `docs/day2-cluster-config/` directory:
+  - `README.md` — slim checklist: tier tables (Critical/Recommended/Nice to Have), cluster examples (minimal, full recommended, hub)
+  - `acs-setup.md` — ACS secured cluster setup, resource tuning for small clusters, init bundle secrets and timing
+  - `oauth-keycloak.md` — Keycloak OIDC registration, client secret, chart values, pitfalls (ArgoCD+Groups, orphaned identities, issuer URL, hub TLS)
+  - `compliance.md` — compliance operator setup, TailoredProfiles
+- Removed old file: `docs/day2-cluster-config.md`
+- Moved `docs/letsencrypt-dns01-setup.md` into `docs/day2-cluster-config/letsencrypt-dns01-setup.md` — colocated with the cert-manager-certs use case
+- Updated cross-references in: `README.md`, `docs/cluster-configuration/README.md`, `.github/scripts/sanitize.sh` (public README template)
+
+#### Stale files removed
+- Removed `docs/architecture-operator-cr-coupling.md` — completed decision doc, context in git history
+- Removed `scripts/COMPLIANCE-REPORT-NEXT.md` — future work planning, should be a GitHub issue
+- Removed AI scripts from `scripts/`: `ai-common.sh`, `ai-fix`, `ai-implement`, `ai-plan`, `ai-research`, `ai-review`, `ai-run`, `bootstrap-ai-dev.sh`
+- Added AI scripts to sanitize.sh section 1 (non-release file removal) as a safety net
 
 ### Session changes (2026-09-16) — vSphere control plane automation for mixed clusters
 
