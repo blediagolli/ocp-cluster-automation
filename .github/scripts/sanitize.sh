@@ -51,6 +51,7 @@ fi
 echo "==> Removing non-release files..."
 
 find . -name 'HANDOFF.md' -delete
+find . -name 'CLAUDE.md' -delete
 
 rm -rf .ai-work .ruler .claude
 rm -rf terraform tools docs/ai-dev
