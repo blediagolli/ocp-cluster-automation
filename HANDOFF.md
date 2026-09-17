@@ -4,6 +4,35 @@
 
 ## What changed this session
 
+### Session changes (2026-09-17) — Quay chart: teams, repos, robot permissions, repo defaults
+
+#### Config bundle enhancements
+- `CREATE_PRIVATE_REPO_ON_PUSH` — repos created via push default to private
+- `FEATURE_RESTRICTED_USERS` + `RESTRICTED_USERS_WHITELIST` — restricts who can create repos/orgs to superusers + whitelist
+
+#### Init job enhancements (execution order: orgs → teams → repos → robots)
+- **Teams**: creates teams inside orgs with role (member/creator/admin), optional `syncGroup` to bind team membership to OIDC/LDAP group via team sync API
+- **Repositories**: pre-creates repos with explicit visibility (private by default)
+- **Robot permissions**: each robot account can now have a `permissions` list scoping it to specific repos with a role (read/write/admin)
+
+#### Values additions
+- `config.createPrivateOnPush` (default: true)
+- `config.restrictedUsers.include` / `config.restrictedUsers.whitelist`
+- `init.teams[].org/name/role/description/syncGroup`
+- `init.repositories[].org/name/visibility/description`
+- `init.robotAccounts[].permissions[].repo/role`
+
+#### Hub config updated
+- Added 4 teams: platform/admins (admin, syncGroup: admins), platform/devs (member, syncGroup: users), team-alpha/devs, team-beta/devs
+- Added repository: platform/base-images (private)
+- Scoped robot permissions: cicd→base-images(write), pull→base-images(read)
+- Enabled restricted users with whitelist [quayadmin, admin]
+
+#### Documentation
+- Created `docs/day2-cluster-config/quay-registry.md` — setup guide covering auth-type-at-first-boot constraint, org-per-team layout, team sync with OIDC groups, robot scoping, repo defaults, init job execution order, Keycloak client registration
+- Updated `docs/day2-cluster-config/README.md` — cross-reference to Quay setup guide
+- Updated `docs/reference/operator-instances.yaml` — all new fields with inline comments
+
 ### Session changes (2026-09-17) — Cluster Observability Operator instance chart
 
 #### New chart: `charts/operator-instances/cluster-observability/`

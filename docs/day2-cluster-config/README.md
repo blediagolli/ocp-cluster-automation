@@ -118,7 +118,7 @@ These depend on what runs on the cluster.
 | `ansible-automation-platform` | `aap-instance` | Ansible Controller + Hub | Ansible-driven automation |
 | `dev-spaces` | — | Eclipse Che cloud IDE | Developer self-service workspaces |
 | `developer-hub` | — | Red Hat Developer Hub (Backstage) | Internal developer portal |
-| `quay` + `quay-bridge` | `quay-registry` | Private container registry | On-prem registry |
+| `quay` + `quay-bridge` | `quay-registry` | Private container registry | On-prem registry. See [Quay registry setup](quay-registry.md) |
 | `keycloak` | `keycloak-instance` | Identity and SSO | Centralized IdP |
 | `trusted-artifact-signer` | `trusted-artifact-signer-instance` | Sigstore-based artifact signing | Supply chain security |
 | `group-sync-operator` | `group-sync` | LDAP/AD group sync (community operator) | LDAP/AD group sync |
