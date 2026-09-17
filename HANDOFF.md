@@ -7,16 +7,19 @@
 ### Session changes (2026-09-17) — Cluster Observability Operator instance chart
 
 #### New chart: `charts/operator-instances/cluster-observability/`
-- Creates UIPlugin CRs for the Cluster Observability Operator (COO)
-- 5 UIPlugin types supported: Dashboards, TroubleshootingPanel, DistributedTracing, Logging, Monitoring
-- Each type togglable via `include` flag (all default to `false`)
-- UIPlugin CRs are cluster-scoped — no namespace needed
-- `distributedTracing` auto-discovers TempoStack instances (only optional `timeout` config)
-- `logging` references a LokiStack by name (default: `logging-lokistack`)
-- `monitoring` supports optional ACM alertmanager/thanos-querier proxy config
-- API version: `observability.openshift.io/v1alpha1` (confirmed from live CRD on hub)
-- Template tests: 25/25 pass
-- E2E tests: operator CSV Succeeded, CRD exists on hub; UIPlugin resources pending first ArgoCD sync
+- Full COO instance chart covering all 3 CRD families:
+  - **UIPlugin** (5 types): Dashboards, TroubleshootingPanel, DistributedTracing, Logging, Monitoring
+  - **MonitoringStack**: per-namespace Prometheus + Alertmanager for multi-tenant monitoring
+  - **ThanosQuerier**: federated query across MonitoringStack instances
+- UIPlugin CRs are cluster-scoped; MonitoringStack/ThanosQuerier are namespace-scoped
+- UIPlugin fields match CRD schema verified from live cluster:
+  - `logging`: lokiStack.name, logsLimit, timeout, schema (viaq/otel/select)
+  - `monitoring`: acm (alertmanager + thanosQuerier proxy), clusterHealthAnalyzer, perses
+  - `distributedTracing`: timeout only (auto-discovers TempoStack)
+- MonitoringStack supports: namespaceSelector, resourceSelector, resources, prometheusConfig (retention, replicas, PVC, remoteWrite), alertmanagerConfig, tolerations
+- ThanosQuerier supports: selector + namespaceSelector for MonitoringStack federation
+- Template tests: 52/52 pass
+- E2E tests: 8/8 pass on hub — operator CSV Succeeded, all 3 CRDs exist, 2 UIPlugins Available=True and registered as console plugins
 
 #### Hub cluster config updated
 - Added `- chart: cluster-observability` to `operatorInstanceCharts` in `clusters/mgt/acm-hub/conf.yaml`
@@ -27,7 +30,7 @@
 
 #### Reference docs updated
 - Added `cluster-observability` to `docs/reference/conf.yaml` under Recommended tier
-- Added full `uiPlugins` section to `docs/reference/operator-instances.yaml`
+- Added full `uiPlugins`, `monitoringStacks`, and `thanosQueriers` sections to `docs/reference/operator-instances.yaml`
 
 ### Session changes (2026-09-17) — Tier reclassification across all reference + day2 files
 
@@ -35,8 +38,11 @@
 - Reviewed every chart/operator across platformCharts (31), operatorInstanceCharts (28), and operator-deployment (35) with user input on tier placement
 - Final tier assignments:
   - **platformCharts** — Critical: 9 (tls-certificates, openshift-apiserver, openshift-ingress, openshift-proxy, openshift-oauth, openshift-image-registry, global-pull-secrets, openshift-machine-config, acm-managed-cluster), Recommended: 13 (etcd-backup, etcd-defrag, user-workload-monitoring, project-request-template, machine-health-checks, image-pruner, openshift-console, prometheus-rules, alertmanager-config, rbac, openshift-build, openshift-group-sync, acm-policies), Nice to Have: 9
-  - **operatorInstanceCharts** — Critical: 1 (openshift-gitops-instance), Recommended: 8 (acs-secured-cluster, compliance-scans, acm-multiclusterhub, acm-observability, acs-central, logging-lokistack, odf-storagecluster, local-storage-volumes), Nice to Have: 22
+  - **operatorInstanceCharts** — Critical: 1 (openshift-gitops-instance), Recommended: 8 (acs-secured-cluster, compliance-scans, acm-multiclusterhub, acm-observability, acs-central, logging-lokistack, odf-storagecluster, local-storage-volumes), Nice to Have: 23 (includes cluster-observability)
   - **operator-deployment** — Critical: 2 (openshift-gitops, compliance-operator), Recommended: 6 (ACS, ACM, logging, loki, ODF, local-storage), Nice to Have: 27
+
+#### Cross-file consistency fix
+- Moved `cluster-observability` from Recommended to Nice to Have in `docs/reference/conf.yaml` and `docs/reference/operator-instances.yaml` to match user's tier decision and `docs/day2-cluster-config/README.md`
 
 #### Files updated
 - `docs/reference/conf.yaml` — reorganized platformCharts and operatorInstanceCharts into tier sections

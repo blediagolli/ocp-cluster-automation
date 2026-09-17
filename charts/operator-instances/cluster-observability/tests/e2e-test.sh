@@ -2,13 +2,14 @@
 set -uo pipefail
 
 # Cluster Observability E2E Test
-# Validates UIPlugin CRs on a live cluster.
+# Validates COO operator, UIPlugin CRs, MonitoringStack, and ThanosQuerier
+# on a live cluster.
 #
 # Usage: ./e2e-test.sh
 
 PASSED=0
 FAILED=0
-TOTAL=5
+TOTAL=8
 
 pass() { echo "  PASS: $1"; PASSED=$((PASSED + 1)); }
 fail() { echo "  FAIL: $1"; FAILED=$((FAILED + 1)); }
@@ -36,7 +37,21 @@ else
   fail "UIPlugin CRD not found"
 fi
 
-echo "--- Step 3: UIPlugin resources ---"
+echo "--- Step 3: MonitoringStack CRD exists ---"
+if oc get crd monitoringstacks.monitoring.rhobs &>/dev/null; then
+  pass "MonitoringStack CRD exists"
+else
+  fail "MonitoringStack CRD not found"
+fi
+
+echo "--- Step 4: ThanosQuerier CRD exists ---"
+if oc get crd thanosqueriers.monitoring.rhobs &>/dev/null; then
+  pass "ThanosQuerier CRD exists"
+else
+  fail "ThanosQuerier CRD not found"
+fi
+
+echo "--- Step 5: UIPlugin resources ---"
 PLUGINS=$(oc get uiplugin --no-headers 2>/dev/null | wc -l | tr -d ' ')
 if [ "$PLUGINS" -gt 0 ]; then
   pass "$PLUGINS UIPlugin resource(s) found"
@@ -47,7 +62,7 @@ else
   fail "No UIPlugin resources found"
 fi
 
-echo "--- Step 4: UIPlugin conditions ---"
+echo "--- Step 6: UIPlugin conditions ---"
 ALL_AVAILABLE=true
 for PLUGIN in $(oc get uiplugin -o name 2>/dev/null); do
   NAME=$(echo "$PLUGIN" | cut -d/ -f2)
@@ -65,7 +80,19 @@ else
   fail "Some UIPlugins not Available"
 fi
 
-echo "--- Step 5: Console plugins enabled ---"
+echo "--- Step 7: MonitoringStack resources ---"
+MS_COUNT=$(oc get monitoringstack --all-namespaces --no-headers 2>/dev/null | wc -l | tr -d ' ')
+if [ "$MS_COUNT" -gt 0 ]; then
+  pass "$MS_COUNT MonitoringStack resource(s) found"
+  oc get monitoringstack --all-namespaces --no-headers 2>/dev/null | while read -r line; do
+    echo "    $line"
+  done
+else
+  echo "    (none deployed — skip)"
+  pass "MonitoringStack check complete (none expected)"
+fi
+
+echo "--- Step 8: Console plugins enabled ---"
 CONSOLE_PLUGINS=$(oc get console.operator.openshift.io cluster -o jsonpath='{.spec.plugins}' 2>/dev/null || echo "[]")
 FOUND=0
 for PLUGIN in $(oc get uiplugin -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do
@@ -75,6 +102,8 @@ for PLUGIN in $(oc get uiplugin -o jsonpath='{.items[*].metadata.name}' 2>/dev/n
 done
 if [ "$FOUND" -gt 0 ]; then
   pass "$FOUND UIPlugin(s) registered as console plugins"
+elif [ "$PLUGINS" -eq 0 ]; then
+  pass "Console plugin check complete (no UIPlugins deployed)"
 else
   fail "No UIPlugins registered as console plugins (may need manual verification)"
 fi

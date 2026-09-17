@@ -8,4 +8,15 @@ spec:
   logging:
     lokiStack:
       name: {{ .Values.uiPlugins.logging.lokiStack.name }}
+    {{- with .Values.uiPlugins.logging.logsLimit }}
+    {{- if gt (int .) 0 }}
+    logsLimit: {{ . }}
+    {{- end }}
+    {{- end }}
+    {{- with .Values.uiPlugins.logging.timeout }}
+    timeout: {{ . }}
+    {{- end }}
+    {{- with .Values.uiPlugins.logging.schema }}
+    schema: {{ . }}
+    {{- end }}
 {{- end }}

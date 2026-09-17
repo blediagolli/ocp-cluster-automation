@@ -5,13 +5,24 @@ metadata:
   name: monitoring
 spec:
   type: Monitoring
-  {{- if .Values.uiPlugins.monitoring.acm.enabled }}
+  {{- $hasConfig := or .Values.uiPlugins.monitoring.acm.enabled .Values.uiPlugins.monitoring.clusterHealthAnalyzer.enabled .Values.uiPlugins.monitoring.perses.enabled }}
+  {{- if $hasConfig }}
   monitoring:
+    {{- if .Values.uiPlugins.monitoring.acm.enabled }}
     acm:
       enabled: true
       alertmanager:
         url: {{ .Values.uiPlugins.monitoring.acm.alertmanager.url | quote }}
       thanosQuerier:
         url: {{ .Values.uiPlugins.monitoring.acm.thanosQuerier.url | quote }}
+    {{- end }}
+    {{- if .Values.uiPlugins.monitoring.clusterHealthAnalyzer.enabled }}
+    clusterHealthAnalyzer:
+      enabled: true
+    {{- end }}
+    {{- if .Values.uiPlugins.monitoring.perses.enabled }}
+    perses:
+      enabled: true
+    {{- end }}
   {{- end }}
 {{- end }}

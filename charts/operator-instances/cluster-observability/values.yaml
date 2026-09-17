@@ -10,6 +10,9 @@ uiPlugins:
     include: false
     lokiStack:
       name: logging-lokistack
+    logsLimit: 0
+    timeout: ""
+    schema: ""
   monitoring:
     include: false
     acm:
@@ -18,3 +21,44 @@ uiPlugins:
         url: ""
       thanosQuerier:
         url: ""
+    clusterHealthAnalyzer:
+      enabled: false
+    perses:
+      enabled: false
+
+monitoringStacks: []
+# - include: true
+#   name: my-stack
+#   namespace: my-namespace
+#   namespaceSelector:
+#     matchLabels: {}
+#   resourceSelector:
+#     matchLabels: {}
+#   resources:
+#     requests:
+#       cpu: 500m
+#       memory: 512Mi
+#     limits:
+#       cpu: "1"
+#       memory: 1Gi
+#   prometheusConfig:
+#     retention: 24h
+#     replicas: 1
+#     scrapeInterval: 30s
+#     persistentVolumeClaim:
+#       storageClassName: ""
+#       resources:
+#         requests:
+#           storage: 50Gi
+#     remoteWrite: []
+#   alertmanagerConfig: {}
+#   tolerations: []
+
+thanosQueriers: []
+# - include: true
+#   name: my-querier
+#   namespace: my-namespace
+#   selector:
+#     matchLabels: {}
+#   namespaceSelector:
+#     matchLabels: {}
