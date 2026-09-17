@@ -56,3 +56,5 @@ securedCluster:
   monitoring:
     openshift:
       enabled: true
+  consolePlugin:
+    include: false

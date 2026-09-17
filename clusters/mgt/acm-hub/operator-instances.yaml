@@ -62,6 +62,8 @@ centralConsoleLink:
 securedCluster:
   include: true
   secretMode: "job"
+  consolePlugin:
+    include: true
 multiClusterObservability:
   include: true
 observabilityConsoleLink:
