@@ -131,6 +131,9 @@ jobs:
           # Remove the .github/sanitize.env and .github/scripts from the public copy
           rm -rf .github/
 
+          # Clear the default credential header injected by actions/checkout
+          git config --unset-all http.https://github.com/.extraheader || true
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
