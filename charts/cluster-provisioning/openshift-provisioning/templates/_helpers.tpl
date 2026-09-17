@@ -24,6 +24,12 @@
 {{- end -}}
 {{- end -}}
 
+{{- define "cluster.useExternalSecret" -}}
+{{- $es := .root.Values.externalSecrets -}}
+{{- $cfg := index $es .key | default dict -}}
+{{- if and $es.enabled ($cfg.path | default "") }}true{{- else }}false{{- end -}}
+{{- end -}}
+
 {{- define "imagePullSecret" }}
 {{- with .Values.imageContentSources }}
 {{- printf "{\"auths\":{\"%s\":{\"username\":\"%s\",\"password\":\"%s\",\"email\":\"%s\",\"auth\":\"%s\"}}}" .registry .username .password .email (printf "%s:%s" .username .password | b64enc) | b64enc }}

@@ -275,3 +275,61 @@ imageContentSources:
   # username: registry-user
   # password: registry-password
   # email: platform@example.com
+
+# ExternalSecrets (replace inline credentials with external secret store references)
+externalSecrets:
+  enabled: false
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  refreshInterval: 1h
+  # Pull secret
+  pullSecret: {}
+  #   path: secret/data/openshift/pull-secret
+  #   properties:
+  #     - secretKey: .dockerconfigjson
+  #       property: .dockerconfigjson
+  # AWS IPI credentials
+  awsCreds: {}
+  #   path: secret/data/aws/credentials
+  #   properties:
+  #     - secretKey: aws_access_key_id
+  #       property: aws_access_key_id
+  #     - secretKey: aws_secret_access_key
+  #       property: aws_secret_access_key
+  # vSphere IPI credentials
+  vsphereCreds: {}
+  #   path: secret/data/vsphere/credentials
+  #   properties:
+  #     - secretKey: username
+  #       property: username
+  #     - secretKey: password
+  #       property: password
+  # vSphere IPI CA certificate
+  vsphereCerts: {}
+  #   path: secret/data/vsphere/ca
+  #   properties:
+  #     - secretKey: .cacert
+  #       property: cacert
+  # vSphere control plane credentials (agent-based mixed cluster)
+  vsphereControlPlaneCreds: {}
+  #   path: secret/data/vsphere-cp/credentials
+  #   properties:
+  #     - secretKey: username
+  #       property: username
+  #     - secretKey: password
+  #       property: password
+  # BMC credentials (shared default for all bare metal hosts)
+  bmcCreds: {}
+  #   path: secret/data/bmc/credentials
+  #   properties:
+  #     - secretKey: username
+  #       property: username
+  #     - secretKey: password
+  #       property: password
+  # SSH private key (IPI platforms)
+  sshPrivateKey: {}
+  #   path: secret/data/openshift/ssh
+  #   properties:
+  #     - secretKey: ssh-privatekey
+  #       property: ssh-privatekey

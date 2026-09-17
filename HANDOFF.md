@@ -17,8 +17,24 @@
 - govc script and ansible playbook now set `spec.hostname` on each Agent CR during approval (DHCP does not always set hostnames on discovery-booted VMs)
 - Masters get `<cluster>-master-<N>`, VM workers get `<cluster>-vsphere-worker-<N>` — matching the VM names in vSphere
 
+#### ExternalSecrets support
+- Added centralized `externalSecrets` section in `values.yaml` with shared `secretStoreRef` and `refreshInterval`
+- Per-secret paths: `pullSecret`, `awsCreds`, `vsphereCreds`, `vsphereCerts`, `vsphereControlPlaneCreds`, `bmcCreds`, `sshPrivateKey`
+- When `externalSecrets.enabled: true` and a secret's `path` is set, an `ExternalSecret` CR is created instead of a plain `Secret`
+- BMC: hosts with per-host credential overrides still get plain Secrets; only hosts using the shared default get ExternalSecrets
+- Helper `cluster.useExternalSecret` in `_helpers.tpl` gates each secret template
+
 #### Files changed
 - `charts/cluster-provisioning/openshift-provisioning/values.yaml`
+- `charts/cluster-provisioning/openshift-provisioning/templates/_helpers.tpl`
+- `charts/cluster-provisioning/openshift-provisioning/templates/externalsecret.yaml` (new)
+- `charts/cluster-provisioning/openshift-provisioning/templates/secret-pull-secret.yaml`
+- `charts/cluster-provisioning/openshift-provisioning/templates/secret-aws-creds.yaml`
+- `charts/cluster-provisioning/openshift-provisioning/templates/secret-vsphere-creds.yaml`
+- `charts/cluster-provisioning/openshift-provisioning/templates/secret-vsphere-certs.yaml`
+- `charts/cluster-provisioning/openshift-provisioning/templates/secret-vsphere-cp-creds.yaml`
+- `charts/cluster-provisioning/openshift-provisioning/templates/secret-bmc-credentials.yaml`
+- `charts/cluster-provisioning/openshift-provisioning/templates/secret-ssh-private-key.yaml`
 - `charts/cluster-provisioning/openshift-provisioning/files/vsphere-cp-govc.sh`
 - `charts/cluster-provisioning/openshift-provisioning/files/vsphere-cp-playbook.yml`
 - `charts/cluster-provisioning/openshift-provisioning/templates/job-vsphere-cp-govc.yaml`

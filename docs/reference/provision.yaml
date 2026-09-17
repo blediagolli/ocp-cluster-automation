@@ -255,3 +255,57 @@ imageContentSources:
   # username: registry-user
   # password: registry-password
   # email: platform@example.com
+
+# ── ExternalSecrets (replace inline credentials with external secret store) ────
+# When enabled, secrets with a configured path create ExternalSecret CRs instead
+# of plain Secrets. Secrets without a path still use inline values.
+
+# externalSecrets:
+#   enabled: false
+#   secretStoreRef:
+#     name: vault-backend                # ClusterSecretStore or SecretStore name
+#     kind: ClusterSecretStore
+#   refreshInterval: 1h                  # how often ESO syncs from the store
+#   pullSecret:                          # pull secret (.dockerconfigjson)
+#     path: secret/data/openshift/pull-secret
+#     properties:
+#       - secretKey: .dockerconfigjson
+#         property: .dockerconfigjson
+#   awsCreds:                            # AWS access key + secret key
+#     path: secret/data/aws/credentials
+#     properties:
+#       - secretKey: aws_access_key_id
+#         property: aws_access_key_id
+#       - secretKey: aws_secret_access_key
+#         property: aws_secret_access_key
+#   vsphereCreds:                        # vSphere IPI credentials
+#     path: secret/data/vsphere/credentials
+#     properties:
+#       - secretKey: username
+#         property: username
+#       - secretKey: password
+#         property: password
+#   vsphereCerts:                        # vSphere IPI CA certificate
+#     path: secret/data/vsphere/ca
+#     properties:
+#       - secretKey: .cacert
+#         property: cacert
+#   vsphereControlPlaneCreds:            # vSphere CP automation credentials
+#     path: secret/data/vsphere-cp/credentials
+#     properties:
+#       - secretKey: username
+#         property: username
+#       - secretKey: password
+#         property: password
+#   bmcCreds:                            # shared BMC credentials (hosts with per-host overrides still use plain Secrets)
+#     path: secret/data/bmc/credentials
+#     properties:
+#       - secretKey: username
+#         property: username
+#       - secretKey: password
+#         property: password
+#   sshPrivateKey:                       # SSH private key (IPI platforms)
+#     path: secret/data/openshift/ssh
+#     properties:
+#       - secretKey: ssh-privatekey
+#         property: ssh-privatekey
