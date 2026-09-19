@@ -1,8 +1,8 @@
 cluster:
-  name: aws-test
+  name: example-cluster
   environment: dev
-  address: "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/aws-test"
-  baseDomain: sandbox3321.opentlc.com
+  address: "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/example-cluster"
+  baseDomain: example.com
 platformCharts:
   - chart: tls-certificates
   - chart: openshift-apiserver

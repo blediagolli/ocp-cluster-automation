@@ -2,10 +2,10 @@
 # by the cert-manager-certs chart. Enables Let's Encrypt via DNS01/Route53.
 acmeIssuer:
   include: true
-  email: bledi.agolli@gmail.com
+  email: your-email@example.com
   dns01:
     region: us-east-2
-    hostedZoneID: Z006467336SWDGRD2WSM0
+    hostedZoneID: YOUR_HOSTED_ZONE_ID
     recursiveNameserversOnly: true
 
 # --- ACS secured cluster (minimal) ---

@@ -79,7 +79,7 @@ charts/operator-instances/cert-manager-certs/
 │   └── ca-bundle.yaml           ← (unused — no custom CA needed)
 └── values.yaml                  ← acmeIssuer defaults
 
-clusters/dev/aws-test/
+clusters/dev/example-cluster/
 ├── operator-instances.yaml      ← enables acmeIssuer with zone ID + region
 └── platform-config.yaml         ← points issuerRef at "letsencrypt"
 ```
@@ -195,10 +195,10 @@ Both contain the same `certificate-authority-data` and both need to be patched.
 
 No. Hive only generates this secret at install time. It does not reconcile the kubeconfig contents afterward, so the patch persists. If cert-manager renews the Let's Encrypt cert, no action is needed — the new cert is still signed by the same trusted CA chain.
 
-## Current state (aws-test)
+## Current state (example-cluster)
 
 - **API cert:** Let's Encrypt, issuer CN=YE1, expires Dec 15 2026
-- **Ingress cert:** Let's Encrypt, issuer CN=YE2, wildcard `*.apps.aws-test.sandbox3321.opentlc.com`
+- **Ingress cert:** Let's Encrypt, issuer CN=YE2, wildcard `*.apps.example-cluster.example.com`
 - **Renewal:** automatic, 15 days before expiry (renewBefore: 360h)
 - **Hive admin kubeconfig:** patched to remove old CA data (2026-09-16)
 - **Old self-signed resources:** orphaned on cluster (selfsigned/cluster-ca issuers, CA bundle Job) — safe to prune

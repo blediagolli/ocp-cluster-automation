@@ -149,9 +149,9 @@ deployOperators: true
 
 This gives you: TLS (Let's Encrypt or self-signed CA), API server + ingress config, identity, registry, node config, and GitOps. Everything else is additive.
 
-### Full recommended (aws-test today)
+### Full recommended (example-cluster today)
 
-aws-test runs the Critical tier plus all Recommended charts including Keycloak OIDC auth:
+example-cluster runs the Critical tier plus all Recommended charts including Keycloak OIDC auth:
 
 ```yaml
 # conf.yaml

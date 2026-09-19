@@ -6,9 +6,9 @@ The `conf.yaml` file is the cluster identity. It controls which ApplicationSets 
 
 ```yaml
 cluster:
-  name: aws-test
+  name: example-cluster
   environment: dev
-  address: "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/aws-test"
+  address: "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/example-cluster"
   baseDomain: example.com
 
 # Charts to deploy
@@ -69,7 +69,7 @@ Remove the chart entry from `platformCharts` or `operatorInstanceCharts`. The Ap
 Each cluster is defined by a directory under `clusters/<env>/<name>/` containing:
 
 ```
-clusters/dev/aws-test/
+clusters/dev/example-cluster/
   conf.yaml                # cluster identity and chart lists (this file)
   platform-config.yaml     # values for platform-config charts
   operator-instances.yaml  # values for operator CR charts

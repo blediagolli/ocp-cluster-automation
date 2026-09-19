@@ -6,7 +6,7 @@ set -uo pipefail
 # RoleBindings) exist and have the correct roleRef and subjects.
 #
 # Usage: ./e2e-test.sh [values-file]
-# Example: ./e2e-test.sh ../../clusters/dev/aws-test/platform-config.yaml
+# Example: ./e2e-test.sh ../../clusters/dev/example-cluster/platform-config.yaml
 
 VALUES_FILE="${1:-}"
 PASSED=0

@@ -5,7 +5,7 @@ apiServer:
   servingCerts:
     namedCertificates:
       - names:
-          - api.aws-test.sandbox3321.opentlc.com
+          - api.example-cluster.example.com
         servingCertificate:
           name: cert-manager-api-cert
 ingress:
@@ -77,7 +77,7 @@ oauth:
         clientID: openshift
         clientSecret:
           name: openshift-oidc-client-secret
-        issuer: "https://sso.apps.cluster-c8444.dyn.redhatworkshops.io/realms/sso"
+        issuer: "https://sso.apps.CLUSTER_DOMAIN/realms/sso"
         claims:
           preferredUsername:
             - preferred_username
@@ -96,7 +96,7 @@ groupSync:
   include: true
   provider: keycloak
   keycloak:
-    url: "https://sso.apps.cluster-c8444.dyn.redhatworkshops.io"
+    url: "https://sso.apps.CLUSTER_DOMAIN"
     realm: sso
     credentialsSecretName: keycloak-group-sync
     groupMappings:
@@ -150,7 +150,7 @@ imageRegistry:
   storage:
     type: s3
     s3:
-      bucket: aws-test-wtxdp-image-registry-us-east-2
+      bucket: YOUR_IMAGE_REGISTRY_BUCKET
       region: us-east-2
       encrypt: true
 
@@ -272,10 +272,10 @@ certificates:
     include: true
     secretName: cert-manager-api-cert
     dnsNames:
-      - api.aws-test.sandbox3321.opentlc.com
+      - api.example-cluster.example.com
   ingress:
     include: true
     secretName: cert-manager-ingress-cert
     dnsNames:
-      - "*.apps.aws-test.sandbox3321.opentlc.com"
-      - apps.aws-test.sandbox3321.opentlc.com
+      - "*.apps.example-cluster.example.com"
+      - apps.example-cluster.example.com

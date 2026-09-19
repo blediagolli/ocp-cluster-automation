@@ -52,7 +52,7 @@ initBundle:
   distributeAuth: true
 oidc:
   include: true
-  clientSecret: "c83d33ea01afb1df37482cfd96ea7c81"
+  clientSecret: "CHANGEME_STACKROX_OIDC_CLIENT_SECRET"
 defaultTLS:
   include: true
 trustedCA:
@@ -83,16 +83,16 @@ quayRegistry:
         - admin
   oidc:
     include: true
-    server: "https://sso.apps.cluster-c8444.dyn.redhatworkshops.io/realms/sso/"
+    server: "https://sso.apps.CLUSTER_DOMAIN/realms/sso/"
     clientId: "quay"
-    clientSecret: "5QU2ntb5V1CSU6WaZx9ZoaEb0JpxdMqi"
+    clientSecret: "CHANGEME_QUAY_OIDC_CLIENT_SECRET"
   bridge:
     include: true
-    oauthToken: "EPBol6rTiU6J2V3sOUBHrNl7j9prug1kkGEZwbsc"
+    oauthToken: "CHANGEME_QUAY_BRIDGE_OAUTH_TOKEN"
   init:
     include: true
-    quayUrl: "https://registry-quay-quay-enterprise.apps.cluster-c8444.dyn.redhatworkshops.io"
-    oauthToken: "B07UVAT0XH6NP3RF0R47HM8RES20K0PJPSWULOHI"
+    quayUrl: "https://registry-quay-quay-enterprise.apps.CLUSTER_DOMAIN"
+    oauthToken: "CHANGEME_QUAY_INIT_OAUTH_TOKEN"
     organizations:
       - name: platform
         email: platform@demo.redhat.com
@@ -157,7 +157,7 @@ realm:
         - admins
       credentials:
         - type: password
-          value: FqfbV37qhS3tp8Ud
+          value: CHANGEME_KEYCLOAK_ADMIN_PASSWORD
           temporary: false
     - username: user1
       email: user1@demo.redhat.com
@@ -169,30 +169,30 @@ realm:
         - users
       credentials:
         - type: password
-          value: JNNSxskZxNPg87xD
+          value: CHANGEME_KEYCLOAK_USER_PASSWORD
           temporary: false
   clients:
     quay:
       include: true
-      clientSecret: "5QU2ntb5V1CSU6WaZx9ZoaEb0JpxdMqi"
+      clientSecret: "CHANGEME_QUAY_OIDC_CLIENT_SECRET"
       redirectUris:
-        - "https://registry-quay-quay-enterprise.apps.cluster-c8444.dyn.redhatworkshops.io/oauth2/callback"
+        - "https://registry-quay-quay-enterprise.apps.CLUSTER_DOMAIN/oauth2/callback"
       webOrigins:
-        - "https://registry-quay-quay-enterprise.apps.cluster-c8444.dyn.redhatworkshops.io"
+        - "https://registry-quay-quay-enterprise.apps.CLUSTER_DOMAIN"
     openshift:
       include: true
-      clientSecret: "623e3ac823ae36d88b1a8bf4f70aa159"
+      clientSecret: "CHANGEME_OPENSHIFT_OIDC_CLIENT_SECRET"
       redirectUris:
-        - "https://oauth-openshift.apps.aws-test.sandbox3321.opentlc.com/oauth2callback/keycloak"
+        - "https://oauth-openshift.apps.example-cluster.example.com/oauth2callback/keycloak"
       webOrigins:
-        - "https://oauth-openshift.apps.aws-test.sandbox3321.opentlc.com"
+        - "https://oauth-openshift.apps.example-cluster.example.com"
     stackrox:
       include: true
-      clientSecret: "c83d33ea01afb1df37482cfd96ea7c81"
+      clientSecret: "CHANGEME_STACKROX_OIDC_CLIENT_SECRET"
       redirectUris:
-        - "https://central-stackrox.apps.cluster-c8444.dyn.redhatworkshops.io/sso/providers/oidc/callback"
+        - "https://central-stackrox.apps.CLUSTER_DOMAIN/sso/providers/oidc/callback"
       webOrigins:
-        - "https://central-stackrox.apps.cluster-c8444.dyn.redhatworkshops.io"
+        - "https://central-stackrox.apps.CLUSTER_DOMAIN"
 uiPlugins:
   dashboards:
     include: true
@@ -222,7 +222,7 @@ monitoringStacks:
     prometheusConfig:
       replicas: 1
       persistentVolumeClaim:
-        storageClassName: ocs-external-storagecluster-ceph-rbd
+        storageClassName: YOUR_STORAGE_CLASS
         resources:
           requests:
             storage: 50Gi

@@ -57,17 +57,17 @@ secretStore:
 provider: cert-manager
 certManager:
   issuerRef:
-    name: acme-bifrost-production-ddns
+    name: YOUR_CLUSTER_ISSUER
     kind: ClusterIssuer
 certificates:
   api:
     include: true
     secretName: cert-manager-api-cert
     dnsNames:
-      - api.cluster-c8444.dyn.redhatworkshops.io
+      - api.CLUSTER_DOMAIN
   ingress:
     include: true
     secretName: cert-manager-ingress-cert
     dnsNames:
-      - "*.apps.cluster-c8444.dyn.redhatworkshops.io"
-      - apps.cluster-c8444.dyn.redhatworkshops.io
+      - "*.apps.CLUSTER_DOMAIN"
+      - apps.CLUSTER_DOMAIN
