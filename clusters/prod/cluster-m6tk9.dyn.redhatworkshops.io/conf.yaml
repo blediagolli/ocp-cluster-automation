@@ -11,9 +11,9 @@ platformCharts:
 operatorInstanceCharts:
   - chart: acs-secured-cluster
   - chart: aap-instance
-deployOperators: true
+deployOperators: false
 deployOverlay: false
-deployImport: true
+deployImport: false
 deployProvision: false
 teams:
   - team: team-charlie

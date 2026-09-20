@@ -34,10 +34,10 @@ operatorInstanceCharts:
   - chart: cert-manager-certs
   - chart: acs-secured-cluster
   - chart: compliance-scans
-deployOperators: true
+deployOperators: false
 deployOverlay: false
-deployImport: true
-deployProvision: true
+deployImport: false
+deployProvision: false
 teams:
   - team: team-alpha
   - team: team-beta
