@@ -5,29 +5,30 @@ cluster:
   name: acm-hub
   environment: mgt
   address: "https://kubernetes.default.svc"
-  baseDomain: "apps.cluster-c8444.dyn.redhatworkshops.io"
-  storageClass: "ocs-external-storagecluster-ceph-rbd"
+  baseDomain: "apps.acm-hub.sandbox1269.opentlc.com"
+  storageClass: "gp3-csi"
 platformCharts:
-  - chart: user-workload-monitoring
-  - chart: project-request-template
-  - chart: etcd-defrag
-  - chart: etcd-backup
   - chart: tls-certificates
-  - chart: openshift-apiserver
-  - chart: openshift-ingress
-  - chart: vault-server
+  # - chart: user-workload-monitoring
+  # - chart: project-request-template
+  # - chart: etcd-defrag
+  # - chart: etcd-backup
+  # - chart: openshift-apiserver
+  # - chart: openshift-ingress
+  # - chart: vault-server
 operatorInstanceCharts:
-  - chart: openshift-gitops-instance
-  - chart: acm-multiclusterhub
-  - chart: acs-secured-cluster
-  - chart: aap-instance
-  - chart: acs-central
-  - chart: acm-observability
-  - chart: keycloak-instance
-  - chart: quay-registry
-  - chart: cluster-observability
+  - chart: cert-manager-certs
+  # - chart: openshift-gitops-instance
+  # - chart: acm-multiclusterhub
+  # - chart: acs-secured-cluster
+  # - chart: aap-instance
+  # - chart: acs-central
+  # - chart: acm-observability
+  # - chart: keycloak-instance
+  # - chart: quay-registry
+  # - chart: cluster-observability
 deployOperators: true
-deployOverlay: true
+deployOverlay: false
 deployImport: false
 deployProvision: false
 teams: []

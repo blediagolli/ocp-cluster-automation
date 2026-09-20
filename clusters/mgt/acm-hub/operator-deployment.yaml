@@ -3,6 +3,9 @@
 # to skip an operator inherited from the environment level.
 # Precedence: chart defaults < env/<env>/operator-deployment.yaml < this file.
 operators:
+  cert-manager:
+    include: true
+    channel: stable-v1
   openshift-gitops:
     include: true
     channel: gitops-1.21

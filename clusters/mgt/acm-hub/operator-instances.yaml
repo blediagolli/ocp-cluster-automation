@@ -2,6 +2,17 @@
 # Custom Resources (CRs) for this cluster. Each top-level key maps to a section
 # in the corresponding operator-instances Helm chart.
 # Precedence: chart defaults < env/<env>/operator-instances.yaml < this file.
+acmeIssuer:
+  include: true
+  name: letsencrypt
+  server: https://acme-v02.api.letsencrypt.org/directory
+  email: bagolli@redhat.com
+  privateKeySecretName: letsencrypt-account-key
+  dns01:
+    region: us-east-2
+    hostedZoneID: Z1017727P1RV1ZA608IX
+    credentialsSecretName: cert-manager-dns01-credentials
+    recursiveNameserversOnly: true
 argocd:
   include: true
 clusterRoleBinding:
@@ -83,7 +94,7 @@ quayRegistry:
         - admin
   oidc:
     include: true
-    server: "https://sso.apps.cluster-c8444.dyn.redhatworkshops.io/realms/sso/"
+    server: "https://sso.apps.acm-hub.sandbox1269.opentlc.com/realms/sso/"
     clientId: "quay"
     clientSecret: "5QU2ntb5V1CSU6WaZx9ZoaEb0JpxdMqi"
   bridge:
@@ -91,7 +102,7 @@ quayRegistry:
     oauthToken: "EPBol6rTiU6J2V3sOUBHrNl7j9prug1kkGEZwbsc"
   init:
     include: true
-    quayUrl: "https://registry-quay-quay-enterprise.apps.cluster-c8444.dyn.redhatworkshops.io"
+    quayUrl: "https://registry-quay-quay-enterprise.apps.acm-hub.sandbox1269.opentlc.com"
     oauthToken: "B07UVAT0XH6NP3RF0R47HM8RES20K0PJPSWULOHI"
     organizations:
       - name: platform
@@ -176,23 +187,23 @@ realm:
       include: true
       clientSecret: "5QU2ntb5V1CSU6WaZx9ZoaEb0JpxdMqi"
       redirectUris:
-        - "https://registry-quay-quay-enterprise.apps.cluster-c8444.dyn.redhatworkshops.io/oauth2/callback"
+        - "https://registry-quay-quay-enterprise.apps.acm-hub.sandbox1269.opentlc.com/oauth2/callback"
       webOrigins:
-        - "https://registry-quay-quay-enterprise.apps.cluster-c8444.dyn.redhatworkshops.io"
+        - "https://registry-quay-quay-enterprise.apps.acm-hub.sandbox1269.opentlc.com"
     openshift:
       include: true
       clientSecret: "623e3ac823ae36d88b1a8bf4f70aa159"
       redirectUris:
-        - "https://oauth-openshift.apps.aws-test.sandbox3321.opentlc.com/oauth2callback/keycloak"
+        - "https://oauth-openshift.apps.acm-hub.sandbox1269.opentlc.com/oauth2callback/keycloak"
       webOrigins:
-        - "https://oauth-openshift.apps.aws-test.sandbox3321.opentlc.com"
+        - "https://oauth-openshift.apps.acm-hub.sandbox1269.opentlc.com"
     stackrox:
       include: true
       clientSecret: "c83d33ea01afb1df37482cfd96ea7c81"
       redirectUris:
-        - "https://central-stackrox.apps.cluster-c8444.dyn.redhatworkshops.io/sso/providers/oidc/callback"
+        - "https://central-stackrox.apps.acm-hub.sandbox1269.opentlc.com/sso/providers/oidc/callback"
       webOrigins:
-        - "https://central-stackrox.apps.cluster-c8444.dyn.redhatworkshops.io"
+        - "https://central-stackrox.apps.acm-hub.sandbox1269.opentlc.com"
 uiPlugins:
   dashboards:
     include: true
@@ -222,7 +233,7 @@ monitoringStacks:
     prometheusConfig:
       replicas: 1
       persistentVolumeClaim:
-        storageClassName: ocs-external-storagecluster-ceph-rbd
+        storageClassName: gp3-csi
         resources:
           requests:
             storage: 50Gi

@@ -44,7 +44,7 @@ ingress:
     manageDefault: true
     default:
       placement: node-role.kubernetes.io/worker
-      replicas: 6
+      replicas: 3
       endpointPublishingStrategy: HostNetwork
       tolerations: []
     defaultCertificate:
@@ -57,17 +57,17 @@ secretStore:
 provider: cert-manager
 certManager:
   issuerRef:
-    name: acme-bifrost-production-ddns
+    name: letsencrypt
     kind: ClusterIssuer
 certificates:
   api:
     include: true
     secretName: cert-manager-api-cert
     dnsNames:
-      - api.cluster-c8444.dyn.redhatworkshops.io
+      - api.acm-hub.sandbox1269.opentlc.com
   ingress:
     include: true
     secretName: cert-manager-ingress-cert
     dnsNames:
-      - "*.apps.cluster-c8444.dyn.redhatworkshops.io"
-      - apps.cluster-c8444.dyn.redhatworkshops.io
+      - "*.apps.acm-hub.sandbox1269.opentlc.com"
+      - apps.acm-hub.sandbox1269.opentlc.com

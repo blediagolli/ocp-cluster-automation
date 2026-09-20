@@ -1,0 +1,49 @@
+# Bootstrap values for the ACM hub cluster on AWS.
+# Used by: ./scripts/bootstrap-aws-hub.sh clusters/mgt/acm-hub/bootstrap.yaml
+#
+# This file follows the same structure as the provisioning chart values
+# so the configuration is consistent across bootstrap and spoke provisioning.
+#
+# Sensitive values (pull secret, SSH keys) should be provided via env vars
+# or file references rather than committed inline:
+#   PULL_SECRET_FILE=~/.openshift/pull-secret.json
+#   SSH_PUBLIC_KEY_FILE=~/.ssh/id_ed25519.pub
+
+cluster:
+  name: acm-hub
+  baseDomain: sandbox1269.opentlc.com
+  networkType: OVNKubernetes
+  fips: false
+  # sshPublicKey: "ssh-ed25519 AAAA..."     # or use SSH_PUBLIC_KEY_FILE env var
+  # pullSecret: '{"auths":{...}}'           # or use PULL_SECRET_FILE env var
+
+pullSecretFile: ~/.openshift/pull-secret.json
+sshPublicKeyFile: ~/.ssh/acm-hub.pub
+
+masters:
+  count: 3
+
+workers:
+  count: 0
+
+aws:
+  region: us-east-2
+  # hostedZone: ZRZNB86ZNOM3A  # requires existing subnets; omit for new VPC
+  masters:
+    instanceType: m5.2xlarge
+    zones: []
+    rootVolume:
+      size: 200
+      type: gp3
+
+additionalVolume:
+  enabled: true
+  size: 1000
+  type: gp3
+  device: /dev/sdb
+
+# proxy:
+#   enabled: false
+#   httpProxy: "http://proxy.internal.example.com:3128"
+#   httpsProxy: "http://proxy.internal.example.com:3128"
+#   noProxy: ".internal.example.com,.cluster.local,10.128.0.0/14,172.30.0.0/16"
