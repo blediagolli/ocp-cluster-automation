@@ -6,7 +6,7 @@ All Helm charts are organized by category under `charts/`. Each category corresp
 
 Day-2 platform configuration charts. Each chart manages a specific OpenShift subsystem — TLS, OAuth, API server settings, ingress, monitoring, RBAC, etc. Driven by the `platformCharts` list in `conf.yaml` and configured via `platform-config.yaml`.
 
-Charts: `acm-managed-cluster`, `acm-policies`, `admin-network-policy`, `alertmanager-config`, `etcd-backup`, `etcd-defrag`, `global-pull-secrets`, `image-mirror-config`, `image-pruner`, `machine-health-checks`, `openshift-apiserver`, `openshift-build`, `openshift-console`, `openshift-dns`, `openshift-group-sync`, `openshift-image`, `openshift-image-registry`, `openshift-ingress`, `openshift-machine-config`, `openshift-marketplace`, `openshift-oauth`, `openshift-proxy`, `openshift-scheduler`, `project-request-template`, `prometheus-rules`, `rbac`, `storage-classes`, `tls-certificates`, `user-workload-monitoring`, `vault-server`, `volume-snapshot-classes`.
+Charts: `acm-managed-cluster`, `acm-policies`, `admin-network-policy`, `alertmanager-config`, `etcd-backup`, `etcd-defrag`, `global-pull-secrets`, `image-mirror-config`, `image-pruner`, `machine-health-checks`, `openshift-apiserver`, `openshift-build`, `openshift-console`, `openshift-dns`, `openshift-group-sync`, `openshift-image`, `openshift-image-registry`, `openshift-ingress`, `openshift-machine-config`, `openshift-marketplace`, `openshift-oauth`, `openshift-proxy`, `openshift-scheduler`, `project-request-template`, `prometheus-rules`, `pure-storage-node-config`, `rbac`, `storage-classes`, `tls-certificates`, `user-workload-monitoring`, `vault-server`, `volume-snapshot-classes`.
 
 ## Operator instances (`charts/operator-instances/`)
 

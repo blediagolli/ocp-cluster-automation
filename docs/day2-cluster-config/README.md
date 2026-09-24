@@ -89,6 +89,7 @@ These depend on what runs on the cluster.
 | Chart | What it does | When |
 |-------|-------------|------|
 | `storage-classes` | Custom StorageClass definitions | Non-default storage tiers needed |
+| `pure-storage-node-config` | MachineConfig with multipath, udev and iSCSI host prerequisites for Pure FlashArray | Nodes attached to a Pure FlashArray (PX-CSI driver, or LUNs consumed by ODF) |
 | `volume-snapshot-classes` | VolumeSnapshotClass for CSI drivers | Backup/restore workflows |
 | `openshift-image` | Cluster-wide image configuration (registries, policies) | Registry allow/block lists |
 | `image-mirror-config` | ImageDigestMirrorSet for registry mirroring | Air-gapped or mirror-assisted environments |

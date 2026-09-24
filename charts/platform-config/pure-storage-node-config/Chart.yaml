@@ -1,0 +1,4 @@
+apiVersion: v2
+name: pure-storage-node-config
+description: Pure Storage FlashArray host prerequisites (multipath, udev, iSCSI) delivered as MachineConfigs
+version: 0.1.0

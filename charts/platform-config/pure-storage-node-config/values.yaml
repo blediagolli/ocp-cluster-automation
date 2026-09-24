@@ -1,0 +1,38 @@
+# ---------------------------------------------------------------------------
+# Pure Storage FlashArray — host prerequisites
+# ---------------------------------------------------------------------------
+# Renders one MachineConfig per role that writes /etc/multipath.conf and
+# /etc/udev/rules.d/99-pure-storage.rules and enables multipathd + iscsid.
+#
+# The same config covers FC, iSCSI and NVMe-oF: the multipath.conf carries
+# both the SCSI (PURE/FlashArray) and NVMe device stanzas, and iscsid is
+# harmless on FC-only hosts. Source: Portworx FlashArray prep docs
+# (docs.portworx.com/portworx-csi/install/prepare/flash-array).
+#
+# WARNING: applying or changing this rolls every node in each targeted pool
+# (drain + reboot, gated by the pool's maxUnavailable).
+#
+# Protocol-specific steps that are NOT config and are not handled here:
+#   - iSCSI: every node needs a unique IQN in /etc/iscsi/initiatorname.iscsi
+#   - FC: optionally check HBA (QLogic/Emulex) LUN limits
+#   - NVMe-oF: decide native vs DM multipath (nvme_core.multipath kernel arg)
+pureStorage:
+  include: false
+  # One MachineConfig named 99-<role>-pure-storage per entry. Each role must
+  # match a MachineConfigPool's machineconfiguration.openshift.io/role
+  # selector (e.g. add "master" for compact clusters, or a custom pool).
+  roles:
+    - worker
+  # Enable iscsid.service (needed for iSCSI, harmless for FC/NVMe).
+  enableIscsid: true
+  multipath:
+    pollingInterval: 10
+    findMultipaths: "yes"
+    # Required when the array runs Purity older than 6.5.5 / 6.6.4 (path
+    # priority detection change in multipath-tools 0.6.2–0.9.7).
+    # Adds detect_prio "no" to the PURE/FlashArray device stanza.
+    detectPrioNo: false
+    # Additional blacklist devnode regexes (the pxd and VMware virtual disk
+    # entries are always present).
+    extraBlacklistDevnodes: []
+    #   - "^sda$"
