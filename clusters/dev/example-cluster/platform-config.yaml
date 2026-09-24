@@ -5,7 +5,7 @@ apiServer:
   servingCerts:
     namedCertificates:
       - names:
-          - api.aws-test.sandbox3321.opentlc.com
+          - api.example-cluster.sandbox3321.opentlc.com
         servingCertificate:
           name: cert-manager-api-cert
 ingress:
@@ -29,7 +29,7 @@ etcdBackup:
   storage:
     type: pvc
     pvc:
-      storageClass: gp3-csi
+      storageClass: YOUR_STORAGE_CLASS
 etcdDefrag:
   include: true
 
@@ -37,7 +37,7 @@ etcdDefrag:
 userWorkloadMonitoring:
   include: true
   prometheus:
-    storageClass: gp3-csi
+    storageClass: YOUR_STORAGE_CLASS
 prometheusRules:
   include: true
 alertmanager:
@@ -150,7 +150,7 @@ imageRegistry:
   storage:
     type: s3
     s3:
-      bucket: aws-test-wtxdp-image-registry-us-east-2
+      bucket: YOUR_IMAGE_REGISTRY_BUCKET
       region: us-east-2
       encrypt: true
 
@@ -265,17 +265,17 @@ containerRuntimeConfig:
 provider: cert-manager
 certManager:
   issuerRef:
-    name: letsencrypt
+    name: YOUR_CLUSTER_ISSUER
     kind: ClusterIssuer
 certificates:
   api:
     include: true
     secretName: cert-manager-api-cert
     dnsNames:
-      - api.aws-test.sandbox3321.opentlc.com
+      - api.example-cluster.sandbox3321.opentlc.com
   ingress:
     include: true
     secretName: cert-manager-ingress-cert
     dnsNames:
-      - "*.apps.aws-test.sandbox3321.opentlc.com"
-      - apps.aws-test.sandbox3321.opentlc.com
+      - "*.apps.example-cluster.sandbox3321.opentlc.com"
+      - apps.example-cluster.sandbox3321.opentlc.com

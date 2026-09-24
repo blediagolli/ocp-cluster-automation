@@ -4,7 +4,7 @@
 team:
   name: team-beta
   admins: team-beta-admins
-  repo: git@github.com:blediagolli/team-beta-apps.git
+  repo: git@github.com:YOUR_ORG/team-beta-apps.git
   namespaces:
     dev:
       - name: team-beta-dev

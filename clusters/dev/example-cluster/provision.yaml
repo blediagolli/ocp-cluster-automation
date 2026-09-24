@@ -2,14 +2,14 @@ provision:
   include: true
 
 cluster:
-  name: aws-test
+  name: example-cluster
   baseDomain: sandbox3321.opentlc.com
   platform: aws
   environment: dev
   clusterSet: default
   imageSetRef: img4.22.13-x86-64-appsub
   networkType: OVNKubernetes
-  sshPublicKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINL/LtS5J2YbybfzOmFsvAlx5gxry+26pDKetkNB4PNY aws-test-cluster"
+  sshPublicKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINL/LtS5J2YbybfzOmFsvAlx5gxry+26pDKetkNB4PNY example-cluster-cluster"
 
 fleet:
   operatorClusterType: dev

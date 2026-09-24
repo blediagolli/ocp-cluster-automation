@@ -334,7 +334,7 @@ monitoringStacks:
       retention: 48h
       replicas: 2
       persistentVolumeClaim:
-        storageClassName: gp3-csi
+        storageClassName: YOUR_STORAGE_CLASS
         resources:
           requests:
             storage: 100Gi
@@ -348,7 +348,7 @@ if echo "$OUTPUT" | grep -q "retention: 48h"; then
 else
   fail "MonitoringStack missing prometheusConfig.retention"
 fi
-if echo "$OUTPUT" | grep -q "storageClassName: gp3-csi"; then
+if echo "$OUTPUT" | grep -q "storageClassName: YOUR_STORAGE_CLASS"; then
   pass "MonitoringStack renders PVC storageClassName"
 else
   fail "MonitoringStack missing PVC storageClassName"

@@ -11,7 +11,7 @@
 
 cluster:
   name: acm-hub
-  baseDomain: sandbox1269.opentlc.com
+  baseDomain: example.com
   networkType: OVNKubernetes
   fips: false
   # sshPublicKey: "ssh-ed25519 AAAA..."     # or use SSH_PUBLIC_KEY_FILE env var

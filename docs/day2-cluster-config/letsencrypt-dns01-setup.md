@@ -8,7 +8,7 @@ Replaces the self-signed CA chain with publicly trusted Let's Encrypt certificat
 ┌─────────────────────────────────────────────────────────────────┐
 │  cert-manager controller (on managed cluster)                   │
 │                                                                 │
-│  1. Sees a Certificate CR referencing the "letsencrypt" issuer  │
+│  1. Sees a Certificate CR referencing the "YOUR_CLUSTER_ISSUER" issuer  │
 │  2. Creates an ACME Order → Let's Encrypt returns a challenge   │
 │  3. Writes a TXT record to Route53:                             │
 │       _acme-challenge.<domain> = <token>                        │
@@ -41,7 +41,7 @@ The CCO creates a Secret (`cert-manager-dns01-credentials`) in the `cert-manager
 ### 2. Let's Encrypt ClusterIssuer
 
 An ACME ClusterIssuer configured with:
-- **Server:** `https://acme-v02.api.letsencrypt.org/directory` (production)
+- **Server:** `https://acme-v02.api.YOUR_CLUSTER_ISSUER.org/directory` (production)
 - **Solver:** DNS01 via Route53, pointing at the hosted zone ID
 - **Credentials:** references the CCO-managed secret for both `accessKeyID` and `secretAccessKey`
 
@@ -59,10 +59,10 @@ The fix: `--dns01-recursive-nameservers-only` tells cert-manager to check propag
 
 ### 4. Leaf certificates (tls-certificates chart)
 
-The actual Certificate CRs for API server and ingress wildcard are in the `tls-certificates` platform chart. They reference the `letsencrypt` ClusterIssuer via `certManager.issuerRef.name`.
+The actual Certificate CRs for API server and ingress wildcard are in the `tls-certificates` platform chart. They reference the `YOUR_CLUSTER_ISSUER` ClusterIssuer via `certManager.issuerRef.name`.
 
 **Chart:** `tls-certificates` → `cert-manager.yaml`
-**Values (cluster-level):** `platform-config.yaml` → `certManager.issuerRef.name: letsencrypt`
+**Values (cluster-level):** `platform-config.yaml` → `certManager.issuerRef.name: YOUR_CLUSTER_ISSUER`
 
 ### 5. Proxy trust (not needed)
 
@@ -79,9 +79,9 @@ charts/operator-instances/cert-manager-certs/
 │   └── ca-bundle.yaml           ← (unused — no custom CA needed)
 └── values.yaml                  ← acmeIssuer defaults
 
-clusters/dev/aws-test/
+clusters/dev/example-cluster/
 ├── operator-instances.yaml      ← enables acmeIssuer with zone ID + region
-└── platform-config.yaml         ← points issuerRef at "letsencrypt"
+└── platform-config.yaml         ← points issuerRef at "YOUR_CLUSTER_ISSUER"
 ```
 
 ## Enabling for a new cluster
@@ -110,7 +110,7 @@ clusters/dev/aws-test/
    ```yaml
    certManager:
      issuerRef:
-       name: letsencrypt
+       name: YOUR_CLUSTER_ISSUER
        kind: ClusterIssuer
    ```
    Remove `proxy.trustedCA.name` if previously set to a self-signed CA bundle.
@@ -132,7 +132,7 @@ clusters/dev/aws-test/
 
 | Symptom | Check | Fix |
 |---------|-------|-----|
-| ClusterIssuer not ready | `oc get clusterissuer letsencrypt -o yaml` | Check ACME server reachability and email validity |
+| ClusterIssuer not ready | `oc get clusterissuer YOUR_CLUSTER_ISSUER -o yaml` | Check ACME server reachability and email validity |
 | Challenge stuck "pending" | `oc get challenges -A -o wide` | Check the reason — usually DNS propagation or credential issues |
 | "REFUSED" from nameservers | Challenge querying wrong NS | Enable `recursiveNameserversOnly: true` |
 | TXT record missing in Route53 | `dig _acme-challenge.<domain> TXT` | Check CCO secret exists in cert-manager namespace; check IAM permissions |
@@ -195,10 +195,10 @@ Both contain the same `certificate-authority-data` and both need to be patched.
 
 No. Hive only generates this secret at install time. It does not reconcile the kubeconfig contents afterward, so the patch persists. If cert-manager renews the Let's Encrypt cert, no action is needed — the new cert is still signed by the same trusted CA chain.
 
-## Current state (aws-test)
+## Current state (example-cluster)
 
 - **API cert:** Let's Encrypt, issuer CN=YE1, expires Dec 15 2026
-- **Ingress cert:** Let's Encrypt, issuer CN=YE2, wildcard `*.apps.aws-test.sandbox3321.opentlc.com`
+- **Ingress cert:** Let's Encrypt, issuer CN=YE2, wildcard `*.apps.example-cluster.sandbox3321.opentlc.com`
 - **Renewal:** automatic, 15 days before expiry (renewBefore: 360h)
 - **Hive admin kubeconfig:** patched to remove old CA data (2026-09-16)
 - **Old self-signed resources:** orphaned on cluster (selfsigned/cluster-ca issuers, CA bundle Job) — safe to prune
