@@ -1,4 +1,5 @@
 .DS_Store
-
-# openshift-install artifacts (bootstrap-aws-hub.sh)
-install-*/
+*.swp
+*.swo
+*~
+.claude/settings.local.json

@@ -4,13 +4,13 @@
 # Precedence: chart defaults < env/<env>/operator-instances.yaml < this file.
 acmeIssuer:
   include: true
-  name: letsencrypt
-  server: https://acme-v02.api.letsencrypt.org/directory
-  email: bagolli@redhat.com
-  privateKeySecretName: letsencrypt-account-key
+  name: YOUR_CLUSTER_ISSUER
+  server: https://acme-v02.api.YOUR_CLUSTER_ISSUER.org/directory
+  email: your-email@example.com
+  privateKeySecretName: YOUR_CLUSTER_ISSUER-account-key
   dns01:
     region: us-east-2
-    hostedZoneID: Z1017727P1RV1ZA608IX
+    hostedZoneID: YOUR_HOSTED_ZONE_ID
     credentialsSecretName: cert-manager-dns01-credentials
     recursiveNameserversOnly: true
 argocd:
@@ -63,7 +63,7 @@ initBundle:
   distributeAuth: true
 oidc:
   include: true
-  clientSecret: "c83d33ea01afb1df37482cfd96ea7c81"
+  clientSecret: "CHANGEME_STACKROX_OIDC_CLIENT_SECRET"
 defaultTLS:
   include: true
 trustedCA:
@@ -94,16 +94,16 @@ quayRegistry:
         - admin
   oidc:
     include: true
-    server: "https://sso.apps.acm-hub.sandbox1269.opentlc.com/realms/sso/"
+    server: "https://sso.apps.CLUSTER_DOMAIN/realms/sso/"
     clientId: "quay"
-    clientSecret: "5QU2ntb5V1CSU6WaZx9ZoaEb0JpxdMqi"
+    clientSecret: "CHANGEME_QUAY_OIDC_CLIENT_SECRET"
   bridge:
     include: true
-    oauthToken: "EPBol6rTiU6J2V3sOUBHrNl7j9prug1kkGEZwbsc"
+    oauthToken: "CHANGEME_QUAY_BRIDGE_OAUTH_TOKEN"
   init:
     include: true
-    quayUrl: "https://registry-quay-quay-enterprise.apps.acm-hub.sandbox1269.opentlc.com"
-    oauthToken: "B07UVAT0XH6NP3RF0R47HM8RES20K0PJPSWULOHI"
+    quayUrl: "https://registry-quay-quay-enterprise.apps.CLUSTER_DOMAIN"
+    oauthToken: "CHANGEME_QUAY_INIT_OAUTH_TOKEN"
     organizations:
       - name: platform
         email: platform@demo.redhat.com
@@ -168,7 +168,7 @@ realm:
         - admins
       credentials:
         - type: password
-          value: FqfbV37qhS3tp8Ud
+          value: CHANGEME_KEYCLOAK_ADMIN_PASSWORD
           temporary: false
     - username: user1
       email: user1@demo.redhat.com
@@ -180,30 +180,30 @@ realm:
         - users
       credentials:
         - type: password
-          value: JNNSxskZxNPg87xD
+          value: CHANGEME_KEYCLOAK_USER_PASSWORD
           temporary: false
   clients:
     quay:
       include: true
-      clientSecret: "5QU2ntb5V1CSU6WaZx9ZoaEb0JpxdMqi"
+      clientSecret: "CHANGEME_QUAY_OIDC_CLIENT_SECRET"
       redirectUris:
-        - "https://registry-quay-quay-enterprise.apps.acm-hub.sandbox1269.opentlc.com/oauth2/callback"
+        - "https://registry-quay-quay-enterprise.apps.CLUSTER_DOMAIN/oauth2/callback"
       webOrigins:
-        - "https://registry-quay-quay-enterprise.apps.acm-hub.sandbox1269.opentlc.com"
+        - "https://registry-quay-quay-enterprise.apps.CLUSTER_DOMAIN"
     openshift:
       include: true
-      clientSecret: "623e3ac823ae36d88b1a8bf4f70aa159"
+      clientSecret: "CHANGEME_OPENSHIFT_OIDC_CLIENT_SECRET"
       redirectUris:
-        - "https://oauth-openshift.apps.acm-hub.sandbox1269.opentlc.com/oauth2callback/keycloak"
+        - "https://oauth-openshift.apps.CLUSTER_DOMAIN/oauth2callback/keycloak"
       webOrigins:
-        - "https://oauth-openshift.apps.acm-hub.sandbox1269.opentlc.com"
+        - "https://oauth-openshift.apps.CLUSTER_DOMAIN"
     stackrox:
       include: true
-      clientSecret: "c83d33ea01afb1df37482cfd96ea7c81"
+      clientSecret: "CHANGEME_STACKROX_OIDC_CLIENT_SECRET"
       redirectUris:
-        - "https://central-stackrox.apps.acm-hub.sandbox1269.opentlc.com/sso/providers/oidc/callback"
+        - "https://central-stackrox.apps.CLUSTER_DOMAIN/sso/providers/oidc/callback"
       webOrigins:
-        - "https://central-stackrox.apps.acm-hub.sandbox1269.opentlc.com"
+        - "https://central-stackrox.apps.CLUSTER_DOMAIN"
 uiPlugins:
   dashboards:
     include: true
@@ -233,7 +233,7 @@ monitoringStacks:
     prometheusConfig:
       replicas: 1
       persistentVolumeClaim:
-        storageClassName: gp3-csi
+        storageClassName: YOUR_STORAGE_CLASS
         resources:
           requests:
             storage: 50Gi

@@ -4,7 +4,7 @@
 team:
   name: team-alpha
   admins: team-alpha-admins
-  repo: git@github.com:blediagolli/team-alpha-apps.git
+  repo: git@github.com:YOUR_ORG/team-alpha-apps.git
   namespaces:
     dev:
       - name: team-alpha-dev

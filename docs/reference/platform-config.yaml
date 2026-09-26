@@ -19,7 +19,7 @@
 provider: cert-manager                        # cert-manager | manual | sealed-secret | external-secret | vault
 certManager:
   issuerRef:
-    name: YOUR_CLUSTER_ISSUER                 # ClusterIssuer name (e.g. letsencrypt)
+    name: YOUR_CLUSTER_ISSUER                 # ClusterIssuer name (e.g. YOUR_CLUSTER_ISSUER)
     kind: ClusterIssuer
   duration: 2160h                             # certificate lifetime
   renewBefore: 360h                           # renew this long before expiry
