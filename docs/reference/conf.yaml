@@ -51,6 +51,7 @@ platformCharts:
   # ── Nice to Have — enable based on workload needs ──
 
   - chart: storage-classes           # Custom StorageClass definitions
+  - chart: pure-storage-node-config  # Pure FlashArray host prerequisites (multipath/udev/iSCSI)
   - chart: volume-snapshot-classes   # VolumeSnapshotClass for CSI drivers
   - chart: openshift-image           # Cluster-wide image configuration (registries, policies)
   - chart: image-mirror-config       # ImageDigestMirrorSet for registry mirroring
