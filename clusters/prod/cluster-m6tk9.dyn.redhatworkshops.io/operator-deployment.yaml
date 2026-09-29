@@ -1,5 +1,0 @@
-# Cluster-level operator Subscriptions. Each key under 'operators' becomes an
-# OLM Subscription (Namespace, OperatorGroup, Subscription). Set include: false
-# to skip an operator inherited from the environment level.
-# Precedence: chart defaults < env/<env>/operator-deployment.yaml < this file.
-operators: {}

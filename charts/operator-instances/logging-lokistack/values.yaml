@@ -3,7 +3,7 @@ lokiStack:
   name: logging-lokistack
   namespace: openshift-logging
   size: 1x.extra-small
-  storageClassName: gp3-csi
+  storageClassName: YOUR_STORAGE_CLASS
   # PVC storage size for LokiStack components (rendered as annotation;
   # actual PVC sizes are governed by the size preset above)
   storageSize: 10Gi

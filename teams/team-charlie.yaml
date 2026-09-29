@@ -4,7 +4,7 @@
 team:
   name: team-charlie
   admins: team-charlie-admins
-  repo: git@github.com:blediagolli/team-charlie-apps.git
+  repo: git@github.com:YOUR_ORG/team-charlie-apps.git
   namespaces:
     dev:
       - name: team-charlie-dev

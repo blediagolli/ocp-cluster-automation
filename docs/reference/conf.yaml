@@ -12,7 +12,7 @@ cluster:
   # Cluster base domain — used by TLS charts for cert dnsNames
   baseDomain: example.com
   # Default storage class — used by charts that need PVCs (etcd-backup, monitoring, etc.)
-  storageClass: gp3-csi
+  storageClass: YOUR_STORAGE_CLASS
 
 # ── Platform Charts ──────────────────────────────────────────────────────────
 # Charts from charts/platform-config/ — each gets an ArgoCD Application via
