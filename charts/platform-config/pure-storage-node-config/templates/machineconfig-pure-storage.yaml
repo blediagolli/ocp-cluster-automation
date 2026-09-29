@@ -1,0 +1,97 @@
+{{- if .Values.pureStorage.include }}
+{{- range .Values.pureStorage.roles }}
+---
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  labels:
+    machineconfiguration.openshift.io/role: {{ . }}
+  name: 99-{{ . }}-pure-storage
+spec:
+  config:
+    ignition:
+      version: 3.2.0
+    storage:
+      files:
+        - contents:
+            source: data:text/plain;charset=utf-8;base64,{{ include "pure.multipath.conf" $ | b64enc }}
+          mode: 420
+          overwrite: true
+          path: /etc/multipath.conf
+        - contents:
+            source: data:text/plain;charset=utf-8;base64,{{ include "pure.udev.rules" $ | b64enc }}
+          mode: 420
+          overwrite: true
+          path: /etc/udev/rules.d/99-pure-storage.rules
+    systemd:
+      units:
+        - name: multipathd.service
+          enabled: true
+        {{- if $.Values.pureStorage.enableIscsid }}
+        - name: iscsid.service
+          enabled: true
+        {{- end }}
+{{- end }}
+{{- end }}
+
+{{- define "pure.multipath.conf" -}}
+{{- $mp := .Values.pureStorage.multipath -}}
+blacklist {
+    devnode "^pxd[0-9]*"
+    devnode "^pxd*"
+{{- range $mp.extraBlacklistDevnodes }}
+    devnode {{ . | quote }}
+{{- end }}
+    device {
+        vendor "VMware"
+        product "Virtual disk"
+    }
+}
+
+defaults {
+    polling_interval {{ $mp.pollingInterval }}
+    find_multipaths {{ $mp.findMultipaths }}
+}
+
+devices {
+    device {
+        vendor "NVME"
+        product "Pure Storage FlashArray"
+        path_selector "queue-length 0"
+        path_grouping_policy group_by_prio
+        prio ana
+        failback immediate
+        fast_io_fail_tmo 10
+        user_friendly_names no
+        no_path_retry 0
+        features 0
+        dev_loss_tmo 60
+    }
+    device {
+        vendor "PURE"
+        product "FlashArray"
+        path_selector "service-time 0"
+        hardware_handler "1 alua"
+        path_grouping_policy group_by_prio
+        prio alua
+{{- if $mp.detectPrioNo }}
+        detect_prio "no"
+{{- end }}
+        failback immediate
+        path_checker tur
+        fast_io_fail_tmo 10
+        user_friendly_names no
+        no_path_retry 0
+        features 0
+        dev_loss_tmo 600
+    }
+}
+{{ end -}}
+
+{{- define "pure.udev.rules" -}}
+# Queue tuning for Pure Storage FlashArray SCSI devices (FC and iSCSI)
+ACTION=="add|change", KERNEL=="sd*[!0-9]", SUBSYSTEM=="block", ENV{ID_VENDOR}=="PURE", OPTIONS="nowatch", ATTR{queue/scheduler}="none"
+ACTION=="add|change", KERNEL=="sd*[!0-9]", SUBSYSTEM=="block", ENV{ID_VENDOR}=="PURE", OPTIONS="nowatch", ATTR{queue/add_random}="0"
+ACTION=="add|change", KERNEL=="sd*[!0-9]", SUBSYSTEM=="block", ENV{ID_VENDOR}=="PURE", OPTIONS="nowatch", ATTR{queue/rq_affinity}="2"
+ACTION=="add|change", KERNEL=="sd*[!0-9]", SUBSYSTEM=="block", ENV{ID_VENDOR}=="PURE", OPTIONS="nowatch", ATTR{device/timeout}="60"
+{{ end -}}

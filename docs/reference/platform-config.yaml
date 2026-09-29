@@ -233,6 +233,23 @@ machineConfigPoolInfra:
   paused: false
 customMachineConfigs: []
 
+# --- pure-storage-node-config ------------------------------------------------
+# Pure Storage FlashArray host prerequisites: /etc/multipath.conf, udev queue
+# tuning rules, multipathd + iscsid enabled. One config covers FC, iSCSI and
+# NVMe-oF. Enabling or changing this reboots every node in the targeted pools.
+pureStorage:
+  include: false
+  roles:
+    - worker                  # one 99-<role>-pure-storage MachineConfig per role
+    # - master                # compact clusters / masters attached to the array
+  enableIscsid: true          # needed for iSCSI, harmless for FC/NVMe
+  multipath:
+    pollingInterval: 10
+    findMultipaths: "yes"
+    detectPrioNo: false       # set true if Purity is older than 6.5.5 / 6.6.4
+    extraBlacklistDevnodes: []
+    # - "^sda$"
+
 # --- acm-managed-cluster -----------------------------------------------------
 managedCluster:
   include: false
