@@ -6,7 +6,7 @@ storageCluster:
     count: 1
     replicas: 3
     storageSize: 512Gi
-    storageClassName: gp3-csi
+    storageClassName: YOUR_STORAGE_CLASS
   encryption:
     clusterWide: true
   resourceProfile: balanced

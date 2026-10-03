@@ -5,7 +5,7 @@ set -euo pipefail
 # Tests the full lifecycle: namespace -> Quay org -> build -> push -> pull -> cleanup
 #
 # Usage: ./e2e-bridge-test.sh <quay-hostname> <oauth-token>
-# Example: ./e2e-bridge-test.sh registry-quay-quay-enterprise.apps.cluster-xyz.example.com EPBol6rTiU6J2V3sOUBHrNl7j9prug1kkGEZwbsc
+# Example: ./e2e-bridge-test.sh registry-quay-quay-enterprise.apps.cluster-xyz.example.com CHANGEME_QUAY_BRIDGE_OAUTH_TOKEN
 
 QUAY_HOST="${1:?Usage: $0 <quay-hostname> <oauth-token>}"
 OAUTH_TOKEN="${2:?Usage: $0 <quay-hostname> <oauth-token>}"

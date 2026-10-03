@@ -13,10 +13,10 @@ caBundle:
   namespace: openshift-config
 acmeIssuer:
   include: false
-  name: letsencrypt
-  server: https://acme-v02.api.letsencrypt.org/directory
+  name: YOUR_CLUSTER_ISSUER
+  server: https://acme-v02.api.YOUR_CLUSTER_ISSUER.org/directory
   email: ""
-  privateKeySecretName: letsencrypt-account-key
+  privateKeySecretName: YOUR_CLUSTER_ISSUER-account-key
   dns01:
     region: us-east-1
     hostedZoneID: ""

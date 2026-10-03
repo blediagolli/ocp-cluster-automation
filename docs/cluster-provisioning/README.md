@@ -61,9 +61,9 @@ The cluster identity file. ApplicationSets discover clusters by scanning for `cl
 
 ```yaml
 cluster:
-  name: aws-test
+  name: example-cluster
   environment: dev
-  address: "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/aws-test"
+  address: "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/example-cluster"
   baseDomain: example.com
 
 platformCharts:
@@ -252,7 +252,7 @@ Once imported, the cluster is registered in OpenShift GitOps and the configurati
 
 1. Copy an existing cluster directory:
    ```bash
-   cp -r clusters/dev/aws-test clusters/dev/my-cluster
+   cp -r clusters/dev/example-cluster clusters/dev/my-cluster
    ```
 
 2. Edit `conf.yaml` — set cluster name, environment, base domain, chart lists, and deploy toggles

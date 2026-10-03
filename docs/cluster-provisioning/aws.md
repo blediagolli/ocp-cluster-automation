@@ -9,7 +9,7 @@ provision:
   include: true
 
 cluster:
-  name: aws-test
+  name: example-cluster
   baseDomain: example.com
   platform: aws
   environment: dev

@@ -14,7 +14,7 @@ spec:
   source:
     path: clusters/mgt/acm-hub
     repoURL: >-
-      git@github.com:blediagolli/gitops-for-organizations.git
+      git@github.com:YOUR_ORG/ocp-cluster-automation.git
     targetRevision: main
   syncPolicy:
     automated:

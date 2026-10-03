@@ -39,7 +39,7 @@ A cluster without these is missing security controls, proper TLS, identity, or c
 
 ### Post-TLS switch for ACM-managed clusters
 
-After switching to Let's Encrypt (or any non-default CA), patch the Hive admin kubeconfig secret on the hub to remove the old `certificate-authority-data`. See [letsencrypt-dns01-setup.md](letsencrypt-dns01-setup.md#post-switch-fixing-hiveacm-connectivity).
+After switching to Let's Encrypt (or any non-default CA), patch the Hive admin kubeconfig secret on the hub to remove the old `certificate-authority-data`. See [YOUR_CLUSTER_ISSUER-dns01-setup.md](YOUR_CLUSTER_ISSUER-dns01-setup.md#post-switch-fixing-hiveacm-connectivity).
 
 ---
 
@@ -149,9 +149,9 @@ deployOperators: true
 
 This gives you: TLS (Let's Encrypt or self-signed CA), API server + ingress config, identity, registry, node config, and GitOps. Everything else is additive.
 
-### Full recommended (aws-test today)
+### Full recommended (example-cluster today)
 
-aws-test runs the Critical tier plus all Recommended charts including Keycloak OIDC auth:
+example-cluster runs the Critical tier plus all Recommended charts including Keycloak OIDC auth:
 
 ```yaml
 # conf.yaml
@@ -194,7 +194,7 @@ Key values in `platform-config.yaml`:
 provider: cert-manager
 certManager:
   issuerRef:
-    name: letsencrypt
+    name: YOUR_CLUSTER_ISSUER
     kind: ClusterIssuer
 
 # etcd
@@ -203,7 +203,7 @@ etcdBackup:
   storage:
     type: pvc
     pvc:
-      storageClass: gp3-csi
+      storageClass: YOUR_STORAGE_CLASS
 etcdDefrag:
   include: true
 
@@ -211,7 +211,7 @@ etcdDefrag:
 userWorkloadMonitoring:
   include: true
   prometheus:
-    storageClass: gp3-csi
+    storageClass: YOUR_STORAGE_CLASS
 
 # auth via Keycloak OIDC
 oauth:

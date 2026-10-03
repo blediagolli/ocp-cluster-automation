@@ -5,8 +5,8 @@ cluster:
   name: acm-hub
   environment: mgt
   address: "https://kubernetes.default.svc"
-  baseDomain: "apps.acm-hub.sandbox1269.opentlc.com"
-  storageClass: "gp3-csi"
+  baseDomain: "apps.CLUSTER_DOMAIN"
+  storageClass: "YOUR_STORAGE_CLASS"
 platformCharts:
   - chart: tls-certificates
   # - chart: user-workload-monitoring

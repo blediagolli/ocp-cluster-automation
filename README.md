@@ -1,66 +1,60 @@
-# GitOps for Organizations
+# OCP Cluster Automation
 
-A production GitOps framework for provisioning and configuring OpenShift clusters at scale using Red Hat Advanced Cluster Management (ACM), OpenShift GitOps (ArgoCD), and Helm. Git is the source of truth — every cluster, operator, and platform configuration change flows through a git commit.
+A production-ready GitOps framework for provisioning and configuring OpenShift
+clusters at scale using Red Hat ACM, OpenShift GitOps (ArgoCD), and Helm.
+
+## Overview
+
+This repository implements a complete cluster lifecycle:
+
+1. **Provision** — ACM + Hive create clusters from `clusters/<env>/<name>/provision.yaml`
+2. **Configure** — ArgoCD ApplicationSets deploy platform Helm charts per cluster
+3. **Operate** — Day-2 operators, policies, and team onboarding via git commits
 
 ## Repository layout
 
 ```
-clusters/                      Per-cluster configuration
-  mgt/acm-hub/                 Hub cluster (ApplicationSets, bootstrap, policies)
-  dev/aws-test/                Development cluster
-  prod/                        Production clusters
-env/                           Environment-level defaults (dev/, mgt/, prod/)
-charts/                        Helm charts
-  platform-config/             31 day-2 platform charts (TLS, OAuth, etcd, ingress, ...)
-  operator-instances/          31 operator CR charts (ACS, Keycloak, Quay, cert-manager, ...)
-  operator-deployment/         Single chart — all operator Subscriptions via OLM
-  onboarding/                  Team onboarding (ArgoCD projects, namespace provisioning)
-  cluster-provisioning/        Cluster provisioning (ACM/Hive, sushy-ec2 emulator)
-teams/                         Team definitions
-docs/                          Documentation
-scripts/                       Utility scripts
+clusters/           # Per-cluster config (conf.yaml, platform-config.yaml, operator-instances.yaml)
+  mgt/acm-hub/     # Management / hub cluster
+  dev/              # Development environment clusters
+env/                # Environment-level defaults (dev, prod)
+charts/             # Helm charts for platform configuration
+  platform-config/  # Day-2 platform charts (oauth, tls, rbac, monitoring, ...)
+  operator-instances/ # Operator CR charts (ACS, cert-manager, Keycloak, Quay, ...)
+base/               # ArgoCD Applications, ApplicationSets, bootstrap
 ```
 
-## How it works
+## Prerequisites
 
-Eight ApplicationSets on the hub cluster drive everything:
+- OpenShift 4.x cluster (hub)
+- Red Hat ACM (Advanced Cluster Management)
+- OpenShift GitOps (ArgoCD)
+- cert-manager with a ClusterIssuer
+- HashiCorp Vault or External Secrets Operator (for production secrets)
 
-| ApplicationSet | What it does | Trigger |
-|---|---|---|
-| `cluster-platform-config` | Deploys platform-config charts per cluster | `platformCharts` list in conf.yaml |
-| `cluster-operator-instances` | Deploys operator CR charts per cluster | `operatorInstanceCharts` list in conf.yaml |
-| `cluster-operators-appset` | Deploys operator Subscriptions per cluster | `deployOperators: true` |
-| `cluster-config-overlays` | Deploys cluster-specific overlays | `deployOverlay: true` |
-| `cluster-import` | Imports clusters into ACM | `deployImport: true` |
-| `cluster-provisioning` | Provisions clusters via ACM/Hive | `deployProvision: true` |
-| `cluster-onboarding-gitops` | Creates ArgoCD projects for teams | `teams` list |
-| `cluster-onboarding-namespaces` | Creates team namespaces with quotas and policies | `teams` list |
+## Getting started
 
-Each cluster is defined by a directory under `clusters/<env>/<name>/` containing:
+1. Fork this repository
+2. Search for placeholder values and replace them with your configuration:
 
-- **conf.yaml** — cluster identity, chart lists, deploy toggles, team assignments
-- **platform-config.yaml** — values for platform-config charts
-- **operator-instances.yaml** — values for operator CR charts
-- **operator-deployment.yaml** — values for operator Subscriptions
-- **provision.yaml** — provisioning values (if deploying a new cluster)
+| Placeholder | Description |
+|---|---|
+| `YOUR_ORG` | Your GitHub org or username |
+| `CLUSTER_DOMAIN` | Your hub cluster domain (e.g. `apps.hub.example.com`) |
+| `example.com` | Your base domain for managed clusters |
+| `your-email@example.com` | Admin email for Let's Encrypt / notifications |
+| `YOUR_HOSTED_ZONE_ID` | Route53 hosted zone ID (if using AWS DNS) |
+| `YOUR_CLUSTER_ISSUER` | cert-manager ClusterIssuer name |
+| `YOUR_STORAGE_CLASS` | Default storage class on the hub |
+| `YOUR_IMAGE_REGISTRY_BUCKET` | S3 bucket for the internal image registry |
+| `CHANGEME_*` | Secrets — generate new values and store in Vault |
 
-### Values precedence
+3. Bootstrap the hub cluster:
+   ```bash
+   oc apply -k clusters/mgt/acm-hub/bootstrap/
+   ```
 
-```
-chart defaults (values.yaml)
-  → env/<env>/conf.yaml + env/<env>/platform-config.yaml
-  → clusters/<env>/<name>/conf.yaml + clusters/<env>/<name>/platform-config.yaml
-```
-
-More specific files override less specific ones. Missing files are silently skipped.
-
-### Adding a chart to a cluster
-
-1. Add the chart name to `platformCharts` or `operatorInstanceCharts` in the cluster's `conf.yaml`
-2. Set values in the corresponding values file (`platform-config.yaml` or `operator-instances.yaml`)
-3. Push to git — ArgoCD creates an Application and syncs it
-
-All chart features default to `include: false`. Enable them explicitly.
+4. Add managed clusters by creating directories under `clusters/<env>/<name>/`
 
 ## Documentation
 
@@ -69,10 +63,6 @@ All chart features default to `include: false`. Enable them explicitly.
 - [Day 2 cluster configuration guide](docs/day2-cluster-config/) — what to enable on each cluster, organized by priority tier
 - [Reference values files](docs/reference/) — fully-commented example files for defining a new cluster
 
-## Public repository
-
-A sanitized copy of this repo is published to [ocp-cluster-automation](https://github.com/blediagolli/ocp-cluster-automation). A GitHub Action runs nightly to replace org-specific values with `YOUR_*` placeholders and secrets with `CHANGEME_*` placeholders. See `.github/workflows/sync-release.yml`.
-
 ## License
 
-Apache 2.0 — see [LICENSE](LICENSE).
+Apache 2.0

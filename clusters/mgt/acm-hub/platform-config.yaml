@@ -57,17 +57,17 @@ secretStore:
 provider: cert-manager
 certManager:
   issuerRef:
-    name: letsencrypt
+    name: YOUR_CLUSTER_ISSUER
     kind: ClusterIssuer
 certificates:
   api:
     include: true
     secretName: cert-manager-api-cert
     dnsNames:
-      - api.acm-hub.sandbox1269.opentlc.com
+      - api.CLUSTER_DOMAIN
   ingress:
     include: true
     secretName: cert-manager-ingress-cert
     dnsNames:
-      - "*.apps.acm-hub.sandbox1269.opentlc.com"
-      - apps.acm-hub.sandbox1269.opentlc.com
+      - "*.apps.CLUSTER_DOMAIN"
+      - apps.CLUSTER_DOMAIN

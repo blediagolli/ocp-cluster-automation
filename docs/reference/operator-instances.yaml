@@ -558,7 +558,7 @@ monitoringStacks: []
 #     retention: 24h
 #     replicas: 1
 #     persistentVolumeClaim:
-#       storageClassName: gp3-csi
+#       storageClassName: YOUR_STORAGE_CLASS
 #       resources:
 #         requests:
 #           storage: 50Gi
@@ -594,10 +594,10 @@ caBundle:
   namespace: openshift-config
 acmeIssuer:
   include: false
-  name: letsencrypt
-  server: https://acme-v02.api.letsencrypt.org/directory
+  name: YOUR_CLUSTER_ISSUER
+  server: https://acme-v02.api.YOUR_CLUSTER_ISSUER.org/directory
   email: your-email@example.com
-  privateKeySecretName: letsencrypt-account-key
+  privateKeySecretName: YOUR_CLUSTER_ISSUER-account-key
   dns01:
     region: us-east-1
     hostedZoneID: YOUR_HOSTED_ZONE_ID
