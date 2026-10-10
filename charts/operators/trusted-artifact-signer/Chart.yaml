@@ -1,0 +1,4 @@
+apiVersion: v2
+name: trusted-artifact-signer
+description: trusted-artifact-signer — operator subscription and trusted Artifact Signer instance
+version: 0.1.0

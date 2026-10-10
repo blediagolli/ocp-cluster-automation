@@ -1,0 +1,54 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: PolicyGenerator
+metadata:
+  name: network-isolation
+placementBindingDefaults:
+  name: binding-network-isolation
+policyDefaults:
+  namespace: ${POLICY_NAMESPACE}
+  remediationAction: ${REMEDIATION}
+  severity: high
+  # One ConfigurationPolicy holding every manifest, rather than one each. The
+  # policy is a single assertion, so a single compliance verdict is what you want.
+  consolidateManifests: true
+  evaluationInterval:
+    compliant: ${EVAL_COMPLIANT}
+    noncompliant: ${EVAL_NONCOMPLIANT}
+  standards:
+    - NIST SP 800-53
+  categories:
+    - SC System and Communications Protection
+  controls:
+    - SC-7 Boundary Protection
+  # Tenant namespaces only, identified by the namespace-size label that
+  # charts/onboarding/namespace-config stamps on every namespace it creates.
+  #
+  # This used to be include "*" minus openshift-*/kube-*/default, which on the
+  # hub resolved to the operator namespaces -- hive, hypershift,
+  # multicluster-engine, cert-manager, keycloak, open-cluster-management-agent.
+  # Those are not tenant workloads and do not carry the tenant NetworkPolicies,
+  # so the policy sat NonCompliant against sixteen namespaces for reasons nobody
+  # could act on. A control that is permanently red is one people learn to ignore.
+  #
+  # Selecting on the label rather than on a name pattern also means a new
+  # operator namespace never silently enters scope.
+  #
+  # Expect this to report NonCompliant as soon as the first team namespace
+  # exists, and expect that to be correct. The three NetworkPolicies below are
+  # written by charts/platform-config/project-request-template, which only runs
+  # for projects created with `oc new-project`. Namespaces created through
+  # charts/onboarding/namespace-config get a quota and a LimitRange but no
+  # NetworkPolicies at all, so GitOps-onboarded tenants currently have no
+  # network isolation. That is a real gap in the onboarding chart, and this
+  # policy existing to surface it is the point -- do not "fix" it by narrowing
+  # the scope again.
+  namespaceSelector:
+    matchExpressions:
+      - key: namespace-size
+        operator: Exists
+  placement:
+    placementPath: placement.yaml
+policies:
+  - name: network-isolation
+    manifests:
+      - path: manifests/

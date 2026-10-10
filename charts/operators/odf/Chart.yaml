@@ -1,0 +1,4 @@
+apiVersion: v2
+name: odf
+description: odf — operator subscription and oDF StorageCluster instance
+version: 0.1.0

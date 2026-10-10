@@ -1,0 +1,4 @@
+apiVersion: v2
+name: openshift-ingress
+description: OpenShift Ingress Controller configuration
+version: 0.1.0

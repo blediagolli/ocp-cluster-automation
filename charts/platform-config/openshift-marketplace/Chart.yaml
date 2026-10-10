@@ -1,0 +1,4 @@
+apiVersion: v2
+name: openshift-marketplace
+description: OpenShift Marketplace CatalogSource configuration
+version: 0.1.0

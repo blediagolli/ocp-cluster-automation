@@ -1,0 +1,48 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if and $v.costManagementService.include $v.costManagementService.objectStorage.include }}
+{{- $cms := $v.costManagementService }}
+{{- $os := $cms.objectStorage }}
+{{- /* One claim, not one per bucket, and that is the point.
+
+       NooBaa scopes an OBC's generated credentials to that claim's bucket
+       alone, so two OBCs would mean two credentials where the CR accepts
+       one. The CRD resolves this for us: spec.objectStorage.buckets.ingress
+       inherits buckets.koku when it is empty, because uploads land in the
+       same bucket Koku reads. So a single bucket serves both and the
+       operator's Discovery phase picks up the OBC, its ConfigMap and its
+       Secret without anything being named in the CR.
+
+       ROS is the exception — it genuinely needs its own bucket, which brings
+       the per-bucket credential problem back. It is off by default and
+       unsupported in the beta. */}}
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: {{ $cms.name }}-koku
+  namespace: {{ $cms.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+spec:
+  # A request, not a guarantee: NooBaa appends a suffix. Nothing here depends
+  # on the final name, since Discovery reads it from the generated ConfigMap.
+  generateBucketName: {{ $os.bucketName }}
+  storageClassName: {{ $os.storageClassName }}
+{{- if $cms.ros.enabled }}
+---
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: {{ $cms.name }}-ros
+  namespace: {{ $cms.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+spec:
+  # bucketName, not generateBucketName: the CRD requires
+  # spec.objectStorage.buckets.ros to be set explicitly when ros.enabled, and
+  # a generated name is not knowable at template time. An exact name can
+  # collide with an existing bucket, which generateBucketName avoids — that
+  # is the trade, and it only applies on the ROS path.
+  bucketName: {{ $os.rosBucketName }}
+  storageClassName: {{ $os.storageClassName }}
+{{- end }}
+{{- end }}

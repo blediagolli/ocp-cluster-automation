@@ -1,0 +1,4 @@
+apiVersion: v2
+name: user-workload-monitoring
+description: Enable user workload monitoring
+version: 0.1.0

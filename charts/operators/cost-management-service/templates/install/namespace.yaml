@@ -1,0 +1,48 @@
+{{- /* Gated on installOperators, from conf.yaml: false means the operator
+       is installed by something other than this repo — an ACM policy, or by
+       hand — and this chart contributes only the CRs. Without it, migrating
+       a cluster that set deployOperators: false would install operators on it
+       that were never there. */}}
+{{- if .Values.installOperators }}
+{{- /* Wave -30: the namespace has to exist before the OperatorGroup and
+       Subscription land in it. Owned by this chart rather than a separate
+       operator-deployment Application, which is the whole point of merging
+       the two.
+
+       Identical in every chart under charts/operators/ — the values are
+       reached through `index .Values .Chart.Name`, so there is no per-chart
+       text here at all. Do not edit one copy. */}}
+{{- $v := index .Values .Chart.Name }}
+{{- if not $v.operator.skipNamespace }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $v.operator.namespace }}
+  labels:
+    app.kubernetes.io/managed-by: multi-cluster-config
+    operator: {{ .Chart.Name }}
+    {{- with $v.operator.namespaceLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-30"
+    {{- with $v.operator.namespaceAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}
+{{- /* A CR namespace that differs from the install namespace needs creating
+       too. Rare — see the helper — but the generalisation costs four lines. */}}
+{{- $crNamespace := include "operator.crNamespace" . }}
+{{- if and $v.createNamespace (ne $crNamespace $v.operator.namespace) }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $crNamespace }}
+  labels:
+    app.kubernetes.io/managed-by: multi-cluster-config
+    operator: {{ .Chart.Name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-30"
+{{- end }}
+{{- end }}

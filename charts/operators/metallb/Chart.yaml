@@ -1,0 +1,4 @@
+apiVersion: v2
+name: metallb
+description: metallb — operator subscription and metalLB instance and address pools
+version: 0.1.0

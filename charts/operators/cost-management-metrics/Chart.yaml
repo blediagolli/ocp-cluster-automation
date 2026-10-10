@@ -1,0 +1,4 @@
+apiVersion: v2
+name: cost-management-metrics
+description: cost-management-metrics — operator subscription and costManagementMetricsConfig CR for the Cost Management Metrics Operator
+version: 0.1.0

@@ -1,0 +1,36 @@
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: placement-resource-quota
+  # PolicyGenerator requires this explicitly even though the policies land in the
+  # same namespace -- it will not infer it from policyDefaults.
+  namespace: ${POLICY_NAMESPACE}
+spec:
+  # Deliberately no spec.clusterSets. The tenancy boundary is the
+  # ManagedClusterSetBinding that policies/stable/policy-framework creates in the
+  # policy namespace -- a Placement can only see sets bound there. With no
+  # predicates this selects every cluster in every bound set.
+  #
+  # Beware: a Placement that matches nothing produces a Policy that reports
+  # Compliant, which is indistinguishable from one that is genuinely passing.
+  # Check for propagated instances, not for a green tick. See
+  # docs/governance/acm-policies.md.
+  #
+  # To make this policy opt-in instead, add a label predicate here and have
+  # policies/stable/cluster-labels stamp the label onto the clusters that want it:
+  #
+  #   predicates:
+  #     - requiredClusterSelector:
+  #         labelSelector:
+  #           matchExpressions:
+  #             - key: gfo.io/resource-quota
+  #               operator: In
+  #               values: ['true']
+  #
+  # Keep evaluating on clusters the hub has temporarily lost, so an unreachable
+  # cluster shows as stale rather than silently dropping out of the policy.
+  tolerations:
+    - key: cluster.open-cluster-management.io/unreachable
+      operator: Exists
+    - key: cluster.open-cluster-management.io/unavailable
+      operator: Exists

@@ -1,0 +1,56 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.gitopsCluster.include }}
+# All three kinds below come from CRDs that MultiClusterHub installs, so on a
+# first sync they do not exist yet. The sync-wave alone is not enough: ArgoCD
+# dry-run-validates every manifest in the Application before it applies wave 0,
+# so an unknown kind fails the whole sync ("one or more synchronization tasks
+# are not valid") and the waves never run — the MCH that would create the CRDs
+# included. SkipDryRunOnMissingResource defers validation to apply time, which
+# is wave 3, by which point mch-wait has seen the hub reach Running.
+apiVersion: cluster.open-cluster-management.io/v1beta2
+kind: ManagedClusterSetBinding
+metadata:
+  name: {{ $v.gitopsCluster.clusterSet }}
+  namespace: {{ $v.gitopsCluster.argoNamespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  clusterSet: {{ $v.gitopsCluster.clusterSet }}
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: {{ $v.gitopsCluster.placementName }}
+  namespace: {{ $v.gitopsCluster.argoNamespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  predicates:
+    - requiredClusterSelector:
+        labelSelector:
+          matchExpressions:
+            - key: environment
+              operator: "In"
+              values:
+                {{- toYaml $v.gitopsCluster.matchEnvironments | nindent 16 }}
+---
+apiVersion: apps.open-cluster-management.io/v1beta1
+kind: GitOpsCluster
+metadata:
+  name: {{ $v.gitopsCluster.name }}
+  namespace: {{ $v.gitopsCluster.argoNamespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  argoServer:
+    cluster: local-cluster
+    argoNamespace: {{ $v.gitopsCluster.argoNamespace }}
+  placementRef:
+    kind: Placement
+    apiVersion: cluster.open-cluster-management.io/v1beta1
+    name: {{ $v.gitopsCluster.placementName }}
+    namespace: {{ $v.gitopsCluster.argoNamespace }}
+{{- end }}

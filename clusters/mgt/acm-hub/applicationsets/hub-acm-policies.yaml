@@ -1,0 +1,73 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: hub-acm-policies
+  namespace: openshift-gitops
+spec:
+  # Deliberately no preserveResourcesOnDeletion, unlike the other ApplicationSets
+  # here. Those deploy config that should outlive a refactor of the repo; these
+  # deploy governance controls, and a control that survives the deletion of its
+  # own definition is worse than no control -- it keeps reporting on a rule
+  # nobody can find. Removing a directory under policies/ removes the Policy.
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    # Marker-file discovery rather than a directories: generator. Globbing for
+    # kustomization.yaml matches exactly the directories the CMP can actually
+    # render, so an unfinished directory or a stray README never becomes an
+    # Application that fails to sync.
+    - git:
+        repoURL: git@github.com:YOUR_ORG/ocp-cluster-automation.git
+        revision: main
+        files:
+          - path: 'policies/*/*/kustomization.yaml'
+  template:
+    metadata:
+      # path.basename is the policy directory name, e.g. cluster-labels.
+      name: 'policy-{{.path.basename}}'
+      labels:
+        type: acm-policy
+        tier: '{{ index .path.segments 1 }}'
+    spec:
+      project: platform
+      source:
+        repoURL: git@github.com:YOUR_ORG/ocp-cluster-automation.git
+        targetRevision: main
+        path: '{{.path.path}}'
+        plugin:
+          # Must match the ConfigManagementPlugin name registered on the
+          # repo-server sidecar; see
+          # clusters/mgt/acm-hub/bootstrap/openshift-gitops/instance/policy-generator-cmp.yaml
+          name: policy-generator
+          env:
+            - name: POLICY_NAMESPACE
+              value: open-cluster-management-policies
+            # Policies attest; the charts configure. The one policy that has to
+            # write (cluster-labels) overrides this in its own generator config,
+            # because ManagedCluster labels have no other writer. Everything else
+            # stays inform. See docs/governance/acm-policies.md.
+            - name: REMEDIATION
+              value: inform
+            - name: EVAL_COMPLIANT
+              value: 10m
+            - name: EVAL_NONCOMPLIANT
+              value: 30s
+      destination:
+        # Always the hub. The policy framework runs here and evaluates every
+        # managed cluster from here; nothing in policies/ is ever deployed to a
+        # spoke directly.
+        server: 'https://kubernetes.default.svc'
+        namespace: open-cluster-management-policies
+      syncPolicy:
+        automated:
+          selfHeal: true
+          prune: true
+        syncOptions:
+          - CreateNamespace=true
+        retry:
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 10m
+          limit: 5

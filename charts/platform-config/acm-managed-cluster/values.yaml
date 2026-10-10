@@ -1,0 +1,28 @@
+managedCluster:
+  include: false
+  registerArgoCD: false
+  vendor: OpenShift
+  cloudProvider: auto-detect
+  clusterSet: default
+  labels: {}
+  hubAcceptsClient: true
+
+  autoImport:
+    include: false
+    mode: kubeconfig
+    kubeconfig:
+      secretName: ""
+    token:
+      server: ""
+      value: ""
+
+  addons:
+    include: true
+    config-policy-controller: true
+    governance-policy-framework: true
+    work-manager: true
+    application-manager: true
+    cert-policy-controller: true
+    search-collector: true
+    cluster-proxy: false
+    managed-serviceaccount: false

@@ -1,0 +1,50 @@
+{{- if .Values.clusterRoles.include }}
+{{- range .Values.clusterRoles.roles }}
+{{- if .include }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .name }}
+  {{- if .labels }}
+  labels:
+    {{- range $key, $value := .labels }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
+{{- if .aggregationRule }}
+aggregationRule:
+  clusterRoleSelectors:
+    {{- range .aggregationRule.clusterRoleSelectors }}
+    - matchLabels:
+        {{- range $key, $value := .matchLabels }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+    {{- end }}
+{{- end }}
+{{- if .rules }}
+rules:
+  {{- range .rules }}
+  - apiGroups:
+      {{- range .apiGroups }}
+      - {{ . | quote }}
+      {{- end }}
+    resources:
+      {{- range .resources }}
+      - {{ . | quote }}
+      {{- end }}
+    verbs:
+      {{- range .verbs }}
+      - {{ . | quote }}
+      {{- end }}
+    {{- if .resourceNames }}
+    resourceNames:
+      {{- range .resourceNames }}
+      - {{ . | quote }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

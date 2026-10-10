@@ -1,0 +1,4 @@
+apiVersion: v2
+name: servicemesh3
+description: servicemesh3 — operator subscription and openShift Service Mesh 3 instance
+version: 0.1.0

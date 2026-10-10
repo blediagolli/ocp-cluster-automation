@@ -1,0 +1,29 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.uiPlugins.monitoring.include }}
+apiVersion: observability.openshift.io/v1alpha1
+kind: UIPlugin
+metadata:
+  name: monitoring
+spec:
+  type: Monitoring
+  {{- $hasConfig := or $v.uiPlugins.monitoring.acm.enabled $v.uiPlugins.monitoring.clusterHealthAnalyzer.enabled $v.uiPlugins.monitoring.perses.enabled }}
+  {{- if $hasConfig }}
+  monitoring:
+    {{- if $v.uiPlugins.monitoring.acm.enabled }}
+    acm:
+      enabled: true
+      alertmanager:
+        url: {{ $v.uiPlugins.monitoring.acm.alertmanager.url | quote }}
+      thanosQuerier:
+        url: {{ $v.uiPlugins.monitoring.acm.thanosQuerier.url | quote }}
+    {{- end }}
+    {{- if $v.uiPlugins.monitoring.clusterHealthAnalyzer.enabled }}
+    clusterHealthAnalyzer:
+      enabled: true
+    {{- end }}
+    {{- if $v.uiPlugins.monitoring.perses.enabled }}
+    perses:
+      enabled: true
+    {{- end }}
+  {{- end }}
+{{- end }}

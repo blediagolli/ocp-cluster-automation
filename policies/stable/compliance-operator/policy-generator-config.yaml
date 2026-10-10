@@ -1,0 +1,28 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: PolicyGenerator
+metadata:
+  name: compliance-operator
+placementBindingDefaults:
+  name: binding-compliance-operator
+policyDefaults:
+  namespace: ${POLICY_NAMESPACE}
+  remediationAction: ${REMEDIATION}
+  severity: high
+  # One ConfigurationPolicy holding every manifest, rather than one each. The
+  # policy is a single assertion, so a single compliance verdict is what you want.
+  consolidateManifests: true
+  evaluationInterval:
+    compliant: ${EVAL_COMPLIANT}
+    noncompliant: ${EVAL_NONCOMPLIANT}
+  standards:
+    - NIST SP 800-53
+  categories:
+    - CM Configuration Management
+  controls:
+    - CM-6 Configuration Settings
+  placement:
+    placementPath: placement.yaml
+policies:
+  - name: compliance-operator
+    manifests:
+      - path: manifests/

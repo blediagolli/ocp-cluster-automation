@@ -1,0 +1,4 @@
+apiVersion: v2
+name: alertmanager-config
+description: AlertManager notification routing and receivers
+version: 0.1.0

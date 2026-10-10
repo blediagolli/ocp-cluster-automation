@@ -1,0 +1,4 @@
+apiVersion: v2
+name: node-feature-discovery
+description: node-feature-discovery — operator subscription and node Feature Discovery instance
+version: 0.1.0

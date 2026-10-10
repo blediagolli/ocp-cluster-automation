@@ -1,0 +1,137 @@
+# Cluster identity and ApplicationSet config. The git file generators read this
+# file to discover which charts to deploy, how to reach the cluster, and where
+# to find values overrides. Values here are available to all charts as .Values.cluster.*.
+#
+# This is the management (hub) cluster: it runs ACM, ArgoCD, and the shared
+# platform services the managed clusters depend on.
+cluster:
+  name: acm-hub
+  environment: mgt
+  # The hub reconciles itself, so ArgoCD talks to the local API server.
+  address: "https://kubernetes.default.svc"
+  baseDomain: "apps.acm-hub.example.com"
+  # Charts that provision storage read cluster.storageClass. Set it to a
+  # StorageClass that exists on your cluster, or leave it unset and let each
+  # chart fall back to its own default.
+  # storageClass: ""
+
+# Platform charts deployed to the hub, in order. Nothing is enabled: which
+# charts the hub runs is your decision, not this repository's. Uncomment the
+# ones you want and delete the rest — the list below is the full catalogue of
+# charts/platform-config/. Each chart's fields are documented in
+# docs/reference/platform-config.yaml.
+platformCharts: []
+  # - chart: acm-managed-cluster
+  # - chart: admin-network-policy
+  # - chart: alertmanager-config
+  # - chart: etcd-backup
+  # - chart: etcd-defrag
+  # - chart: global-pull-secrets
+  # - chart: image-mirror-config
+  # - chart: image-pruner
+  # - chart: machine-health-checks
+  # - chart: openshift-apiserver
+  # - chart: openshift-build
+  # - chart: openshift-console
+  # - chart: openshift-dns
+  # - chart: openshift-group-sync
+  # - chart: openshift-image
+  # - chart: openshift-image-registry
+  # - chart: openshift-ingress
+  # - chart: openshift-machine-config
+  # - chart: openshift-marketplace
+  # - chart: openshift-oauth
+  # - chart: openshift-proxy
+  # - chart: openshift-scheduler
+  # - chart: project-request-template
+  # - chart: prometheus-rules
+  # - chart: rbac
+  # - chart: storage-classes
+  # - chart: tls-certificates
+  # - chart: user-workload-monitoring
+  # - chart: vault-server
+  # - chart: volume-snapshot-classes
+
+# Merged operator charts: the full catalogue of charts/operators/, all off.
+# One chart per operator. It installs the operator — Namespace, OperatorGroup,
+# Subscription, at sync waves -30/-29/-28 — and renders that operator's custom
+# resources above them, so a CR is never applied before its CRD exists.
+#
+# Values come from two optional files per level, all read in order:
+#   env/<env>/operators.yaml              shared, several operators
+#   env/<env>/operators/<chart>.yaml      one operator
+#   clusters/<env>/<cluster>/operators.yaml
+#   clusters/<env>/<cluster>/operators/<chart>.yaml
+# Every chart nests its values under its own name, so a block is identical in
+# both places. Start in the shared file; move an operator to its own file when
+# it grows large enough to drown the others.
+#
+# Listing a chart installs the operator and nothing else: every CR keeps its own
+# `include: false` default, so you opt in to operands one at a time.
+#
+# The key must exist even when empty — the ApplicationSet generator runs with
+# missingkey=error and a missing key fails before any default can apply.
+operatorCharts: []
+  # - chart: advanced-cluster-management
+  # - chart: advanced-cluster-security
+  # - chart: amq-streams
+  # - chart: ansible-automation-platform
+  # - chart: cert-manager
+  # - chart: cloudnative-pg
+  # - chart: cluster-observability
+  # - chart: compliance
+  # - chart: cost-management-metrics
+  # - chart: cost-management-service
+  # - chart: dev-spaces
+  # - chart: developer-hub
+  # - chart: external-secrets
+  # - chart: gatekeeper
+  # - chart: gitlab
+  # - chart: gitlab-runner
+  # - chart: group-sync
+  # - chart: jfrog
+  # - chart: keycloak
+  # - chart: kyverno
+  # - chart: logging
+  # - chart: lvm
+  # - chart: metallb
+  # - chart: mtv
+  # - chart: nmstate
+  # - chart: node-feature-discovery
+  # - chart: node-maintenance
+  # - chart: oadp
+  # - chart: odf
+  # - chart: openshift-gitops
+  # - chart: openshift-local-storage
+  # - chart: openshift-pipelines
+  # - chart: openshift-virtualization
+  # - chart: opentelemetry
+  # - chart: portworx
+  # - chart: quay
+  # - chart: quay-bridge
+  # - chart: servicemesh3
+  # - chart: tempo
+  # - chart: trident
+  # - chart: trusted-artifact-signer
+
+# Whether the operator Applications install their operators, or only
+# configure operators that something else put there — an ACM policy, or a
+# subscription applied by hand. false drops every Namespace, OperatorGroup
+# and Subscription in every chart above and keeps the CRs.
+installOperators: true
+
+# True here because this is the hub itself: its destination is the in-cluster
+# https://kubernetes.default.svc, which is always resolvable. On a managed
+# cluster this stays false until the cluster is imported — see the example
+# cluster's conf.yaml for why that matters.
+clusterRegistered: true
+
+# Which ApplicationSets claim this cluster at all. Each one is a separate
+# Application; leaving them false means the cluster is defined but inert.
+deployOverlay: false
+deployImport: false
+deployProvision: false
+
+# Teams onboarded to the hub. Each entry needs a matching definition in
+# teams/<name>.yaml; see charts/onboarding/ for what gets created.
+teams: []

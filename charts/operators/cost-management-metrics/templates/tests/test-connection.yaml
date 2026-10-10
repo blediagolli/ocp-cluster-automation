@@ -1,0 +1,83 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.costManagementMetrics.include }}
+{{- $cm := $v.costManagementMetrics }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  containers:
+    - name: test
+      image: registry.redhat.io/openshift4/ose-cli:latest
+      command:
+        - /bin/bash
+        - -c
+        - |
+          FAILED=0
+          NS={{ $cm.namespace }}
+
+          echo "--- Checking CostManagementMetricsConfig ---"
+          if ! oc get costmanagementmetricsconfig {{ $cm.name }} -n $NS >/dev/null 2>&1; then
+            echo "  FAIL: CostManagementMetricsConfig {{ $cm.name }} not found"
+            FAILED=1
+          else
+            echo "  PASS: CostManagementMetricsConfig {{ $cm.name }} exists"
+          fi
+
+          {{- if eq $cm.authentication.type "service-account" }}
+          echo "--- Checking service-account Secret ---"
+          # The operator reads client_id/client_secret with underscores; the
+          # hyphenated spelling belongs to the server-side UI client and is a
+          # silent auth failure here.
+          for KEY in client_id client_secret; do
+            VAL=$(oc get secret {{ $cm.authentication.secretName }} -n $NS -o jsonpath="{.data.$KEY}" 2>/dev/null || true)
+            if [ -z "$VAL" ]; then
+              echo "  FAIL: Secret {{ $cm.authentication.secretName }} missing or has empty key $KEY"
+              FAILED=1
+            else
+              echo "  PASS: Secret {{ $cm.authentication.secretName }} has $KEY"
+            fi
+          done
+          {{- end }}
+
+          echo "--- Checking authentication status ---"
+          AUTH=$(oc get costmanagementmetricsconfig {{ $cm.name }} -n $NS -o jsonpath='{.status.authentication.authentication_credentials_found}' 2>/dev/null || true)
+          if [ "$AUTH" = "true" ]; then
+            echo "  PASS: operator found authentication credentials"
+          else
+            echo "  WARN: authentication_credentials_found=${AUTH:-unset} (operator may not have reconciled yet)"
+          fi
+
+          echo "--- Checking last upload ---"
+          # Uploads run on upload_cycle ({{ $cm.upload.uploadCycle }}m), so an
+          # empty status right after install is expected, not a failure.
+          UPLOAD=$(oc get costmanagementmetricsconfig {{ $cm.name }} -n $NS -o jsonpath='{.status.upload.last_successful_upload_time}' 2>/dev/null || true)
+          if [ -n "$UPLOAD" ]; then
+            echo "  INFO: last successful upload $UPLOAD"
+          else
+            echo "  INFO: no successful upload recorded yet"
+          fi
+
+          echo "--- Checking operator pod ---"
+          TOTAL=$(oc get pods -n $NS -l app=cost-mgmt-operator --no-headers 2>/dev/null | wc -l | tr -d ' ')
+          if [ "$TOTAL" -eq 0 ]; then
+            TOTAL=$(oc get pods -n $NS -l control-plane=controller-manager --no-headers 2>/dev/null | wc -l | tr -d ' ')
+            NOT_READY=$(oc get pods -n $NS -l control-plane=controller-manager --no-headers 2>/dev/null | grep -cv "Running" || true)
+          else
+            NOT_READY=$(oc get pods -n $NS -l app=cost-mgmt-operator --no-headers 2>/dev/null | grep -cv "Running" || true)
+          fi
+          if [ "$TOTAL" -gt 0 ] && [ "$NOT_READY" -eq 0 ]; then
+            echo "  PASS: operator pod running"
+          else
+            echo "  FAIL: operator pod not running ($NOT_READY of $TOTAL not ready)"
+            FAILED=1
+          fi
+
+          if [ "$FAILED" -eq 0 ]; then
+            echo "PASS: cost-management-metrics configured"
+          fi
+          exit $FAILED
+{{- end }}

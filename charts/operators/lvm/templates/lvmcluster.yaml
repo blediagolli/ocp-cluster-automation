@@ -1,0 +1,20 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.lvmCluster.include }}
+apiVersion: lvm.topolvm.io/v1alpha1
+kind: LVMCluster
+metadata:
+  name: {{ $v.lvmCluster.name }}
+  namespace: {{ $v.lvmCluster.namespace }}
+spec:
+  storage:
+    deviceClasses:
+      - name: {{ $v.lvmCluster.deviceClassName }}
+        default: {{ $v.lvmCluster.default }}
+        fstype: {{ $v.lvmCluster.fsType }}
+        thinPoolConfig:
+          name: {{ $v.lvmCluster.thinPool.name }}
+          sizePercent: {{ $v.lvmCluster.thinPool.sizePercent }}
+          overprovisionRatio: {{ $v.lvmCluster.thinPool.overprovisionRatio }}
+          chunkSizeCalculationPolicy: Static
+          metadataSizeCalculationPolicy: Host
+{{- end }}

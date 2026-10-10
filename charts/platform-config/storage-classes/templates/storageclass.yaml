@@ -1,0 +1,21 @@
+{{- if .Values.storageClasses.include }}
+{{- range .Values.storageClasses.classes }}
+{{- if .include }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .name }}
+provisioner: {{ .provisioner }}
+reclaimPolicy: {{ .reclaimPolicy | default "Delete" }}
+volumeBindingMode: {{ .volumeBindingMode | default "WaitForFirstConsumer" }}
+allowVolumeExpansion: {{ .allowVolumeExpansion | default true }}
+{{- if .parameters }}
+parameters:
+  {{- range $key, $val := .parameters }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

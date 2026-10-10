@@ -1,0 +1,15 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.tas.include }}
+apiVersion: rhtas.redhat.com/v1beta1
+kind: RHTAS
+metadata:
+  name: {{ $v.tas.name }}
+  namespace: {{ $v.tas.namespace }}
+spec:
+  fulcio:
+    enabled: {{ $v.tas.fulcioEnabled }}
+  rekorServer:
+    enabled: {{ $v.tas.rekoEnabled }}
+  tuf:
+    enabled: {{ $v.tas.tufEnabled }}
+{{- end }}

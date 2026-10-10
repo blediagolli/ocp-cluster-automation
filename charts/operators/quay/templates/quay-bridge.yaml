@@ -1,0 +1,35 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if and $v.quayRegistry.include $v.quayRegistry.bridge.include }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: quay-bridge-token
+  namespace: openshift-operators
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+type: Opaque
+stringData:
+  token: {{ required "quay.bridge.oauthToken is required when bridge is enabled" $v.quayRegistry.bridge.oauthToken }}
+---
+apiVersion: quay.redhat.com/v1
+kind: QuayIntegration
+metadata:
+  name: quay-bridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  clusterID: openshift
+  credentialsSecret:
+    namespace: openshift-operators
+    name: quay-bridge-token
+  quayHostname: https://{{ $v.quayRegistry.bridge.hostname | default (printf "%s-quay-%s.%s" $v.quayRegistry.name $v.quayRegistry.namespace .Values.cluster.baseDomain) }}
+  insecureRegistry: {{ $v.quayRegistry.bridge.insecureRegistry }}
+  {{- if $v.quayRegistry.bridge.namespaceCreationDefault }}
+  namespaceCreationDefault: true
+  {{- end }}
+  scheduledImageStreamImport: {{ $v.quayRegistry.bridge.scheduledImageStreamImport }}
+  {{- with $v.quayRegistry.bridge.denylistNamespaces }}
+  denylistNamespaces:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}

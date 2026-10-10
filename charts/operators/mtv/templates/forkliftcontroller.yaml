@@ -1,0 +1,12 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.forkliftController.include }}
+apiVersion: forklift.konveyor.io/v1beta1
+kind: ForkliftController
+metadata:
+  name: {{ $v.forkliftController.name }}
+  namespace: {{ $v.forkliftController.namespace }}
+spec:
+  feature_ui_plugin: true
+  feature_validation: true
+  feature_volume_populator: true
+{{- end }}

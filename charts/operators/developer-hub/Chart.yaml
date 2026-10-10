@@ -1,0 +1,4 @@
+apiVersion: v2
+name: developer-hub
+description: developer-hub — operator subscription
+version: 0.1.0

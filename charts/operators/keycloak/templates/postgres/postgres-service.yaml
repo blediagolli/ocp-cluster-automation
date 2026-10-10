@@ -1,0 +1,20 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.postgres.include }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $v.postgres.name }}
+  namespace: {{ include "operator.crNamespace" . }}
+  labels:
+    app: {{ $v.postgres.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+spec:
+  type: ClusterIP
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+  selector:
+    app: {{ $v.postgres.name }}
+{{- end }}

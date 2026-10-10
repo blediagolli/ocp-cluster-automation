@@ -1,0 +1,143 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.costManagementService.include }}
+{{- $cms := $v.costManagementService }}
+{{- $roles := include "cost-management-service.dbRoles" $ | fromYamlArray }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  containers:
+    - name: test
+      image: registry.redhat.io/openshift4/ose-cli:latest
+      command:
+        - /bin/bash
+        - -c
+        - |
+          FAILED=0
+          NS={{ $cms.namespace }}
+
+          echo "--- Checking CostManagementServiceConfig ---"
+          if ! oc get costmanagementserviceconfig {{ $cms.name }} -n $NS >/dev/null 2>&1; then
+            echo "  FAIL: CostManagementServiceConfig {{ $cms.name }} not found"
+            FAILED=1
+          else
+            echo "  PASS: CostManagementServiceConfig {{ $cms.name }} exists"
+            READY=$(oc get costmanagementserviceconfig {{ $cms.name }} -n $NS -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true)
+            if [ "$READY" = "True" ]; then
+              echo "  PASS: CR reports Ready"
+            else
+              echo "  WARN: CR Ready=${READY:-unset} (the operator reconciles in phases; check .status.conditions)"
+            fi
+          fi
+
+          {{- if $cms.postgres.include }}
+          echo "--- Checking Postgres ---"
+          PHASE=$(oc get cluster.postgresql.cnpg.io {{ $cms.postgres.name }} -n $NS -o jsonpath='{.status.phase}' 2>/dev/null || true)
+          if [ "$PHASE" = "Cluster in healthy state" ]; then
+            echo "  PASS: CNPG cluster healthy"
+          else
+            echo "  FAIL: CNPG cluster phase '${PHASE:-missing}'"
+            FAILED=1
+          fi
+          # Databases and the per-component roles come from the bootstrap
+          # Job, not from initdb, so a healthy cluster is not enough.
+          for JOB in $(oc get jobs -n $NS -o name 2>/dev/null | grep "{{ $cms.postgres.name }}-bootstrap" || true); do
+            if [ "$(oc get $JOB -n $NS -o jsonpath='{.status.succeeded}' 2>/dev/null)" = "1" ]; then
+              echo "  PASS: $JOB succeeded"
+            else
+              echo "  FAIL: $JOB has not succeeded"
+              FAILED=1
+            fi
+          done
+          echo "--- Checking database Secret keys ---"
+          # Key names are fixed by the CRD. A missing one is why the operator
+          # would fail to connect as a component user. Derived from the same
+          # roles helper the ExternalSecret uses, so the two cannot drift.
+          for KEY in {{ range $roles }}{{ .userKey }} {{ .userKey | replace "-user" "-password" }} {{ end }}; do
+            if [ -z "$(oc get secret {{ $cms.postgres.secretName }} -n $NS -o jsonpath="{.data.$KEY}" 2>/dev/null)" ]; then
+              echo "  FAIL: {{ $cms.postgres.secretName }} missing key $KEY"
+              FAILED=1
+            else
+              echo "  PASS: {{ $cms.postgres.secretName }} has $KEY"
+            fi
+          done
+          {{- end }}
+
+          {{- if $cms.kafka.include }}
+          echo "--- Checking Kafka ---"
+          KREADY=$(oc get kafka {{ $cms.kafka.name }} -n $NS -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true)
+          if [ "$KREADY" = "True" ]; then
+            echo "  PASS: Kafka ready"
+          else
+            echo "  FAIL: Kafka not ready (${KREADY:-no status})"
+            FAILED=1
+          fi
+          {{- range $cms.kafka.topics }}
+          # The cost management operator does not create this topic. Without
+          # it, uploads are accepted and then never processed, with no error
+          # anywhere obvious.
+          TREADY=$(oc get kafkatopic {{ .name }} -n $NS -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || true)
+          if [ "$TREADY" = "True" ]; then
+            echo "  PASS: topic {{ .name }} ready"
+          else
+            echo "  FAIL: topic {{ .name }} not ready (${TREADY:-missing})"
+            FAILED=1
+          fi
+          {{- end }}
+          {{- end }}
+
+          {{- if $cms.objectStorage.include }}
+          echo "--- Checking object bucket ---"
+          # One claim serves both koku and ingress: the CR inherits
+          # buckets.ingress from buckets.koku, which keeps NooBaa's
+          # per-bucket credential scoping out of the way.
+          for OBC in {{ $cms.name }}-koku{{ if $cms.ros.enabled }} {{ $cms.name }}-ros{{ end }}; do
+            BPHASE=$(oc get obc $OBC -n $NS -o jsonpath='{.status.phase}' 2>/dev/null || true)
+            if [ "$BPHASE" = "Bound" ]; then
+              echo "  PASS: $OBC bound"
+            else
+              echo "  FAIL: $OBC phase '${BPHASE:-missing}'"
+              FAILED=1
+            fi
+          done
+          {{- end }}
+
+          {{- if and $cms.caSync.include $cms.caSync.copies }}
+          echo "--- Checking synced CA Secrets ---"
+          # Both are written by the PreSync hook, so an empty one means the
+          # hook did not run or its source ConfigMap was missing. Worth
+          # asserting: neither failure is visible on the CR. A missing storage
+          # CA stalls the operator on StorageUnreachable, and a missing
+          # Keycloak CA crash-loops the UI's oauth-proxy container while the
+          # pod still reports Running.
+          for S in {{ range $cms.caSync.copies }}{{ .secretName }} {{ end }}; do
+            if [ -z "$(oc get secret "$S" -n $NS -o jsonpath='{.data.ca\.crt}' 2>/dev/null)" ]; then
+              echo "  FAIL: $S missing or has empty ca.crt"
+              FAILED=1
+            else
+              echo "  PASS: $S has ca.crt"
+            fi
+          done
+          {{- end }}
+
+          echo "--- Checking UI oauth client Secret ---"
+          # Hyphenated keys, fixed by the CRD. The Metrics Operator spells
+          # the same two values with underscores; they are not interchangeable.
+          for KEY in client-id client-secret; do
+            if [ -z "$(oc get secret {{ include "cost-management-service.uiOauthSecretName" . }} -n $NS -o jsonpath="{.data.$KEY}" 2>/dev/null)" ]; then
+              echo "  FAIL: UI oauth Secret missing or has empty key $KEY"
+              FAILED=1
+            else
+              echo "  PASS: UI oauth Secret has $KEY"
+            fi
+          done
+
+          if [ "$FAILED" -eq 0 ]; then
+            echo "PASS: cost-management-service configured"
+          fi
+          exit $FAILED
+{{- end }}

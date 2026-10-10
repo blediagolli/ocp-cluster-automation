@@ -1,0 +1,17 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.namespaces.include }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-system
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-cni
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ztunnel
+{{- end }}

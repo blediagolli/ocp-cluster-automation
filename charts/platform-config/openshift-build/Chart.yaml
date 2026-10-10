@@ -1,0 +1,4 @@
+apiVersion: v2
+name: openshift-build
+description: Cluster-wide build defaults and overrides
+version: 0.1.0

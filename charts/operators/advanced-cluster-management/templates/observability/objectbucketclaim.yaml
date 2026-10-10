@@ -1,0 +1,13 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if and $v.objectStorage.include $v.objectStorage.objectBucketClaim.include $v.multiClusterObservability.include }}
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: {{ $v.objectStorage.objectBucketClaim.name }}
+  namespace: {{ $v.multiClusterObservability.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  bucketName: {{ $v.objectStorage.objectBucketClaim.bucketName }}
+  storageClassName: {{ $v.objectStorage.objectBucketClaim.storageClassName }}
+{{- end }}

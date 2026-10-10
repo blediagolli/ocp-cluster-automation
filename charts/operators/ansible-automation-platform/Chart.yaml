@@ -1,0 +1,4 @@
+apiVersion: v2
+name: ansible-automation-platform
+description: ansible-automation-platform — operator subscription and ansible Automation Platform instance
+version: 0.1.0

@@ -1,0 +1,52 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.instance.include }}
+{{- $hostname := $v.instance.hostname | default (printf "https://sso.%s" .Values.cluster.baseDomain) }}
+{{- if and (not $v.instance.tlsSecret) (not $v.instance.httpEnabled) }}
+{{- fail "keycloak: set either keycloak.instance.tlsSecret or keycloak.instance.httpEnabled — the operator does not generate serving certificates, and Keycloak refuses to start with neither (\"Key material not provided to setup HTTPS\")" }}
+{{- end }}
+{{- $dbHost := include "keycloak.dbHost" . }}
+{{- $dbSecret := $v.instance.db.usernameSecret.name | default (include "keycloak.postgresSecretName" .) }}
+{{- $dbPassSecret := $v.instance.db.passwordSecret.name | default (include "keycloak.postgresSecretName" .) }}
+apiVersion: k8s.keycloak.org/v2alpha1
+kind: Keycloak
+metadata:
+  name: {{ $v.instance.name }}
+  namespace: {{ include "operator.crNamespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    {{- /* On a cluster that has never had rhbk-operator, this CRD does not
+           exist when ArgoCD computes the diff, and the whole Application
+           fails comparison with `no matches for kind "Keycloak"` before any
+           wave runs — waves order the apply, not the dry-run. Skipping the
+           dry-run for this resource lets comparison succeed; the wave -28
+           Subscription then guarantees the CRD is registered by the time
+           wave 0 is actually applied. */}}
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  instances: {{ $v.instance.instances }}
+  hostname:
+    hostname: {{ $hostname }}
+  http:
+    {{- with $v.instance.tlsSecret }}
+    tlsSecret: {{ . }}
+    {{- end }}
+    {{- if $v.instance.httpEnabled }}
+    httpEnabled: true
+    {{- end }}
+  {{- with $v.instance.proxyHeaders }}
+  proxy:
+    headers: {{ . }}
+  {{- end }}
+  {{- if $dbHost }}
+  db:
+    vendor: {{ $v.instance.db.vendor }}
+    host: {{ $dbHost }}
+    database: {{ $v.instance.db.database | default $v.postgres.database }}
+    usernameSecret:
+      name: {{ $dbSecret }}
+      key: {{ $v.instance.db.usernameSecret.key }}
+    passwordSecret:
+      name: {{ $dbPassSecret }}
+      key: {{ $v.instance.db.passwordSecret.key }}
+  {{- end }}
+{{- end }}

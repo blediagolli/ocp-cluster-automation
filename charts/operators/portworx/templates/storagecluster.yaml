@@ -1,0 +1,63 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.storageCluster.include }}
+{{- $sc := $v.storageCluster }}
+{{- /* --oem px-csi is what selects the CSI-only driver, and it is not
+       optional here: without it the same operator and the same CRD install
+       Portworx Enterprise instead, which wants drives, a KVDB and a storage
+       pool. This chart deploys PX-CSI fronting a Pure array and nothing
+       else, so the flag is always present and the Enterprise-only fields
+       (kvdb, cloudStorage, storage, stork, autopilot, secretsProvider) are
+       deliberately absent rather than defaulted off. */}}
+{{- $miscArgs := trim (printf "--oem px-csi %s" $sc.miscArgs) }}
+apiVersion: core.libopenstorage.org/v1
+kind: StorageCluster
+metadata:
+  name: {{ required "portworx.storageCluster.name is required — it is the Portworx cluster ID and must match the c= parameter in installSource" $sc.name }}
+  namespace: {{ include "operator.crNamespace" . }}
+  annotations:
+    {{- with $sc.installSource }}
+    portworx.io/install-source: {{ . | quote }}
+    {{- end }}
+    {{- if $sc.isOpenShift }}
+    portworx.io/is-openshift: "true"
+    {{- end }}
+    portworx.io/misc-args: {{ $miscArgs | quote }}
+spec:
+  {{- /* The tag belongs inside the value: `image: "repo":"tag"` is not valid
+         YAML and fails the render with "did not find expected key". */}}
+  image: {{ required "portworx.storageCluster.image is required (repo:tag)" $sc.image }}
+  imagePullPolicy: {{ $sc.imagePullPolicy }}
+  csi:
+    enabled: {{ $sc.csi.enabled }}
+  monitoring:
+    telemetry:
+      enabled: {{ $sc.monitoring.telemetry }}
+    prometheus:
+      {{- /* Two different things: exportMetrics publishes to a Prometheus
+             that already exists, enabled makes the operator deploy one.
+             Conflating them into a single flag would quietly stand up a
+             second Prometheus on a cluster that already has monitoring. */}}
+      exportMetrics: {{ $sc.monitoring.exportMetrics }}
+      {{- if $sc.monitoring.prometheusEnabled }}
+      enabled: true
+      {{- end }}
+  {{- /* The PURE_* vars are modelled rather than left to the free-form env
+         list below: sanType decides which host prerequisites the nodes
+         actually need — ISCSI is the case that requires iscsid and a unique
+         IQN per node — and getting it wrong fails at attach time, not here. */}}
+  {{- $env := list }}
+  {{- with $sc.pure.sanType }}
+  {{- $env = append $env (dict "name" "PURE_FLASHARRAY_SAN_TYPE" "value" .) }}
+  {{- end }}
+  {{- with $sc.pure.iscsiAllowedCIDR }}
+  {{- $env = append $env (dict "name" "PURE_ISCSI_ALLOWED_CIDR" "value" .) }}
+  {{- end }}
+  {{- $env = concat $env $sc.env }}
+  {{- with $env }}
+  env:
+    {{- range . }}
+    - name: {{ .name }}
+      value: {{ .value | quote }}
+    {{- end }}
+  {{- end }}
+{{- end }}

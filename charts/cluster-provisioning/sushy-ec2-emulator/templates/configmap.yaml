@@ -1,0 +1,10 @@
+{{- if .Values.instances }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sushy-ec2-config
+  namespace: {{ .Values.namespace }}
+data:
+  instances.json: |
+{{ dict "instances" .Values.instances | toPrettyJson | indent 4 }}
+{{- end }}

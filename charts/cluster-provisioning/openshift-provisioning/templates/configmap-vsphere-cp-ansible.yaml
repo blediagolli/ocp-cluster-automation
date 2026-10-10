@@ -1,0 +1,16 @@
+{{- if and .Values.provision.include (eq (include "cluster.isAgent" .) "true") .Values.vsphereControlPlane.enabled (eq .Values.vsphereControlPlane.automation "ansible") }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.cluster.name }}-vsphere-cp-ansible
+  namespace: {{ .Values.cluster.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+data:
+  entrypoint.sh: |
+{{ .Files.Get "files/vsphere-cp-entrypoint.sh" | indent 4 }}
+  playbook.yml: |
+{{ .Files.Get "files/vsphere-cp-playbook.yml" | indent 4 }}
+  requirements.yml: |
+{{ .Files.Get "files/vsphere-cp-requirements.yml" | indent 4 }}
+{{- end }}

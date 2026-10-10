@@ -1,0 +1,323 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if and $v.costManagementService.include $v.costManagementService.costModel.include }}
+{{- $cms := $v.costManagementService }}
+{{- $cm := $cms.costModel }}
+{{- $name := printf "%s-cost-model-sync" $cms.name }}
+{{- /* The cost model is the one piece of cost management configuration that
+       has no Kubernetes representation at all. CostManagementServiceConfig
+       covers auth, database, storage, kafka, rbac, ui — and nothing for rates,
+       markup or distribution. Those live only behind
+       POST /api/cost-management/v1/cost-models/, so the only way to keep them
+       in git is to have something apply them over HTTP.
+
+       A Sync hook rather than a hash-named Job, unlike the keycloak chart's
+       realm sync. Two reasons:
+
+         - the provider UUID this model attaches to is minted when the source
+           first registers, so the desired state is not fully knowable at
+           render time and a name-hashed Job would never re-run to pick it up
+
+         - a cost model is editable in the UI, and reconciling it on every sync
+           is the point: git is the source of truth, and an out-of-band edit
+           should not survive
+
+       PostSync specifically, because the gateway and koku have to be serving
+       before any of this can work, and neither is owned by this Application —
+       the operator creates them. The script waits rather than assuming. */}}
+{{- $rates := list }}
+{{- range $r := ($cm.rates | default list) }}
+{{- $tiers := list }}
+{{- range $t := ($r.tiered | default list) }}
+{{- /* The unit is stamped from the model currency rather than taken per tier:
+       koku rejects a cost model whose rate units and currency differ, so a
+       per-tier unit would only ever be a way to get it wrong. */}}
+{{- $tiers = append $tiers (dict "value" ($t.value | toString) "unit" $cm.currency "usage" (dict "usage_start" $t.usageStart "usage_end" $t.usageEnd)) }}
+{{- end }}
+{{- $rate := dict "metric" (dict "name" $r.metric) "cost_type" $r.costType "tiered_rates" $tiers }}
+{{- with $r.description }}{{- $_ := set $rate "description" . }}{{- end }}
+{{- $rates = append $rates $rate }}
+{{- end }}
+{{- $di := $cm.distributionInfo }}
+{{- $payload := dict
+      "name" (include "cost-management-service.costModelName" .)
+      "description" $cm.description
+      "source_type" $cm.sourceType
+      "currency" $cm.currency
+      "markup" (dict "value" ($cm.markup.value | toString) "unit" $cm.markup.unit)
+      "distribution" $di.distributionType
+      "distribution_info" (dict
+        "distribution_type" $di.distributionType
+        "platform_cost" $di.platformCost
+        "worker_cost" $di.workerCost
+        "network_unattributed" $di.networkUnattributed
+        "storage_unattributed" $di.storageUnattributed
+        "gpu_unallocated" $di.gpuUnallocated)
+      "rates" $rates }}
+{{- /* The operator writes a NetworkPolicy of its own in front of the gateway,
+       admitting port 9080 from the ingress namespace and from the UI pod and
+       nothing else. A pod in the same namespace is not on that list, so the
+       sync Job's connection is dropped — a *timeout*, not a refusal, which is
+       the tell that a policy and not a missing listener is the cause.
+
+       Policies are additive, so this grants the one extra source rather than
+       touching the operator's. Not a hook: it has to exist before the PostSync
+       phase, and it is ordinary cluster config rather than a hook artifact.
+       Ports here are the pod's, so 9080 and not the Service's 80. */}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}
+  namespace: {{ $cms.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: gateway
+      app.kubernetes.io/instance: {{ $cms.name }}
+      app.kubernetes.io/name: {{ $cms.name }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: cost-model-sync
+              app.kubernetes.io/instance: {{ $cms.name }}
+              app.kubernetes.io/name: {{ $cms.name }}
+      ports:
+        - port: 9080
+          protocol: TCP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  namespace: {{ $cms.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  cost-model.json: |
+    {{- $payload | toJson | nindent 4 }}
+  sources.json: |
+    {{- $cm.sourceNames | default list | toJson | nindent 4 }}
+  apply.py: |
+    # Apply the cost model in cost-model.json, creating it or updating the one
+    # that already carries the same name.
+    #
+    # Everything this talks to belongs to someone else — Keycloak, Envoy, koku,
+    # and the source the Metrics Operator registers — so the whole thing is
+    # written as "retry until a deadline" rather than "fail on the first
+    # connection refused". A fresh cluster reaches this hook long before any of
+    # it is ready.
+    import json
+    import os
+    import ssl
+    import sys
+    import time
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+
+    BASE = os.environ["API_URL"].rstrip("/") + "/api/cost-management/v1"
+    TOKEN_URL = os.environ["TOKEN_URL"]
+    DEADLINE = time.time() + int(os.environ["WAIT_SECONDS"])
+    CTX = ssl._create_unverified_context() if os.environ.get("INSECURE") == "true" else None
+
+
+    class ApiError(Exception):
+        """Anything worth retrying: a bad status, or a body that is not JSON."""
+
+
+    def call(method, url, data=None, headers=None, form=False):
+        headers = dict(headers or {})
+        body = None
+        if data is not None:
+            if form:
+                body = urllib.parse.urlencode(data).encode()
+                headers["Content-Type"] = "application/x-www-form-urlencoded"
+            else:
+                body = json.dumps(data).encode()
+                headers["Content-Type"] = "application/json"
+        req = urllib.request.Request(url, data=body, headers=headers, method=method)
+        try:
+            # Short, because every call here is in-cluster: anything that has
+            # not answered in 20s is blocked rather than slow, and a long
+            # per-request timeout just eats the retry budget below.
+            with urllib.request.urlopen(req, context=CTX, timeout=20) as resp:
+                return resp.status, decode(resp.read())
+        except urllib.error.HTTPError as exc:
+            return exc.code, decode(exc.read())
+        except OSError as exc:
+            # Named, because "timed out" on its own does not say whether it was
+            # Keycloak or the gateway that failed to answer — and a timeout
+            # rather than a refusal usually means a NetworkPolicy, not a pod
+            # that is still starting.
+            raise ApiError("%s %s: %s" % (method, url, exc))
+
+
+    def decode(raw):
+        try:
+            return json.loads(raw or b"{}")
+        except ValueError:
+            # Envoy answers in plain text, so an auth failure at the gateway
+            # arrives as "Jwt is missing" and not as JSON.
+            return {"body": raw.decode("utf-8", "replace").strip()[:500]}
+
+
+    def fetch_token():
+        status, body = call(
+            "POST",
+            TOKEN_URL,
+            form=True,
+            data={
+                "grant_type": "client_credentials",
+                "client_id": os.environ["CLIENT_ID"],
+                "client_secret": os.environ["CLIENT_SECRET"],
+            },
+        )
+        if status != 200 or "access_token" not in body:
+            detail = body.get("error_description") or body.get("error") or body.get("body") or body
+            raise ApiError("token request: HTTP %s %s" % (status, detail))
+        return body["access_token"]
+
+
+    _token = {"value": None, "at": 0.0}
+
+
+    def auth():
+        # Re-fetched rather than held: waiting for a source can outlast the
+        # token, and an expired bearer would surface as a 401 that looks like a
+        # credential problem.
+        if not _token["value"] or time.time() - _token["at"] > 120:
+            _token["value"] = fetch_token()
+            _token["at"] = time.time()
+        return {"Authorization": "Bearer " + _token["value"]}
+
+
+    def get(path):
+        status, body = call("GET", BASE + path, headers=auth())
+        if status != 200:
+            raise ApiError("GET %s: HTTP %s %s" % (path, status, json.dumps(body)[:400]))
+        return body
+
+
+    def retry(attempt, what):
+        while True:
+            try:
+                return attempt()
+            except (ApiError, OSError) as exc:
+                if time.time() >= DEADLINE:
+                    sys.exit("timed out waiting for %s: %s" % (what, exc))
+                print("waiting for %s: %s" % (what, exc), flush=True)
+                time.sleep(20)
+
+
+    def resolve_sources(names):
+        def attempt():
+            found = {s["name"]: s["uuid"] for s in get("/sources/?limit=1000").get("data", []) if s.get("uuid")}
+            missing = [n for n in names if n not in found]
+            if missing:
+                raise ApiError(
+                    "source(s) not registered yet: %s (known: %s)"
+                    % (", ".join(missing), ", ".join(sorted(found)) or "none")
+                )
+            return [found[n] for n in names]
+
+        return retry(attempt, "source registration")
+
+
+    desired = json.load(open("/sync/cost-model.json"))
+    names = json.load(open("/sync/sources.json"))
+
+    retry(lambda: get("/cost-models/?limit=1"), "the cost management API")
+
+    if names:
+        desired["source_uuids"] = resolve_sources(names)
+        print("sources: %s" % ", ".join("%s=%s" % pair for pair in zip(names, desired["source_uuids"])), flush=True)
+
+    # Matched on name because the API offers nothing else stable: the UUID is
+    # server-generated, and storing it back in git is not something a hook can
+    # do. Renaming the model in values therefore creates a second one.
+    existing = next((c for c in get("/cost-models/?limit=1000").get("data", []) if c.get("name") == desired["name"]), None)
+
+    if existing:
+        verb = "update"
+        status, body = call("PUT", "%s/cost-models/%s/" % (BASE, existing["uuid"]), data=desired, headers=auth())
+    else:
+        verb = "create"
+        status, body = call("POST", BASE + "/cost-models/", data=desired, headers=auth())
+
+    if status not in (200, 201):
+        sys.exit("cost model %s failed: HTTP %s %s" % (verb, status, json.dumps(body)[:800]))
+
+    print("cost model %sd: %s (%s)" % (verb, body.get("name"), body.get("uuid")))
+    print("  currency %s, markup %s%%, %d rate(s), distribution by %s" % (
+        body.get("currency"),
+        (body.get("markup") or {}).get("value"),
+        len(body.get("rates") or []),
+        (body.get("distribution_info") or {}).get("distribution_type"),
+    ))
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $name }}
+  namespace: {{ $cms.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  {{- /* No retries, and keep sourceWaitSeconds short. A PostSync hook holds
+         the whole ArgoCD sync open while it runs, and an ArgoCD retry replays
+         the *pinned* revision rather than re-rendering from git — so every
+         minute spent waiting in here is a minute during which a fix pushed to
+         fix this very Job cannot land. A Kubernetes-level retry on top would
+         double it again for no new information. See HANDOFF.md, "A failing
+         hook pins the revision". */}}
+  backoffLimit: 0
+  template:
+    metadata:
+      name: {{ $name }}
+      {{- /* Matched by the NetworkPolicy above. Without these the pod cannot
+             reach the gateway at all. */}}
+      labels:
+        app.kubernetes.io/component: cost-model-sync
+        app.kubernetes.io/instance: {{ $cms.name }}
+        app.kubernetes.io/name: {{ $cms.name }}
+    spec:
+      restartPolicy: Never
+      volumes:
+        - name: sync
+          configMap:
+            name: {{ $name }}
+      containers:
+        - name: cost-model-sync
+          image: {{ $cm.image }}
+          volumeMounts:
+            - name: sync
+              mountPath: /sync
+              readOnly: true
+          env:
+            - name: API_URL
+              value: {{ include "cost-management-service.costModelApiUrl" . | quote }}
+            - name: TOKEN_URL
+              value: {{ include "cost-management-service.costModelTokenUrl" . | quote }}
+            - name: CLIENT_ID
+              value: {{ $cm.auth.clientId | quote }}
+            - name: CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $cm.auth.secretName }}
+                  key: client_secret
+            - name: WAIT_SECONDS
+              value: {{ $cm.sourceWaitSeconds | quote }}
+            - name: INSECURE
+              value: {{ $cm.insecureSkipVerify | quote }}
+          command:
+            - python3
+            - /sync/apply.py
+{{- end }}

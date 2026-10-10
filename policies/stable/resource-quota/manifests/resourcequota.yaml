@@ -1,0 +1,22 @@
+# Attests that a ResourceQuota exists in each tenant namespace.
+#
+# The name must match what actually creates the quota in the namespaces this
+# policy selects. Those are the namespaces labelled namespace-size, created by
+# charts/onboarding/namespace-config, and the quota it writes is "team-quota".
+#
+# Two earlier names were wrong for two different reasons, both worth keeping:
+#   - "default-quota" exists nowhere at all.
+#   - "default" is real, but it is what charts/platform-config/project-request-template
+#     creates for projects made with `oc new-project` -- a different mechanism,
+#     in namespaces this policy no longer selects.
+# Either way the policy would have been NonCompliant in every namespace forever.
+# A policy that is always red gets ignored just as fast as one that is always green.
+#
+# Only the name is asserted, not the limits: the quota's numbers are a per-team
+# decision set through the onboarding charts, while its existence is the baseline.
+#
+# Written by: charts/onboarding/namespace-config.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: team-quota

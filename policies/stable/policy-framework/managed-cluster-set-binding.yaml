@@ -1,0 +1,21 @@
+# The tenancy boundary for the whole policy plane.
+#
+# A Placement can only select clusters from ManagedClusterSets that are bound
+# into its own namespace. No binding means no clusters, and a Policy that
+# matches no clusters reports *Compliant* -- identical, in the console and in
+# the metrics, to one that is genuinely passing. Adding a set here is how a set
+# comes under governance; removing it silently stops governing it.
+#
+# Only "default" and "global" exist on this hub today, and every cluster lands
+# in "default" unless explicitly moved. Do not bind a set that does not exist:
+# the binding will sit there unbound and the policies it was meant to carry
+# will be quietly inert.
+#
+# See docs/governance/acm-policies.md.
+apiVersion: cluster.open-cluster-management.io/v1beta2
+kind: ManagedClusterSetBinding
+metadata:
+  name: default
+  namespace: open-cluster-management-policies
+spec:
+  clusterSet: default

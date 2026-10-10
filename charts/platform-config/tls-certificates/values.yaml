@@ -1,0 +1,108 @@
+cluster:
+  baseDomain: ""
+
+provider: secret
+# cert-manager  — cert-manager Certificate CRs (auto-issued + renewed)
+# sealed-secret — Bitnami SealedSecret resources
+# secret        — the certificate already exists as bytes; certificates.<cert>.secret
+#                 says where they come from. source: externalSecret pulls them
+#                 from a secrets manager, source: inline reads them from values,
+#                 source: existing expects the Secret to be there already.
+#
+# manual, external-secret and vault were three names for the last one and are
+# now errors: set provider: secret and pick a source. See
+# docs/cluster-configuration/secrets.md for the spec shape, which is the
+# same in every chart in this repo that creates a Secret.
+
+certificates:
+  api:
+    include: false
+    secretName: api-cert-tls
+    namespace: openshift-config
+    # dnsNames auto-derived from cluster.baseDomain when empty
+    dnsNames: []
+    # provider: ""  # override global provider for this cert
+    # Only read when the resolved provider is `secret`. name and type are not
+    # settable here — the name is secretName above and the type is always
+    # kubernetes.io/tls.
+    secret:
+      source: existing
+      # Required when source is externalSecret.
+      path: ""
+      properties:
+        - secretKey: tls.crt
+          property: tls.crt
+        - secretKey: tls.key
+          property: tls.key
+      # Only read when source is inline. A private key in git is a private key
+      # in git — see docs/cluster-configuration/secrets.md.
+      data:
+        tls.crt: ""
+        tls.key: ""
+
+  ingress:
+    include: false
+    secretName: ingress-cert-tls
+    namespace: openshift-ingress
+    dnsNames: []
+    secret:
+      source: existing
+      path: ""
+      properties:
+        - secretKey: tls.crt
+          property: tls.crt
+        - secretKey: tls.key
+          property: tls.key
+      data:
+        tls.crt: ""
+        tls.key: ""
+
+  ca:
+    include: false
+    configMapName: custom-ca-bundle
+    namespace: openshift-config
+    # The CA bundle is a ConfigMap, not a Secret — trustedCA and clientCA take
+    # a ConfigMap reference — so under source: inline this renders a ConfigMap.
+    # source: externalSecret still produces a Secret, because ESO cannot create
+    # a ConfigMap; that path does not work for trustedCA and is carried over
+    # from the provider this replaced rather than fixed.
+    secret:
+      source: existing
+      path: ""
+      properties:
+        - secretKey: ca-bundle.crt
+          property: ca-bundle.crt
+      data:
+        ca-bundle.crt: ""
+
+# --- Provider-specific configuration ---
+
+certManager:
+  issuerRef:
+    name: ""
+    kind: ClusterIssuer
+  duration: 2160h
+  renewBefore: 360h
+  privateKey:
+    algorithm: ECDSA
+    size: 384
+
+sealedSecret:
+  # Provide encrypted data per certificate key
+  # api:
+  #   tls.crt: "AgBy3i4OJSWK+..."
+  #   tls.key: "AgBy3i4OJSWK+..."
+  # ingress:
+  #   tls.crt: ""
+  #   tls.key: ""
+  # ca:
+  #   ca-bundle.crt: ""
+
+# Defaults for any certificate whose secret.source is externalSecret and that
+# does not set these itself. The per-certificate remote keys that used to live
+# here are now certificates.<cert>.secret.path and .properties.
+externalSecret:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault
+    kind: ClusterSecretStore

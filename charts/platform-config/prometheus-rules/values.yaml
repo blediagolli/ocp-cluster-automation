@@ -1,0 +1,33 @@
+prometheusRules:
+  include: false
+  namespace: openshift-monitoring
+  etcd:
+    include: true
+    highCommitDuration: 0.025
+    highFsyncDuration: 0.025
+    memberCommunicationSlow: 0.15
+  apiServer:
+    include: true
+    errorRateThreshold: 0.05
+    latencyThreshold: 1
+  kubelet:
+    include: true
+    podStartupLatency: 60
+    runtimeErrorRate: 0.05
+  node:
+    include: true
+    cpuThreshold: 90
+    memoryThreshold: 90
+    diskThreshold: 85
+    diskPredictionDays: 7
+  pvc:
+    include: true
+    usageThreshold: 85
+  pod:
+    include: true
+    restartThreshold: 5
+    oomKillThreshold: 0
+  cluster:
+    include: true
+    nodeNotReadyMinutes: 5
+    clockSkewSeconds: 0.05

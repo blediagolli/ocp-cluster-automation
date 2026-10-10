@@ -1,0 +1,96 @@
+suite: RBAC resources
+templates:
+  - templates/rbac.yaml
+tests:
+  - it: should not render when include is false
+    set:
+      groupSync.include: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render ServiceAccount, ClusterRole, and ClusterRoleBinding
+    set:
+      groupSync.include: true
+    asserts:
+      - hasDocuments:
+          count: 3
+
+  - it: should create ServiceAccount with correct name and namespace
+    set:
+      groupSync.include: true
+      groupSync.serviceAccountName: group-syncer
+      groupSync.namespace: openshift-authentication
+    documentIndex: 0
+    asserts:
+      - isKind:
+          of: ServiceAccount
+      - equal:
+          path: metadata.name
+          value: group-syncer
+      - equal:
+          path: metadata.namespace
+          value: openshift-authentication
+
+  - it: should create ClusterRole scoped to groups only
+    set:
+      groupSync.include: true
+      groupSync.serviceAccountName: group-syncer
+    documentIndex: 1
+    asserts:
+      - isKind:
+          of: ClusterRole
+      - equal:
+          path: metadata.name
+          value: group-syncer
+      - equal:
+          path: rules[0].apiGroups[0]
+          value: user.openshift.io
+      - equal:
+          path: rules[0].resources[0]
+          value: groups
+      - contains:
+          path: rules[0].verbs
+          content: get
+      - contains:
+          path: rules[0].verbs
+          content: create
+      - contains:
+          path: rules[0].verbs
+          content: delete
+
+  - it: should bind ClusterRole to ServiceAccount
+    set:
+      groupSync.include: true
+      groupSync.serviceAccountName: group-syncer
+      groupSync.namespace: openshift-authentication
+    documentIndex: 2
+    asserts:
+      - isKind:
+          of: ClusterRoleBinding
+      - equal:
+          path: roleRef.kind
+          value: ClusterRole
+      - equal:
+          path: roleRef.name
+          value: group-syncer
+      - equal:
+          path: subjects[0].kind
+          value: ServiceAccount
+      - equal:
+          path: subjects[0].name
+          value: group-syncer
+      - equal:
+          path: subjects[0].namespace
+          value: openshift-authentication
+
+  - it: should use custom serviceAccountName
+    set:
+      groupSync.include: true
+      groupSync.serviceAccountName: custom-sa
+      groupSync.namespace: my-ns
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: metadata.name
+          value: custom-sa

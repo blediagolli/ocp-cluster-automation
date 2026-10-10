@@ -1,0 +1,24 @@
+# OperatorPolicy rather than a ConfigurationPolicy wrapping a Subscription.
+# A ConfigurationPolicy can only confirm that a Subscription object exists; an
+# operator wedged on a failed InstallPlan would still report compliant.
+# OperatorPolicy understands the lifecycle -- Subscription, InstallPlan, CSV --
+# so it reports whether the operator is actually working.
+#
+# PolicyGenerator passes policy.open-cluster-management.io kinds through without
+# wrapping them, so this lands on the hub as-is inside the generated Policy.
+apiVersion: policy.open-cluster-management.io/v1beta1
+kind: OperatorPolicy
+metadata:
+  name: compliance-operator
+spec:
+  remediationAction: ${REMEDIATION}
+  severity: high
+  complianceType: musthave
+  # Nothing here approves an upgrade; in inform mode there is nothing to approve.
+  upgradeApproval: None
+  subscription:
+    name: compliance-operator
+    namespace: openshift-compliance
+    channel: stable
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace

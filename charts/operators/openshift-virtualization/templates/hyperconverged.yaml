@@ -1,0 +1,33 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.hyperConverged.include }}
+apiVersion: hco.kubevirt.io/v1beta1
+kind: HyperConverged
+metadata:
+  name: {{ $v.hyperConverged.name }}
+  namespace: {{ $v.hyperConverged.namespace }}
+spec:
+  virtualMachineOptions:
+    disableFreePageReporting: false
+    disableSerialConsoleLog: true
+  liveMigrationConfig:
+    completionTimeoutPerGiB: 800
+    parallelMigrationsPerCluster: {{ $v.hyperConverged.liveMigration.parallelMigrationsPerCluster }}
+    parallelOutboundMigrationsPerNode: {{ $v.hyperConverged.liveMigration.parallelOutboundMigrationsPerNode }}
+    progressTimeout: 150
+  certConfig:
+    ca:
+      duration: 48h0m0s
+      renewBefore: 24h0m0s
+    server:
+      duration: 24h0m0s
+      renewBefore: 12h0m0s
+  featureGates:
+    enableCommonBootImageImport: true
+  workloadUpdateStrategy:
+    batchEvictionInterval: 1m0s
+    batchEvictionSize: 10
+    workloadUpdateMethods:
+      - LiveMigrate
+  uninstallStrategy: BlockUninstallIfWorkloadsExist
+  vmiCPUAllocationRatio: {{ $v.hyperConverged.vmiCPUAllocationRatio }}
+{{- end }}

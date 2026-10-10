@@ -1,0 +1,4 @@
+apiVersion: v2
+name: jfrog
+description: jfrog — operator subscription
+version: 0.1.0

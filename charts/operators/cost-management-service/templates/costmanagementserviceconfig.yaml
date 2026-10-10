@@ -1,0 +1,195 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.costManagementService.include }}
+{{- $cms := $v.costManagementService }}
+{{- $domain := include "cost-management-service.clusterDomain" . }}
+{{- /* Written against the real CRD, read from the cluster with
+       `oc explain costmanagementserviceconfig.spec --recursive` after the
+       operator was installed from the beta CatalogSource. Images and replicas
+       are per-component here, not flat maps — that is the operator's layout,
+       not a choice. */}}
+apiVersion: service.costmanagement.openshift.io/v1alpha1
+kind: CostManagementServiceConfig
+metadata:
+  name: {{ $cms.name }}
+  namespace: {{ $cms.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  {{- with $cms.profile }}
+  profile: {{ . }}
+  {{- end }}
+
+  {{- /* Both of these are auto-detected by the operator's Discovery phase
+         when empty, so they are omitted rather than sent blank. */}}
+  global:
+    {{- with $domain }}
+    clusterDomain: {{ . }}
+    {{- end }}
+    {{- with include "cost-management-service.storageClass" (dict "component" "" "root" $) }}
+    storageClass: {{ . }}
+    {{- end }}
+
+  monitoring:
+    enabled: {{ $cms.monitoring.enabled }}
+
+  {{- with $cms.gatewayRoute.host }}
+  gatewayRoute:
+    # Pinned, not left to the operator: the Keycloak client's redirectUris must
+    # match this exactly, and a host nobody chose cannot be put in the realm
+    # ahead of time.
+    host: {{ . | quote }}
+  {{- end }}
+
+  auth:
+    keycloak:
+      # JWKS endpoint — in-cluster Service, so Envoy does not depend on the
+      # router to validate a token.
+      url: {{ include "cost-management-service.keycloakUrl" . | quote }}
+      {{- with include "cost-management-service.keycloakIssuer" . }}
+      # ...but iss carries the public Route, because that is what RHBK stamps.
+      issuerURL: {{ . | quote }}
+      {{- end }}
+      realm: {{ $cms.auth.keycloak.realm }}
+      {{- with $cms.auth.keycloak.audiences }}
+      audiences:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if or $cms.auth.keycloak.tls.caCertSecretName $cms.auth.keycloak.tls.insecureSkipVerify }}
+      tls:
+        {{- with $cms.auth.keycloak.tls.caCertSecretName }}
+        # Reaches the UI's oauth2-proxy as --provider-ca-file, which *replaces*
+        # the system trust pool rather than extending it. Unset, the operator
+        # substitutes the service CA, which cannot verify the Route the proxy
+        # does OIDC discovery against, and the proxy crash-loops.
+        caCertSecretName: {{ . }}
+        {{- end }}
+        {{- if $cms.auth.keycloak.tls.insecureSkipVerify }}
+        insecureSkipVerify: true
+        {{- end }}
+      {{- end }}
+    envoy:
+      {{- include "cost-management-service.image" (dict "key" "envoy" "root" $) | nindent 6 }}
+      replicas: {{ $cms.replicas.envoy }}
+
+  {{- /* deploy stays false: the CRD documents the bundled Postgres as
+         "dev/CI only — not for production". CNPG provides it instead. */}}
+  database:
+    deploy: false
+    host: {{ include "cost-management-service.dbHost" . | quote }}
+    port: {{ $cms.postgres.port }}
+    sslMode: {{ $cms.postgres.sslMode }}
+    # Required by the CRD whatever deploy is set to. Must carry a user and
+    # password pair per component — see external-secrets.yaml.
+    secretName: {{ $cms.postgres.secretName }}
+
+  cache:
+    deploy: {{ $cms.cache.deploy }}
+    {{- if $cms.cache.deploy }}
+    # Required, not optional: the operator defaults no workload image, so
+    # leaving this out fails the entire reconcile, not just the cache.
+    {{- include "cost-management-service.image" (dict "key" "cache" "root" $) | nindent 4 }}
+    persistence:
+      size: {{ $cms.cache.persistenceSize }}
+    {{- else }}
+    host: {{ $cms.cache.host | quote }}
+    port: {{ $cms.cache.port }}
+    auth:
+      enabled: {{ $cms.cache.auth.enabled }}
+      {{- with $cms.cache.auth.secretName }}
+      secretName: {{ . }}
+      {{- end }}
+    {{- end }}
+
+  kafka:
+    bootstrapServers: {{ include "cost-management-service.kafkaBootstrap" . | quote }}
+
+  objectStorage:
+    {{- /* With the bundled OBC, everything here is left to Discovery: it
+           resolves endpoint, bucket and credentials from the OBC and NooBaa.
+           buckets.ingress is deliberately unset — the CRD inherits
+           buckets.koku when it is empty, which is what lets one OBC serve
+           both and avoids NooBaa scoping credentials per bucket. */}}
+    {{- if $cms.objectStorage.include }}
+    noobaaNamespace: {{ $cms.objectStorage.noobaaNamespace }}
+    {{- if $cms.ros.enabled }}
+    buckets:
+      # The CRD requires this explicitly when ros.enabled, so the ROS claim
+      # uses an exact bucketName rather than letting NooBaa generate one.
+      # koku is still left to Discovery.
+      ros: {{ $cms.objectStorage.rosBucketName }}
+    {{- end }}
+    {{- else }}
+    endpoint: {{ $cms.objectStorage.endpoint | quote }}
+    port: {{ $cms.objectStorage.port }}
+    useSSL: {{ $cms.objectStorage.useSSL }}
+    secretName: {{ $cms.objectStorage.secretName }}
+    buckets:
+      koku: {{ $cms.objectStorage.bucketName }}
+      {{- if $cms.ros.enabled }}
+      ros: {{ $cms.objectStorage.rosBucketName }}
+      {{- end }}
+    {{- end }}
+    {{- with $cms.objectStorage.caCertSecretName }}
+    # NooBaa over HTTPS presents a private CA; without this the S3 client
+    # fails TLS verification against it.
+    caCertSecretName: {{ . }}
+    {{- end }}
+    {{- if $cms.objectStorage.insecureSkipVerify }}
+    insecureSkipVerify: true
+    {{- end }}
+
+  costManagement:
+    api:
+      {{- include "cost-management-service.image" (dict "key" "koku" "root" $) | nindent 6 }}
+      replicas: {{ $cms.replicas.api }}
+    masu:
+      {{- include "cost-management-service.image" (dict "key" "koku" "root" $) | nindent 6 }}
+      replicas: {{ $cms.replicas.masu }}
+    listener:
+      replicas: {{ $cms.replicas.listener }}
+    celery:
+      workers:
+        costModel:
+          replicas: {{ $cms.replicas.celery.costModel }}
+        default:
+          replicas: {{ $cms.replicas.celery.default }}
+        ocp:
+          replicas: {{ $cms.replicas.celery.ocp }}
+        priority:
+          replicas: {{ $cms.replicas.celery.priority }}
+        summary:
+          replicas: {{ $cms.replicas.celery.summary }}
+
+  ingress:
+    {{- include "cost-management-service.image" (dict "key" "ingress" "root" $) | nindent 4 }}
+
+  rbac:
+    {{- include "cost-management-service.image" (dict "key" "rbac" "root" $) | nindent 4 }}
+    api:
+      replicas: {{ $cms.replicas.rbacApi }}
+    worker:
+      replicas: {{ $cms.replicas.rbacWorker }}
+
+  ros:
+    enabled: {{ $cms.ros.enabled }}
+    {{- if $cms.ros.enabled }}
+    {{- include "cost-management-service.image" (dict "key" "ros" "root" $) | nindent 4 }}
+    processor:
+      replicas: {{ $cms.replicas.rosProcessor }}
+    {{- end }}
+
+  {{- if $cms.ros.enabled }}
+  kruize:
+    {{- include "cost-management-service.image" (dict "key" "kruize" "root" $) | nindent 4 }}
+    replicas: {{ $cms.replicas.kruize }}
+  {{- end }}
+
+  ui:
+    app:
+      {{- include "cost-management-service.image" (dict "key" "ui" "root" $) | nindent 6 }}
+    oauthProxy:
+      {{- include "cost-management-service.image" (dict "key" "oauthProxy" "root" $) | nindent 6 }}
+    oauthClientSecretRef:
+      name: {{ include "cost-management-service.uiOauthSecretName" . }}
+    replicaCount: {{ $cms.ui.replicaCount }}
+{{- end }}

@@ -1,0 +1,98 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.oadp.include }}
+apiVersion: oadp.openshift.io/v1alpha1
+kind: DataProtectionApplication
+metadata:
+  name: {{ $v.oadp.namespace }}-dpa
+  namespace: {{ $v.oadp.namespace }}
+spec:
+  configuration:
+    velero:
+      defaultPlugins:
+        {{- toYaml $v.oadp.velero.defaultPlugins | nindent 8 }}
+      {{- if $v.oadp.velero.customPlugins }}
+      customPlugins:
+        {{- range $v.oadp.velero.customPlugins }}
+        - name: {{ .name }}
+          image: {{ .image }}
+        {{- end }}
+      {{- end }}
+      {{- if $v.oadp.velero.featureFlags }}
+      featureFlags:
+        {{- toYaml $v.oadp.velero.featureFlags | nindent 8 }}
+      {{- end }}
+      {{- if $v.oadp.velero.resources }}
+      podConfig:
+        resourceAllocations:
+          {{- if $v.oadp.velero.resources.requests }}
+          requests:
+            {{- toYaml $v.oadp.velero.resources.requests | nindent 12 }}
+          {{- end }}
+          {{- if $v.oadp.velero.resources.limits }}
+          limits:
+            {{- toYaml $v.oadp.velero.resources.limits | nindent 12 }}
+          {{- end }}
+      {{- end }}
+    nodeAgent:
+      enable: {{ $v.oadp.nodeAgent.enable }}
+      uploaderType: {{ $v.oadp.nodeAgent.uploaderType }}
+      {{- if $v.oadp.nodeAgent.enable }}
+      podConfig:
+        {{- if $v.oadp.nodeAgent.resources }}
+        resourceAllocations:
+          {{- if $v.oadp.nodeAgent.resources.requests }}
+          requests:
+            {{- toYaml $v.oadp.nodeAgent.resources.requests | nindent 12 }}
+          {{- end }}
+          {{- if $v.oadp.nodeAgent.resources.limits }}
+          limits:
+            {{- toYaml $v.oadp.nodeAgent.resources.limits | nindent 12 }}
+          {{- end }}
+        {{- end }}
+        {{- if $v.oadp.nodeAgent.tolerations }}
+        tolerations:
+          {{- toYaml $v.oadp.nodeAgent.tolerations | nindent 10 }}
+        {{- end }}
+        {{- if $v.oadp.nodeAgent.nodeSelector }}
+        nodeSelector:
+          {{- toYaml $v.oadp.nodeAgent.nodeSelector | nindent 10 }}
+        {{- end }}
+      {{- end }}
+  {{- if $v.oadp.backupLocations }}
+  backupLocations:
+    {{- range $v.oadp.backupLocations }}
+    - velero:
+        provider: {{ .provider }}
+        {{- if .default }}
+        default: {{ .default }}
+        {{- end }}
+        objectStorage:
+          bucket: {{ .bucket }}
+          {{- if .prefix }}
+          prefix: {{ .prefix }}
+          {{- end }}
+        {{- if .credentialName }}
+        credential:
+          name: {{ .credentialName }}
+          key: {{ .credentialKey | default "cloud" }}
+        {{- end }}
+        config:
+          region: {{ .region }}
+          {{- range $key, $val := .config }}
+          {{ $key }}: {{ $val | quote }}
+          {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- if $v.oadp.snapshotLocations }}
+  snapshotLocations:
+    {{- range $v.oadp.snapshotLocations }}
+    - velero:
+        provider: {{ .provider }}
+        config:
+          region: {{ .region }}
+          {{- range $key, $val := .config }}
+          {{ $key }}: {{ $val | quote }}
+          {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,55 @@
+{{- /*
+Human access to the team's own namespaces. Without these a team lead cannot
+`oc get pods` in a namespace this chart just created for them.
+
+The set of bindings is built once by onboarding.roleBindings -- see that helper
+for why names are derived from the group and role rather than the list index --
+and applied identically to every namespace the team owns on this cluster.
+
+The roles are ClusterRoles bound namespace-locally, which is the normal
+OpenShift shape: `admin`, `edit` and `view` are cluster-scoped definitions, and
+a RoleBinding to one of them grants it only inside its own namespace. A role
+named here that does not exist on the cluster is NOT an error -- the
+RoleBinding is created happily and grants nothing at all, silently. Check any
+custom role name against the cluster before adding it.
+
+Nothing here renders while the team is quiesced, which under prune: true means
+every one of these bindings is DELETED. That is the point: withdrawing access
+is most of what quiesce is for. The namespaces and their contents stay, and a
+cluster-admin can still reach them; the team cannot. Clearing team.quiesce
+puts the bindings back unchanged, since their names are derived from the group
+and role rather than from anything that moves.
+*/ -}}
+{{- include "onboarding.validate" . }}
+{{- if not (include "onboarding.quiescing" .) }}
+{{- $namespaces := include "onboarding.namespaces" . | fromYamlArray }}
+{{- $roleBindings := include "onboarding.roleBindings" . | fromYamlArray }}
+{{- range $ns := $namespaces }}
+{{- range $rb := $roleBindings }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $rb.name }}
+  namespace: {{ $ns.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    {{- include "onboarding.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ $rb.role }}
+subjects:
+  - kind: {{ $rb.kind }}
+    {{- if eq $rb.kind "ServiceAccount" }}
+    name: {{ $rb.subject }}
+    namespace: {{ $ns.name }}
+    {{- else }}
+    apiGroup: rbac.authorization.k8s.io
+    name: {{ $rb.subject }}
+    {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,4 @@
+apiVersion: v2
+name: tempo
+description: tempo — operator subscription and tempo distributed tracing instance
+version: 0.1.0

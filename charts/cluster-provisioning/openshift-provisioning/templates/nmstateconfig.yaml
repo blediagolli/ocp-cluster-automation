@@ -1,0 +1,26 @@
+{{- if and .Values.provision.include (eq (include "cluster.isAgent" .) "true") }}
+{{- $platformCfg := index .Values .Values.cluster.platform }}
+{{- range $platformCfg.hosts }}
+{{- if .nmstate }}
+---
+apiVersion: agent-install.openshift.io/v1beta1
+kind: NMStateConfig
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.cluster.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+  labels:
+    {{- if $.Values.vsphereControlPlane.enabled }}
+    infraenv: {{ $.Values.cluster.name }}-workers
+    {{- else }}
+    cluster-name: {{ $.Values.cluster.name }}
+    {{- end }}
+spec:
+  config:
+    {{- toYaml .nmstate.config | nindent 4 }}
+  interfaces:
+    {{- toYaml .nmstate.interfaces | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}

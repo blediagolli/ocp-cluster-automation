@@ -1,0 +1,4 @@
+apiVersion: v2
+name: cloudnative-pg
+description: cloudnative-pg — operator subscription
+version: 0.1.0

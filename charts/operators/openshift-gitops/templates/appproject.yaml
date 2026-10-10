@@ -1,0 +1,18 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.appProject.include }}
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: {{ $v.appProject.name }}
+  namespace: {{ $v.argocd.namespace }}
+spec:
+  description: {{ $v.appProject.description }}
+  sourceRepos:
+    {{- toYaml $v.appProject.sourceRepos | nindent 4 }}
+  destinations:
+    - namespace: '*'
+      server: '*'
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+{{- end }}

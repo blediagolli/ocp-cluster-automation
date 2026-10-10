@@ -1,0 +1,81 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: cluster-platform-config
+  namespace: openshift-gitops
+spec:
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: git@github.com:YOUR_ORG/ocp-cluster-automation.git
+              revision: main
+              files:
+                - path: "clusters/**/conf.yaml"
+          # clusterRegistered yields [] for a cluster ArgoCD cannot reach, so
+          # no Application is generated and there is no unresolvable
+          # destination to fail the whole ApplicationSet. See cluster-operators.
+          - list:
+              elementsYaml: "{{ if .clusterRegistered }}{{ .platformCharts | toJson }}{{ else }}[]{{ end }}"
+  template:
+    metadata:
+      name: 'platform-{{.cluster.environment}}-{{.cluster.name}}-{{.chart}}'
+      labels:
+        environment: '{{.cluster.environment}}'
+        cluster: '{{.cluster.name}}'
+        type: platform-config
+    spec:
+      project: platform
+      source:
+        repoURL: git@github.com:YOUR_ORG/ocp-cluster-automation.git
+        targetRevision: main
+        path: 'charts/platform-config/{{.chart}}'
+        helm:
+          # Pinned so the release name does not inherit the Application name
+          # above. Helm caps a release name at 53 characters, and a cluster
+          # named after its full DNS name pushes that name past the limit,
+          # which fails the render before anything reaches the cluster.
+          releaseName: '{{.chart}}'
+          ignoreMissingValueFiles: true
+          valueFiles:
+            - '/env/{{.cluster.environment}}/conf.yaml'
+            - '/env/{{.cluster.environment}}/platform-config.yaml'
+            - '/{{.path.path}}/conf.yaml'
+            - '/{{.path.path}}/platform-config.yaml'
+      destination:
+        server: '{{ or .cluster.address (printf "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/%s" .cluster.name) }}'
+      ignoreDifferences:
+        # Token controller populates .data on this secret; the chart does not
+        # declare it, so without this it shows as permanent drift.
+        - kind: Secret
+          namespace: platform-automation
+          name: platform-automation-token
+          jsonPointers:
+            - /data
+        - kind: ConfigMap
+          namespace: openshift-monitoring
+          name: cluster-monitoring-config
+          jsonPointers:
+            - /data
+        - kind: ConfigMap
+          namespace: openshift-user-workload-monitoring
+          name: user-workload-monitoring-config
+          jsonPointers:
+            - /data
+      syncPolicy:
+        automated:
+          selfHeal: true
+        retry:
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 10m
+          limit: 5
+        syncOptions:
+          - ApplyOutOfSyncOnly=true
+          - RespectIgnoreDifferences=true

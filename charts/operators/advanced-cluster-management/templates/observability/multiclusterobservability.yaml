@@ -1,0 +1,26 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.multiClusterObservability.include }}
+apiVersion: observability.open-cluster-management.io/v1beta2
+kind: MultiClusterObservability
+metadata:
+  name: {{ $v.multiClusterObservability.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  enableDownsampling: {{ $v.multiClusterObservability.enableDownsampling }}
+  observabilityAddonSpec:
+    enableMetrics: true
+    interval: {{ $v.multiClusterObservability.observabilityAddonSpec.interval }}
+    scrapeSizeLimitBytes: {{ $v.multiClusterObservability.observabilityAddonSpec.scrapeSizeLimitBytes }}
+    workers: {{ $v.multiClusterObservability.observabilityAddonSpec.workers }}
+  storageConfig:
+    alertmanagerStorageSize: {{ $v.multiClusterObservability.alertmanagerStorageSize }}
+    metricObjectStorage:
+      key: {{ $v.objectStorage.key }}
+      name: {{ $v.objectStorage.secretName }}
+    storageClass: {{ .Values.cluster.storageClass }}
+    compactStorageSize: {{ $v.multiClusterObservability.compactStorageSize }}
+    receiveStorageSize: {{ $v.multiClusterObservability.receiveStorageSize }}
+    ruleStorageSize: {{ $v.multiClusterObservability.ruleStorageSize }}
+    storeStorageSize: {{ $v.multiClusterObservability.storeStorageSize }}
+{{- end }}

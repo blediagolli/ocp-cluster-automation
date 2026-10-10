@@ -1,0 +1,22 @@
+pullSecrets:
+  include: false
+  namespaces: []
+  # - name: team-a
+  #   secrets:
+  #     - name: quay-pull-secret
+  #       registry: quay.io
+  #       username: ""
+  #       password: ""
+  #       email: ""
+  #     - name: ecr-pull-secret
+  #       registry: 123456789.dkr.ecr.us-east-1.amazonaws.com
+  #       username: ""
+  #       password: ""
+  #       email: ""
+  globalPullSecret:
+    include: false
+    registries: []
+    # - registry: quay.io
+    #   username: ""
+    #   password: ""
+    #   email: ""

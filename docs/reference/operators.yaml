@@ -1,0 +1,116 @@
+# Reference: operators.yaml
+#
+# The shared operator values file. One copy per level:
+#
+#   env/<env>/operators.yaml
+#   clusters/<env>/<cluster>/operators.yaml
+#
+# Every chart listed in conf.yaml's operatorCharts reads this file, so it holds
+# several operators at once — which is why every block nests under the chart's
+# own name. Two operators both writing a top-level `operator:` would collide and
+# the last one would win.
+#
+# When one operator's block grows large enough to drown the others, move it to
+# its own file at the same level:
+#
+#   env/<env>/operators/<chart>.yaml
+#   clusters/<env>/<cluster>/operators/<chart>.yaml
+#
+# The shape is identical in both places, so that move is a cut-and-paste. The
+# per-operator file wins over the shared one at the same level.
+#
+# Full precedence, later winning, all optional:
+#
+#   charts/operators/<chart>/values.yaml
+#     < env/<env>/operators.yaml
+#     < env/<env>/operators/<chart>.yaml
+#     < clusters/<env>/<cluster>/operators.yaml
+#     < clusters/<env>/<cluster>/operators/<chart>.yaml
+#
+# ── Where the field list lives ───────────────────────────────────────────────
+#
+# This file deliberately does not list every supported field. There is no single
+# schema to document: each operator's CRs are its own, and the reference for
+# them is charts/operators/<chart>/values.yaml, which is commented and sits next
+# to the templates that consume it. That is what to read before enabling an
+# operator.
+#
+# docs/cluster-configuration/merged-operator-charts.md covers what every chart
+# shares — the wave ladder, installOperators, extraOperators, and how to verify
+# a change renders what you expect.
+#
+# ── The shape every block takes ──────────────────────────────────────────────
+
+# A small operator. Most entries look like this: the catalogue channel, and
+# nothing else, because the chart's defaults are already right.
+cloudnative-pg:
+  operator:
+    channel: stable-v1
+
+# A chart with one CR enabled. `include` is the switch for each operand; they
+# all default to false, so listing a chart in operatorCharts installs the
+# operator and nothing more until you turn something on here.
+cert-manager:
+  operator:
+    channel: stable-v1
+  acmeIssuer:
+    include: true
+    name: letsencrypt
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: YOUR_EMAIL
+    privateKeySecretName: letsencrypt-account-key
+    dns01:
+      region: us-east-2
+      hostedZoneID: YOUR_HOSTED_ZONE_ID
+      credentialsSecretName: cert-manager-dns01-credentials
+
+# The full operator block, for reference. Only the four fields under "the parts
+# you actually set" are worth overriding per cluster — the rest are properties
+# of the operator, and exist as values only so the install templates stay
+# identical across every chart.
+example-operator:
+  operator:
+    # --- facts about this operator, not settings ---
+    namespace: openshift-operators     # where the Subscription and OperatorGroup go
+    operatorGroup: ""                  # OperatorGroup name; empty means use the namespace name
+    package: example-operator          # the OLM package
+    sourceNamespace: openshift-marketplace
+    clusterScoped: false               # true renders an OperatorGroup with no targetNamespaces
+    skipNamespace: true                # the namespace already exists (openshift-operators does)
+    skipOperatorGroup: true            # the namespace already has one — two in a namespace
+                                       # fail every CSV in it
+    namespaceLabels: {}
+    namespaceAnnotations: {}
+
+    # --- the parts you actually set ---
+    channel: stable                    # required; a Subscription on a wrong channel
+                                       # installs nothing and reports no error
+    source: redhat-operators
+    installPlanApproval: Automatic     # Manual needs an InstallPlan approved by hand
+    startingCSV: ""                    # pin a version instead of taking the channel head
+
+  # Additional operators this capability needs in the same namespace. They get a
+  # Subscription and nothing else — no OperatorGroup, deliberately. Same keys as
+  # operator: above.
+  #
+  # Only `logging` (loki-operator) and `servicemesh3` (kiali-ossm) have this
+  # key, and only those two carry templates/install/extra-subscriptions.yaml.
+  # The two go together: setting this key in a chart without the template
+  # renders nothing and reports nothing. make validate-operator-install fails
+  # on either half alone.
+  extraOperators:
+    loki:
+      include: false
+      package: loki-operator
+      channel: stable
+      source: redhat-operators
+
+  # Where this chart's CRs go. Empty inherits operator.namespace, which is the
+  # usual case. Set it for operators whose operand lives elsewhere — ACS Central
+  # lands in `stackrox` from an operator in `rhacs-operator`.
+  namespace: ""
+  # Only consulted when namespace above differs from operator.namespace.
+  createNamespace: false
+
+  # Then one block per custom resource, each with its own include: false.
+  # See charts/operators/<chart>/values.yaml for what this operator takes.

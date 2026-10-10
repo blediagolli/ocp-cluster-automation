@@ -1,0 +1,130 @@
+{{- /*
+ArgoCD does not run Helm test hooks -- tests/e2e-test.sh is what actually
+exercises this chart against a cluster. This exists for `helm test` after a
+local `helm install`. It is gated on quiesce because `helm template` emits
+test hooks like any other manifest, and the three objects this Pod asserts on
+-- the ArgoCD CR, the AppProject and the RoleBinding -- are exactly the ones
+quiesce prunes. Unwrapped, it would render a test that is guaranteed to fail.
+
+The Pod runs with its own ServiceAccount rather than `default`, which had no
+permission to read any of the three objects it asks for.
+*/ -}}
+{{- include "onboarding.validate" . }}
+{{- if not (include "onboarding.quiescing" .) }}
+{{- $gitops := include "onboarding.teamGitops" . }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Release.Name }}-test
+  namespace: {{ $gitops }}
+  labels:
+    {{- include "onboarding.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-weight: "-1"
+    helm.sh/hook-delete-policy: before-hook-creation
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Release.Name }}-test
+  namespace: {{ $gitops }}
+  labels:
+    {{- include "onboarding.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-weight: "-1"
+    helm.sh/hook-delete-policy: before-hook-creation
+rules:
+  - apiGroups: ["argoproj.io"]
+    resources: ["argocds", "appprojects"]
+    verbs: ["get"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["rolebindings"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Release.Name }}-test
+  namespace: {{ $gitops }}
+  labels:
+    {{- include "onboarding.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-weight: "-1"
+    helm.sh/hook-delete-policy: before-hook-creation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Release.Name }}-test
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Release.Name }}-test
+    namespace: {{ $gitops }}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  namespace: {{ $gitops }}
+  labels:
+    {{- include "onboarding.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  serviceAccountName: {{ .Release.Name }}-test
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: test
+      image: {{ .Values.test.image }}
+      imagePullPolicy: {{ .Values.test.imagePullPolicy }}
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: 10m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+      env:
+        {{- /* oc writes a discovery cache under $HOME/.kube, which is the one
+               thing readOnlyRootFilesystem breaks -- and it breaks as a permission
+               error on a path nobody expects to be involved. */}}
+        - name: HOME
+          value: /tmp
+        - name: KUBECACHEDIR
+          value: /tmp/.kube/cache
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -eu
+          echo "--- Checking ArgoCD instance ---"
+          oc get argocd {{ .Values.team.name }} -n {{ $gitops }}
+          echo "--- Checking AppProject ---"
+          oc get appproject {{ .Values.team.name }} -n {{ $gitops }}
+          echo "--- Checking RoleBinding ---"
+          oc get rolebinding {{ .Values.team.name }}-admin -n {{ $gitops }}
+          echo "PASSED"
+  volumes:
+    - name: tmp
+      emptyDir: {}
+{{- end }}

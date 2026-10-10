@@ -1,0 +1,4 @@
+apiVersion: v2
+name: cert-manager
+description: cert-manager — operator subscription and cert-manager ClusterIssuers and Certificates
+version: 0.1.0

@@ -1,0 +1,4 @@
+apiVersion: v2
+name: application-gitops
+description: Provisions an ArgoCD instance for an application team
+version: 0.5.0

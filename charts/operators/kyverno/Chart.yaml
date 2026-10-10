@@ -1,0 +1,4 @@
+apiVersion: v2
+name: kyverno
+description: kyverno — operator subscription and kyverno admission controller instance
+version: 0.1.0

@@ -1,0 +1,4 @@
+apiVersion: v2
+name: oadp
+description: oadp — operator subscription and oADP DataProtectionApplication configuration for Velero
+version: 0.1.0

@@ -1,0 +1,4 @@
+apiVersion: v2
+name: dev-spaces
+description: dev-spaces — operator subscription
+version: 0.1.0

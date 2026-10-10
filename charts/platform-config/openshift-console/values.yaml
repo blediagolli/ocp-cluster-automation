@@ -1,0 +1,50 @@
+# ---------------------------------------------------------------------------
+# Console CR — custom branding and developer catalog
+# ---------------------------------------------------------------------------
+console:
+  include: false
+  branding:
+    customLogoFile:
+      name: ""
+      key: ""
+    customProductName: ""
+  developerCatalog:
+    categories: []
+    # - id: languages
+    #   label: Languages
+    #   tags:
+    #     - java
+    #     - python
+    #     - go
+    types:
+      state: Enabled
+      enabled: []
+      # - BuilderImage
+      # - Template
+      # - HelmChart
+      disabled: []
+  notifications: []
+  # - text: "Cluster maintenance window: Sunday 02:00-06:00 UTC"
+  #   location: BannerTop
+  #   color: "#fff"
+  #   backgroundColor: "#0066cc"
+  #   link:
+  #     href: "https://wiki.example.com/maintenance"
+  #     text: "Details"
+
+# ---------------------------------------------------------------------------
+# ConsoleLinks — additional links in the console UI
+# ---------------------------------------------------------------------------
+consoleLinks: []
+# - name: documentation
+#   include: false
+#   text: "Internal Documentation"
+#   href: "https://docs.example.com"
+#   location: HelpMenu
+#   # location options: HelpMenu, UserMenu, ApplicationMenu, NamespaceDashboard
+#   applicationMenu:
+#     section: ""
+#     imageURL: ""
+#   namespaceDashboard:
+#     namespaces: []
+#     # - my-namespace

@@ -1,0 +1,36 @@
+# Groups the attest policies into one compliance verdict for the console and for
+# `oc get policyset`. Without it you read six rows and do the AND in your head.
+#
+# Deliberately has no PlacementBinding. Each policy directory already carries its
+# own Placement and binding -- that is what makes a directory self-contained and
+# what lets one be added or removed without editing anything else. Binding the
+# set as well would place every policy twice: harmless, but it doubles the
+# PlacementDecisions and makes "why is this policy on that cluster?" a two-answer
+# question. An unbound PolicySet still aggregates status, which is all we want
+# from it.
+#
+# Membership is by policy name, and the names are bare slugs matching the
+# directory names (PolicyGenerator does not prefix them). A name listed here that
+# has no corresponding directory is silently ignored by the controller, so this
+# file does not break when a policy is retired -- but it does go stale. Removing
+# a directory in policies/stable/ means removing its line here too.
+#
+# cluster-labels and cluster-config-maps are not members: they are the plumbing
+# that the attest policies read from, not controls with a compliance meaning.
+apiVersion: policy.open-cluster-management.io/v1beta1
+kind: PolicySet
+metadata:
+  name: security-baseline
+  namespace: ${POLICY_NAMESPACE}
+spec:
+  description: >-
+    Inform-only attestation of the platform security baseline. Non-compliance
+    means a cluster has drifted from what the platform-config charts write --
+    the policies report, the charts remediate.
+  policies:
+    - compliance-operator
+    - etcd-encryption
+    - image-registries
+    - network-isolation
+    - pod-security
+    - resource-quota

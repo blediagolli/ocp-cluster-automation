@@ -1,0 +1,52 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.realm.include }}
+{{- $clients := include "keycloak.realmClients" . | fromYamlArray }}
+{{- $userOps := include "keycloak.realmUserOps" . | fromYamlArray }}
+{{- $saOps := include "keycloak.realmServiceAccountOps" . | fromYamlArray }}
+{{- /* Everything realm-sync-job.yaml reads off disk. It lives in a ConfigMap
+       rather than a heredoc in the Job script because a heredoc terminator
+       cannot be indented inside a YAML block scalar (<<- strips tabs, not
+       spaces). It also makes the split explicit: this ConfigMap is non-secret
+       by construction, and the credentials only ever arrive through env vars
+       from the Secret.
+
+       The .py files are real files under the chart's files/realm-sync/ —
+       mounted here, but editable, greppable and runnable as Python rather
+       than as a block scalar inside YAML. */}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realm-sync
+  namespace: {{ include "operator.crNamespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+data:
+  payload.json: |
+    {{- dict "ifResourceExists" "OVERWRITE" "clients" $clients | toJson | nindent 4 }}
+  {{- range $op := $userOps }}
+  user-{{ $op.username }}.json: |
+    {{- $op.profile | toJson | nindent 4 }}
+  {{- end }}
+  {{- range $op := $saOps }}
+  sa-{{ $op.clientId }}.json: |
+    {{- dict "attributes" $op.attributes | toJson | nindent 4 }}
+  {{- end }}
+  {{- range $role := $v.realm.roles }}
+  role-{{ $role.name }}.json: |
+    {{- dict "name" $role.name "description" ($role.description | default "") | toJson | nindent 4 }}
+  {{- end }}
+  {{- range $scope, $spec := $v.realm.clientScopes }}
+  scope-{{ $scope }}.json: |
+    {{- dict "name" $scope "protocol" ($spec.protocol | default "openid-connect") "description" ($spec.description | default "") "attributes" ($spec.attributes | default dict) | toJson | nindent 4 }}
+  {{- end }}
+  {{- with $v.realm.sessions }}
+  sessions.json: |
+    {{- . | toJson | nindent 4 }}
+  {{- end }}
+  {{- /* regexReplaceAll because `indent` pads a blank line out to four spaces,
+         which would put trailing whitespace in every mounted .py file. */}}
+  {{- range $path, $_ := .Files.Glob "files/realm-sync/*.py" }}
+  {{ base $path }}: |
+    {{- regexReplaceAll "(?m)[ \t]+$" ($.Files.Get $path | trimSuffix "\n" | nindent 4) "" }}
+  {{- end }}
+{{- end }}

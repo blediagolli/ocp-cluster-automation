@@ -1,0 +1,4 @@
+apiVersion: v2
+name: portworx
+description: Portworx operator and a PX-CSI StorageCluster for Pure FlashArray
+version: 0.1.0

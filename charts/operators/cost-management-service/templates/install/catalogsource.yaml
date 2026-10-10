@@ -1,0 +1,38 @@
+{{- /* Wave -31: cost management's server side ships outside the built-in
+       catalogs, so a CatalogSource has to exist and be serving before the
+       wave -28 Subscription can resolve against it. OLM does retry a
+       Subscription whose source is not ready, but it sits in
+       ResolutionFailed in the meantime and that reads like a real error.
+
+       This used to live in charts/operator-deployment's shared
+       `catalogSources` map, which meant the one operator that needs a custom
+       catalog depended on a different Application having synced first, with
+       nothing expressing the order. Owned here, the wave does. It is the only
+       CatalogSource in the repo; if a second operator ever needs one, it gets
+       a copy of this file in its own chart rather than a shared map coming
+       back. */}}
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.catalogSource.include }}
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: {{ $v.catalogSource.name }}
+  namespace: {{ $v.catalogSource.namespace }}
+  labels:
+    app.kubernetes.io/managed-by: multi-cluster-config
+    operator: {{ .Chart.Name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-31"
+spec:
+  sourceType: {{ $v.catalogSource.sourceType }}
+  image: {{ required "cost-management-service: catalogSource.image is required when catalogSource.include is true" $v.catalogSource.image }}
+  displayName: {{ $v.catalogSource.displayName | quote }}
+  publisher: {{ $v.catalogSource.publisher | quote }}
+  grpcPodConfig:
+    securityContextConfig: {{ $v.catalogSource.securityContextConfig }}
+  {{- with $v.catalogSource.updateStrategy }}
+  updateStrategy:
+    registryPoll:
+      interval: {{ .registryPollInterval }}
+  {{- end }}
+{{- end }}

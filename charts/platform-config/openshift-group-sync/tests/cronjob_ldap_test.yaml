@@ -1,0 +1,136 @@
+suite: LDAP CronJob
+templates:
+  - templates/cronjob.yaml
+tests:
+  - it: should not render when include is false
+    set:
+      groupSync.include: false
+      groupSync.provider: ldap
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when provider is keycloak
+    set:
+      groupSync.include: true
+      groupSync.provider: keycloak
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render ConfigMap and CronJob for ldap provider
+    set:
+      groupSync.include: true
+      groupSync.provider: ldap
+    asserts:
+      - hasDocuments:
+          count: 2
+
+  - it: should render LDAPSyncConfig in ConfigMap
+    set:
+      groupSync.include: true
+      groupSync.provider: ldap
+      groupSync.namespace: openshift-authentication
+      groupSync.ldap.url: "ldaps://ldap.corp.com:636"
+      groupSync.ldap.bindDN: "cn=svc,dc=corp,dc=com"
+      groupSync.ldap.insecure: false
+      groupSync.ldap.groupBaseDN: "ou=groups,dc=corp,dc=com"
+      groupSync.ldap.groupFilter: "(objectClass=groupOfNames)"
+    documentIndex: 0
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: ldap-sync-config
+      - equal:
+          path: metadata.namespace
+          value: openshift-authentication
+      - matchRegex:
+          path: data["ldap-sync-config.yaml"]
+          pattern: "url: \"ldaps://ldap.corp.com:636\""
+      - matchRegex:
+          path: data["ldap-sync-config.yaml"]
+          pattern: "bindDN: \"cn=svc,dc=corp,dc=com\""
+
+  - it: should configure CronJob with correct schedule and SA
+    set:
+      groupSync.include: true
+      groupSync.provider: ldap
+      groupSync.namespace: openshift-authentication
+      groupSync.schedule: "0 */2 * * *"
+      groupSync.serviceAccountName: group-syncer
+      groupSync.image: registry.redhat.io/openshift4/ose-cli:v4.22
+    documentIndex: 1
+    asserts:
+      - isKind:
+          of: CronJob
+      - equal:
+          path: metadata.name
+          value: ldap-group-sync
+      - equal:
+          path: spec.schedule
+          value: "0 */2 * * *"
+      - equal:
+          path: spec.concurrencyPolicy
+          value: Forbid
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.serviceAccountName
+          value: group-syncer
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].image
+          value: registry.redhat.io/openshift4/ose-cli:v4.22
+
+  - it: should mount CA volume when insecure is false
+    set:
+      groupSync.include: true
+      groupSync.provider: ldap
+      groupSync.ldap.insecure: false
+      groupSync.ldap.caConfigMapName: my-ca
+    documentIndex: 1
+    asserts:
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.volumes
+          content:
+            name: ldap-ca
+            configMap:
+              name: my-ca
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].volumeMounts
+          content:
+            name: ldap-ca
+            mountPath: /etc/ca
+            readOnly: true
+
+  - it: should not mount CA volume when insecure is true
+    set:
+      groupSync.include: true
+      groupSync.provider: ldap
+      groupSync.ldap.insecure: true
+    documentIndex: 1
+    asserts:
+      - notContains:
+          path: spec.jobTemplate.spec.template.spec.volumes
+          content:
+            name: ldap-ca
+          any: true
+      - notContains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].volumeMounts
+          content:
+            name: ldap-ca
+          any: true
+
+  - it: should mount bind password secret
+    set:
+      groupSync.include: true
+      groupSync.provider: ldap
+      groupSync.ldap.insecure: true
+      groupSync.ldap.bindPasswordSecretName: my-ldap-secret
+    documentIndex: 1
+    asserts:
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.volumes
+          content:
+            name: bind-password
+            secret:
+              secretName: my-ldap-secret

@@ -1,0 +1,4 @@
+apiVersion: v2
+name: advanced-cluster-management
+description: advanced-cluster-management — operator subscription and aCM MultiClusterHub instance
+version: 0.1.0

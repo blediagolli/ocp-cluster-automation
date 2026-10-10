@@ -1,0 +1,53 @@
+{{- /*
+The team's own ArgoCD, reconciled by the cluster's gitops-operator. It is
+scoped to the namespaces namespace-config labels with
+argocd.argoproj.io/managed-by -- the operator watches that label and writes
+the instance's ServiceAccount RBAC itself, which is why this chart grants no
+cluster-scoped permissions of its own.
+
+defaultPolicy is '' deliberately: anyone not matched by a `g,` line below gets
+nothing, rather than the upstream default of role:readonly which would make
+every authenticated user on the cluster a reader of this team's ArgoCD.
+*/ -}}
+{{- include "onboarding.validate" . }}
+{{- if not (include "onboarding.quiescing" .) }}
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: {{ .Values.team.name }}
+  namespace: {{ include "onboarding.teamGitops" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    {{- include "onboarding.labels" . | nindent 4 }}
+    app.kubernetes.io/component: argocd
+spec:
+  server:
+    route:
+      enabled: true
+    resources:
+      {{- toYaml .Values.argocd.resources.server | nindent 6 }}
+  rbac:
+    defaultPolicy: ''
+    policy: |
+      g, {{ .Values.team.admins }}, role:admin
+      {{- with .Values.team.readers }}
+      g, {{ . }}, role:readonly
+      {{- end }}
+      {{- with .Values.argocd.rbac.extraPolicy }}
+      {{- tpl . $ | trim | nindent 6 }}
+      {{- end }}
+    scopes: '[groups]'
+  controller:
+    resources:
+      {{- toYaml .Values.argocd.resources.controller | nindent 6 }}
+  applicationSet:
+    resources:
+      {{- toYaml .Values.argocd.resources.applicationSet | nindent 6 }}
+  repo:
+    resources:
+      {{- toYaml .Values.argocd.resources.repo | nindent 6 }}
+  redis:
+    resources:
+      {{- toYaml .Values.argocd.resources.redis | nindent 6 }}
+{{- end }}

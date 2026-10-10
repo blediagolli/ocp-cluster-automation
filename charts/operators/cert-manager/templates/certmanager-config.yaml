@@ -1,0 +1,14 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.acmeIssuer.dns01.recursiveNameserversOnly }}
+apiVersion: operator.openshift.io/v1alpha1
+kind: CertManager
+metadata:
+  name: cluster
+spec:
+  logLevel: Normal
+  managementState: Managed
+  controllerConfig:
+    overrideArgs:
+      - "--dns01-recursive-nameservers-only"
+      - "--dns01-recursive-nameservers=8.8.8.8:53,1.1.1.1:53"
+{{- end }}

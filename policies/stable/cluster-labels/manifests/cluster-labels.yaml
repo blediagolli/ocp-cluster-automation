@@ -1,0 +1,35 @@
+# Stamps the gfo.io/* labels that Placements select on.
+#
+# This is the one policy in the repo that enforces rather than informs, and the
+# exception is deliberate. Labels are the only thing a Placement can select on,
+# so without a writer the whole policy plane has nothing to target. ArgoCD cannot
+# be that writer: clusters/mgt/acm-hub/applicationsets/cluster-import.yaml puts
+# /metadata/labels on ManagedCluster under ignoreDifferences, because ACM itself
+# writes labels there (vendor, cloud, openshiftVersion, the addon features) and a
+# second writer would fight it forever.
+#
+# It writes to the hub's own ManagedCluster objects, never to a spoke's config,
+# which is why this does not breach the "policies attest, charts configure"
+# contract in docs/governance/acm-policies.md.
+#
+# complianceType: musthave merges, so ACM's own labels survive untouched and only
+# the keys named here are managed. Removing a cluster from this list leaves its
+# labels in place rather than deleting them -- unlabelling is a manual `oc label`.
+#
+# Only clusters ACM owns need to be here. An imported cluster gets its labels
+# from charts/platform-config/acm-managed-cluster (managedCluster.labels in its
+# platform-config.yaml) at creation time; local-cluster has no such chart,
+# because ACM creates that object itself.
+#
+# Written out per cluster rather than templated from policy-values: ACM's
+# template engine has no fromYaml or toYaml, so iterating a structured values
+# blob is not expressible here. An explicit list is also easier to review.
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: local-cluster
+  labels:
+    gfo.io/baseline: "true"
+    gfo.io/cluster-set: default
+    gfo.io/environment: mgt
+    gfo.io/role: hub

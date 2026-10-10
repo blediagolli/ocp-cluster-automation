@@ -1,0 +1,102 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if and $v.central.include $v.initBundle.include (eq $v.initBundle.mode "job") }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: acs-init-bundle
+  namespace: {{ $v.central.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: acs-init-bundle
+  namespace: {{ $v.central.namespace }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "create", "patch", "update", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: acs-init-bundle
+  namespace: {{ $v.central.namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: acs-init-bundle
+subjects:
+  - kind: ServiceAccount
+    name: acs-init-bundle
+    namespace: {{ $v.central.namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: acs-init-bundle
+  namespace: {{ $v.central.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  template:
+    spec:
+      serviceAccountName: acs-init-bundle
+      restartPolicy: OnFailure
+      containers:
+        - name: init-bundle
+          image: registry.redhat.io/openshift4/ose-cli:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -eo pipefail
+
+              NAMESPACE="{{ $v.central.namespace }}"
+              CENTRAL_URL="https://central.${NAMESPACE}.svc:443"
+              BUNDLE_NAME="local-cluster-$(date +%s)"
+
+              echo "Checking if init bundle secrets already exist..."
+              EXISTING_CA=$(oc get secret sensor-tls -n "${NAMESPACE}" -o jsonpath='{.data.ca\.pem}' 2>/dev/null || echo "")
+              if [ -n "${EXISTING_CA}" ]; then
+                echo "Init bundle secrets already exist with valid data, skipping generation."
+                exit 0
+              fi
+              if oc get secret sensor-tls -n "${NAMESPACE}" &>/dev/null; then
+                echo "sensor-tls exists but has empty data — deleting stale secrets..."
+                oc delete secret sensor-tls collector-tls admission-control-tls -n "${NAMESPACE}" --ignore-not-found
+              fi
+
+              echo "Waiting for Central to be ready..."
+              until curl -k --output /dev/null --silent --head --fail "${CENTRAL_URL}"; do
+                echo "Central not ready yet, retrying in 10s..."
+                sleep 10
+              done
+              echo "Central is ready."
+
+              {{- if $v.initBundle.password }}
+              PASSWORD="{{ $v.initBundle.password }}"
+              {{- else }}
+              PASSWORD=$(oc get secret central-htpasswd -n "${NAMESPACE}" -o jsonpath='{.data.password}' | base64 -d)
+              {{- end }}
+
+              echo "Generating init bundle..."
+              RESPONSE=$(curl -k -s -X POST \
+                -u "admin:${PASSWORD}" \
+                -H "Content-Type: application/json" \
+                --data "{\"name\":\"${BUNDLE_NAME}\"}" \
+                "${CENTRAL_URL}/v1/cluster-init/init-bundles")
+
+              echo "${RESPONSE}" | python3 -c "
+              import sys, json
+              data = json.load(sys.stdin)
+              if 'kubectlBundle' not in data:
+                  print('Error: No kubectlBundle in response')
+                  print(json.dumps(data, indent=2))
+                  sys.exit(1)
+              import base64
+              print(base64.b64decode(data['kubectlBundle']).decode())
+              " | oc apply -n "${NAMESPACE}" -f -
+
+              echo "Init bundle created and applied successfully."
+{{- end }}

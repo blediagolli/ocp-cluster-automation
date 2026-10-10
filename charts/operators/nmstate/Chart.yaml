@@ -1,0 +1,4 @@
+apiVersion: v2
+name: nmstate
+description: nmstate — operator subscription and nMState instance
+version: 0.1.0

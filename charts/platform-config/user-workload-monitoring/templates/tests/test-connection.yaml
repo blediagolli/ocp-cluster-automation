@@ -1,0 +1,43 @@
+{{- if .Values.userWorkloadMonitoring.include }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  containers:
+    - name: test
+      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+          APISERVER=https://kubernetes.default.svc
+          CA=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          NS="openshift-user-workload-monitoring"
+
+          echo "--- Checking cluster-monitoring-config ---"
+          CM=$(curl -s -o /dev/null -w '%{http_code}' --cacert $CA -H "Authorization: Bearer $TOKEN" \
+            "$APISERVER/api/v1/namespaces/openshift-monitoring/configmaps/cluster-monitoring-config")
+          echo "  cluster-monitoring-config: HTTP $CM"
+          if [ "$CM" != "200" ]; then echo "FAIL: cluster-monitoring-config not found"; exit 1; fi
+
+          echo "--- Checking user-workload-monitoring-config ---"
+          UWM=$(curl -s -o /dev/null -w '%{http_code}' --cacert $CA -H "Authorization: Bearer $TOKEN" \
+            "$APISERVER/api/v1/namespaces/$NS/configmaps/user-workload-monitoring-config")
+          echo "  user-workload-monitoring-config: HTTP $UWM"
+          if [ "$UWM" != "200" ]; then echo "FAIL: user-workload-monitoring-config not found"; exit 1; fi
+
+          echo "--- Checking Prometheus pods ---"
+          PODS=$(curl -s --cacert $CA -H "Authorization: Bearer $TOKEN" \
+            "$APISERVER/api/v1/namespaces/$NS/pods" \
+            | grep -c '"phase":"Running"' || true)
+          echo "  Running pods in $NS: $PODS"
+          if [ "$PODS" -lt 1 ]; then echo "FAIL: No prometheus pods running"; exit 1; fi
+
+          echo "PASS: User workload monitoring is running"
+{{- end }}

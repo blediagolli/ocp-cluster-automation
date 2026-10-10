@@ -1,0 +1,23 @@
+{{- /*
+The namespace holding this team's own ArgoCD instance. Everything else in the
+chart is scoped into it, so it is at sync-wave 0 and the rest at wave 1:
+ArgoCD applies a wave only once the previous one is healthy, and without this
+the ArgoCD CR and the namespace go out in the same batch, which fails with
+"namespace not found" on a team's first sync.
+
+This is the one template in the chart that renders unconditionally -- it keeps
+rendering through quiesce, when everything inside it is pruned. An empty shell
+of a namespace is the point: it keeps the chart from ever rendering nothing,
+which is what makes ArgoCD's allowEmpty guard and the Namespace/Project GVK
+problem both unreachable. See onboarding.quiescing in _helpers.tpl.
+*/ -}}
+{{- include "onboarding.validate" . }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "onboarding.teamGitops" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    {{- include "onboarding.labels" . | nindent 4 }}
+    app.kubernetes.io/component: team-gitops

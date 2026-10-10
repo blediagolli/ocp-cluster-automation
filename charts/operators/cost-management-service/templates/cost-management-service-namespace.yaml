@@ -1,0 +1,12 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if and $v.costManagementService.include $v.costManagementService.createNamespace }}
+{{- /* Normally false: namespace.yaml in this chart already creates the install
+       namespace with the OperatorGroup. This is only for the case where the
+       CR is asked to live somewhere else. */}}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $v.costManagementService.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-20"
+{{- end }}

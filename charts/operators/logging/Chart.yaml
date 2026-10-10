@@ -1,0 +1,4 @@
+apiVersion: v2
+name: logging
+description: logging — operator subscription and loki LokiStack and ClusterLogForwarder instances
+version: 0.1.0

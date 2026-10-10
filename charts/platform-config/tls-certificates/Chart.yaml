@@ -1,0 +1,4 @@
+apiVersion: v2
+name: tls-certificates
+description: TLS Secrets and CA bundles via manual, SealedSecrets, ExternalSecrets, or Vault
+version: 0.1.0

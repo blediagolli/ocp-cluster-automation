@@ -1,0 +1,31 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.lokiStack.include }}
+apiVersion: loki.grafana.com/v1
+kind: LokiStack
+metadata:
+  name: {{ $v.lokiStack.name }}
+  namespace: {{ $v.lokiStack.namespace }}
+  annotations:
+    lokistack.openshift.io/storage-size: {{ $v.lokiStack.storageSize | quote }}
+spec:
+  size: {{ $v.lokiStack.size }}
+  storage:
+    schemas:
+      - version: v13
+        effectiveDate: "2024-09-22"
+    secret:
+      name: {{ $v.lokiStack.secretName }}
+      type: {{ $v.lokiStack.storageSecretType }}
+  storageClassName: {{ $v.lokiStack.storageClassName }}
+  tenants:
+    mode: openshift-logging
+  hashRing:
+    type: memberlist
+  limits:
+    global:
+      ingestion:
+        ingestionRate: {{ $v.lokiStack.ingestionRate }}
+        ingestionBurstSize: {{ $v.lokiStack.ingestionBurstSize }}
+      queries:
+        queryTimeout: {{ $v.lokiStack.queryTimeout }}
+{{- end }}

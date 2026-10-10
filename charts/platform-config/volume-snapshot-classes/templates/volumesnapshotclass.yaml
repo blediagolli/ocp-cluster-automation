@@ -1,0 +1,17 @@
+{{- if .Values.volumeSnapshotClasses.include }}
+{{- range .Values.volumeSnapshotClasses.classes }}
+{{- if .include }}
+---
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: {{ .name }}
+driver: {{ .driver }}
+deletionPolicy: {{ .deletionPolicy | default "Delete" }}
+{{- if .parameters }}
+parameters:
+  {{- toYaml .parameters | nindent 2 }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

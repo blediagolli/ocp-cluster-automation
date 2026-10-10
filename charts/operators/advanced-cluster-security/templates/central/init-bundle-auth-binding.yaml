@@ -1,0 +1,18 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if and $v.central.include $v.initBundle.include $v.initBundle.distributeAuth }}
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: acs-central-auth
+  namespace: {{ $v.central.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: acs-central-auth
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: Policy
+    name: acs-central-auth-distribution
+{{- end }}

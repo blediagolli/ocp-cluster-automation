@@ -1,0 +1,160 @@
+# Provisions one team's own ArgoCD instance: the <team>-gitops namespace, an
+# ArgoCD CR for the gitops-operator to reconcile, an AppProject fencing the
+# team to its own repo and namespaces, and human RBAC on the namespace.
+#
+# Nothing here is set by hand. The cluster-onboarding-gitops ApplicationSet
+# supplies these files in order, each overriding the last:
+#
+#   1. this file                                   chart defaults
+#   2. teams/<team>.yaml                           who the team is, what it owns
+#   3. env/<env>/conf.yaml                         environment-wide settings
+#   4. env/<env>/teams/<team>.yaml                 per-team environment override
+#   5. clusters/<env>/<cluster>/conf.yaml          cluster-wide settings
+#   6. clusters/<env>/<cluster>/teams/<team>.yaml  per-team cluster override
+#
+# Helm deep-merges maps, so an override that sets one leaf keeps the rest of
+# this file's values underneath it.
+#
+# teams/<team>.yaml is shared with namespace-config, which is why team.* here
+# is the same block that chart reads. Keep the two declarations in step.
+
+cluster:
+  # Selects which key of team.namespaces becomes the AppProject's destinations.
+  # Comes from clusters/<env>/<cluster>/conf.yaml. Required.
+  environment: ""
+
+team:
+  # The team slug. Names the ArgoCD instance, the AppProject, the
+  # <team>-gitops namespace and the RoleBinding. Required.
+  name: ""
+  # OpenShift group bound to ClusterRole/admin on the <team>-gitops namespace
+  # and to role:admin inside the team's ArgoCD. Required.
+  admins: ""
+  # Optional OpenShift group bound to ClusterRole/view on <team>-gitops and to
+  # role:readonly inside the team's ArgoCD. Omit it if the team has no
+  # read-only group -- neither the RoleBinding nor the RBAC line is rendered.
+  readers: ""
+  # The team's application repo, becoming the AppProject's sourceRepos. A list
+  # (team.repos) is also accepted; setting both takes the union, so a cluster
+  # override adds a repo rather than replacing the central one. One of the two
+  # is required -- an AppProject with empty sourceRepos refuses every
+  # Application the team creates.
+  repo: ""
+  # Free-form map rendered as labels on every object this chart creates, so the
+  # team's ArgoCD, AppProject and namespace carry the same org/division/app
+  # selectors as its tenant namespaces. Declared in teams/<team>.yaml and read
+  # identically by both charts -- see namespace-config's values.yaml.
+  metadata: {}
+  # team.roleBindings is read by namespace-config ONLY, and deliberately so.
+  # It grants extra groups access to the team's tenant namespaces; the
+  # <team>-gitops namespace holds the team's ArgoCD, not its workloads, and a
+  # CI/CD or migration group has no reason to reach the controller that deploys
+  # on its behalf. Access here stays with admins and readers. Use
+  # argocd.rbac.extraPolicy below to give another group a role inside the
+  # team's ArgoCD UI/API without granting it the namespace.
+  #
+  # Namespaces this team owns, keyed by environment. Each entry is
+  # {name, size}; only `name` is read here, `size` is namespace-config's.
+  # These become the AppProject destinations, so a namespace missing from this
+  # list is one the team's ArgoCD is not permitted to deploy into.
+  namespaces: {}
+  # The only lifecycle flag, and THIS chart is the one it empties.
+  #
+  # Quiesce prunes the team's ArgoCD instance, its AppProject and its
+  # RoleBindings. The <team>-gitops namespace itself KEEPS RENDERING, so the
+  # chart is never reduced to nothing -- see onboarding.quiescing in
+  # _helpers.tpl for the three separate ways an empty render goes wrong.
+  # What is left is an empty namespace, which costs nothing and is what the
+  # team comes back into if the flag is cleared.
+  #
+  # namespace-config keeps rendering the team's namespaces throughout, so no
+  # data is touched; it just drops the RoleBindings and the managed-by label.
+  # Reversible: clear the flag and the instance is rebuilt in one sync.
+  #
+  # team.name is required alongside it, so quiescing always names its subject.
+  #
+  # Because the namespace stays, the team's own Application CRs stay with it.
+  # If any carry resources-finalizer.argocd.argoproj.io they will not clear
+  # on their own once the controller is gone -- clear them before deleting
+  # the namespace by hand at the end of a retirement. Nothing deadlocks in
+  # the meantime, which is the advantage of not deleting the namespace here.
+  #
+  # DELETING a team is not a chart flag; see namespace-config's values.yaml.
+  quiesce: false
+
+# The `helm test` pod. ArgoCD never runs it; tests/e2e-test.sh is what
+# exercises this chart against a cluster.
+test:
+  # The internal registry's `cli` imagestream, which every OpenShift cluster
+  # ships and which needs no pull secret. Previously
+  # registry.redhat.io/openshift4/ose-cli:latest, which needs a
+  # registry.redhat.io credential the <team>-gitops namespace has no reason to
+  # carry -- the pod could not have pulled it.
+  image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+  imagePullPolicy: IfNotPresent
+
+argocd:
+  rbac:
+    # Appended verbatim to the generated policy. Use it for per-team overrides
+    # the two group mappings above cannot express, e.g. scoping a group to one
+    # AppProject:
+    #   extraPolicy: |
+    #     p, role:deployer, applications, sync, team-alpha/*, allow
+    #     g, team-alpha-oncall, role:deployer
+    extraPolicy: ""
+  # Where this team's ArgoCD is allowed to deploy. The in-cluster entry is what
+  # the AppProject needs for the namespaces this chart's sibling creates;
+  # add an entry here to let a team deploy to a remote cluster, which also
+  # requires the usual ArgoCD cluster Secret.
+  destinations:
+    - server: https://kubernetes.default.svc
+  # Per-component resources. Previously only applicationSet and controller
+  # were set, `repo: {}` left the repo-server unbounded, and server and redis
+  # got nothing -- so two components ran with no requests at all and were the
+  # first evicted under node pressure, while the repo-server (the component
+  # that actually holds a git checkout in memory) was the one with no ceiling.
+  #
+  # The whole block is deep-merged, so a team needing a bigger repo-server
+  # overrides argocd.resources.repo.limits.memory and inherits the rest.
+  #
+  # There is deliberately no `sso` entry. spec.sso has no resources field of
+  # its own -- it takes a provider plus a dex or keycloak block -- and a
+  # spec.sso with no provider is rejected by the gitops-operator. These
+  # instances authenticate through the OpenShift OAuth integration on the
+  # server route, so no SSO provider is configured at all.
+  resources:
+    controller:
+      limits:
+        cpu: "1"
+        memory: 2Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+    applicationSet:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+    repo:
+      limits:
+        cpu: "1"
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+    server:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 50m
+        memory: 128Mi
+    redis:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 50m
+        memory: 128Mi

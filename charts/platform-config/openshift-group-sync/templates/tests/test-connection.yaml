@@ -1,0 +1,94 @@
+{{- if .Values.groupSync.include }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  serviceAccountName: {{ .Values.groupSync.serviceAccountName }}
+  containers:
+    - name: test
+      image: {{ .Values.groupSync.image }}
+      command:
+        - /bin/bash
+        - -c
+        - |
+          FAILED=0
+
+          echo "--- Checking ServiceAccount ---"
+          if oc get sa {{ .Values.groupSync.serviceAccountName }} -n {{ .Values.groupSync.namespace }} &>/dev/null; then
+            echo "  PASS: ServiceAccount {{ .Values.groupSync.serviceAccountName }} exists"
+          else
+            echo "  FAIL: ServiceAccount {{ .Values.groupSync.serviceAccountName }} not found"
+            FAILED=1
+          fi
+
+          echo "--- Checking ClusterRole ---"
+          if oc get clusterrole {{ .Values.groupSync.serviceAccountName }} &>/dev/null; then
+            echo "  PASS: ClusterRole {{ .Values.groupSync.serviceAccountName }} exists"
+          else
+            echo "  FAIL: ClusterRole {{ .Values.groupSync.serviceAccountName }} not found"
+            FAILED=1
+          fi
+
+          echo "--- Checking ClusterRoleBinding ---"
+          if oc get clusterrolebinding {{ .Values.groupSync.serviceAccountName }} &>/dev/null; then
+            echo "  PASS: ClusterRoleBinding {{ .Values.groupSync.serviceAccountName }} exists"
+          else
+            echo "  FAIL: ClusterRoleBinding {{ .Values.groupSync.serviceAccountName }} not found"
+            FAILED=1
+          fi
+
+          {{- if eq .Values.groupSync.provider "ldap" }}
+          echo "--- Checking LDAP CronJob ---"
+          if oc get cronjob ldap-group-sync -n {{ .Values.groupSync.namespace }} &>/dev/null; then
+            SCHEDULE=$(oc get cronjob ldap-group-sync -n {{ .Values.groupSync.namespace }} -o jsonpath='{.spec.schedule}')
+            echo "  PASS: CronJob ldap-group-sync exists (schedule: ${SCHEDULE})"
+          else
+            echo "  FAIL: CronJob ldap-group-sync not found"
+            FAILED=1
+          fi
+
+          echo "--- Checking LDAP sync ConfigMap ---"
+          if oc get configmap ldap-sync-config -n {{ .Values.groupSync.namespace }} &>/dev/null; then
+            echo "  PASS: ConfigMap ldap-sync-config exists"
+          else
+            echo "  FAIL: ConfigMap ldap-sync-config not found"
+            FAILED=1
+          fi
+          {{- end }}
+
+          {{- if eq .Values.groupSync.provider "keycloak" }}
+          echo "--- Checking Keycloak CronJob ---"
+          if oc get cronjob keycloak-group-sync -n {{ .Values.groupSync.namespace }} &>/dev/null; then
+            SCHEDULE=$(oc get cronjob keycloak-group-sync -n {{ .Values.groupSync.namespace }} -o jsonpath='{.spec.schedule}')
+            echo "  PASS: CronJob keycloak-group-sync exists (schedule: ${SCHEDULE})"
+          else
+            echo "  FAIL: CronJob keycloak-group-sync not found"
+            FAILED=1
+          fi
+
+          echo "--- Checking Keycloak sync script ConfigMap ---"
+          if oc get configmap keycloak-group-sync-script -n {{ .Values.groupSync.namespace }} &>/dev/null; then
+            echo "  PASS: ConfigMap keycloak-group-sync-script exists"
+          else
+            echo "  FAIL: ConfigMap keycloak-group-sync-script not found"
+            FAILED=1
+          fi
+
+          echo "--- Checking credentials Secret ---"
+          if oc get secret {{ .Values.groupSync.keycloak.credentialsSecretName }} -n {{ .Values.groupSync.namespace }} &>/dev/null; then
+            echo "  PASS: Secret {{ .Values.groupSync.keycloak.credentialsSecretName }} exists"
+          else
+            echo "  FAIL: Secret {{ .Values.groupSync.keycloak.credentialsSecretName }} not found"
+            FAILED=1
+          fi
+          {{- end }}
+
+          if [ "$FAILED" -eq 0 ]; then
+            echo "PASS: openshift-group-sync resources configured"
+          fi
+          exit $FAILED
+{{- end }}

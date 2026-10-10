@@ -1,0 +1,19 @@
+etcdDefrag:
+  include: false
+  namespace: openshift-etcd
+  schedule: "0 3 * * 0"
+  # Fragmentation threshold as a percentage (0-100).
+  # Defrag only runs on members where fragmentation exceeds this value.
+  # Set to 0 to always defrag regardless of fragmentation level.
+  fragmentationThreshold: 50
+  # CLI image used for the CronJob pod. The pod uses `oc exec` into the
+  # running etcd pods (which already have etcdctl and certs configured),
+  # so only `oc` is needed — no etcd-specific image required.
+  # Compatible across OCP 4.19-4.22.
+  image: registry.redhat.io/openshift4/ose-cli:latest
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  activeDeadlineSeconds: 600
+  alert:
+    include: true
+    noSuccessThresholdHours: 168

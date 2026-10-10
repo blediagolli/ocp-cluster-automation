@@ -1,0 +1,93 @@
+oauth:
+  include: false
+  tokenConfig:
+    accessTokenMaxAgeSeconds: 86400
+  # OpenShift requires identity provider secrets to live here.
+  clientSecretNamespace: openshift-config
+  # Defaults for any provider secret that sets `source: externalSecret` and
+  # does not override them itself. A provider that leaves `source` off defaults
+  # to `existing` — this chart creates nothing and the Secret has to be there
+  # already, which is how every provider behaved before the modes existed.
+  externalSecret:
+    refreshInterval: 1h
+    secretStoreRef:
+      name: vault
+      kind: ClusterSecretStore
+  identityProviders: []
+  groupRBAC: []
+  # - group: admins
+  #   clusterRole: cluster-admin
+  # - group: users
+  #   clusterRole: edit
+  # Example LDAP provider:
+  # - name: ldap
+  #   type: LDAP
+  #   mappingMethod: claim
+  #   ldap:
+  #     url: "ldaps://ldap.example.com:636/ou=users,dc=example,dc=com?uid"
+  #     insecure: false
+  #     ca:
+  #       name: ldap-ca-configmap
+  #     bindDN: "cn=admin,dc=example,dc=com"
+  #     bindPassword:
+  #       name: ldap-bind-password
+  #     attributes:
+  #       id:
+  #         - dn
+  #       email:
+  #         - mail
+  #       name:
+  #         - displayName
+  #       preferredUsername:
+  #         - uid
+  #
+  # Example OIDC provider. The provider's `name` decides the callback URL
+  # OpenShift registers — https://oauth-openshift.<appsDomain>/oauth2callback/<name>
+  # — which has to be in the IdP client's redirect URIs, so renaming it here
+  # breaks login until the IdP is updated to match.
+  #
+  # clientSecret is a secrets spec: `source: externalSecret` makes this chart
+  # create the Secret from the backend, `source: inline` from values, and the
+  # default `source: existing` leaves it to something else. secretKey must be
+  # clientSecret — OpenShift reads that key and no other.
+  # - name: oidc
+  #   type: OpenID
+  #   mappingMethod: claim
+  #   openID:
+  #     clientID: openshift-client
+  #     clientSecret:
+  #       name: oidc-client-secret
+  #       source: externalSecret
+  #       path: secret/data/clusters/<cluster>/keycloak-realm
+  #       properties:
+  #         - secretKey: clientSecret
+  #           property: client-openshift
+  #     issuer: "https://idp.example.com"
+  #     claims:
+  #       preferredUsername:
+  #         - preferred_username
+  #       name:
+  #         - name
+  #       email:
+  #         - email
+  #       groups:
+  #         - groups
+  #
+  # Example GitHub provider:
+  # - name: github
+  #   type: GitHub
+  #   mappingMethod: claim
+  #   github:
+  #     clientID: "github-client-id"
+  #     clientSecret:
+  #       name: github-client-secret
+  #     organizations:
+  #       - my-org
+  #
+  # Example HTPasswd provider:
+  # - name: htpasswd
+  #   type: HTPasswd
+  #   mappingMethod: claim
+  #   htpasswd:
+  #     fileData:
+  #       name: htpasswd-secret

@@ -1,0 +1,17 @@
+# Attests that every selected namespace carries Pod Security Standards labels.
+#
+# No metadata.name: the namespaceSelector in policy-generator-config.yaml decides
+# which namespaces this is evaluated against, and PolicyGenerator turns that into
+# one check per matching namespace.
+#
+# Static rather than a hub template. The level is a fleet-wide floor; a cluster
+# that needs a different one is a conversation, not a config key.
+#
+# Written by: charts/platform-config/project-request-template (new namespaces).
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

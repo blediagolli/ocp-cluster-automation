@@ -1,0 +1,92 @@
+{{- /*
+One Namespace, ResourceQuota and LimitRange per entry in
+team.namespaces.<cluster.environment>.
+
+The Namespace is at sync-wave 0 and everything scoped into it at wave 1. Not
+decoration: ArgoCD applies a wave only once the previous one is healthy, so
+without this the quota and the namespace go out in the same batch and the
+quota can be rejected with "namespace not found" on a team's first sync.
+*/ -}}
+{{- include "onboarding.validate" . }}
+{{- $namespaces := include "onboarding.namespaces" . | fromYamlArray }}
+{{- range $ns := $namespaces }}
+{{- include "onboarding.requireSize" (list $ .name .size) }}
+---
+{{- /* Chart-wide namespace.labels/annotations first, then the per-namespace
+       maps on top, so one namespace can opt out of a team-wide label without
+       restating the rest. */}}
+{{- $nsLabels := mergeOverwrite (deepCopy ($.Values.namespace.labels | default dict)) (.labels | default dict) }}
+{{- $nsAnnotations := mergeOverwrite (deepCopy ($.Values.namespace.annotations | default dict)) (.annotations | default dict) }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .name }}
+  annotations:
+    argocd.argoproj.io/sync-options: ServerSideApply=true
+    argocd.argoproj.io/sync-wave: "0"
+    {{- with .displayName }}
+    openshift.io/display-name: {{ . | quote }}
+    {{- end }}
+    {{- with .description }}
+    openshift.io/description: {{ . | quote }}
+    {{- end }}
+    {{- range $key, $value := $nsAnnotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  labels:
+    {{- include "onboarding.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: tenant-namespace
+    {{- if include "onboarding.quiescing" $ }}
+    {{- /* Quiesced: the namespace and everything stored in it stay, but no
+           managed-by label, so the gitops-operator withdraws the RBAC it wrote
+           for the team's ArgoCD and nothing can deploy here any more. The
+           label below is what makes the state findable afterwards --
+           `oc get ns -l gfo.io/lifecycle=quiesced` is the retention list. */}}
+    gfo.io/lifecycle: quiesced
+    {{- else }}
+    {{- /* Grants the team's own ArgoCD instance permission to deploy here: the
+           operator watches for this label and writes the RoleBinding itself. */}}
+    argocd.argoproj.io/managed-by: {{ include "onboarding.teamGitops" $ }}
+    {{- end }}
+    {{ $.Values.naming.sizeLabel }}: {{ .size }}
+    {{- range $key, $value := $nsLabels }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+{{- /* Both objects are switchable per tier and per namespace -- see
+       onboarding.manages, and note that switching one off on a namespace that
+       already has it DELETES the live object under prune: true. */}}
+{{- if include "onboarding.manages" (list $ $ns "resourceQuota") }}
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: {{ $.Values.naming.resourceQuota }}
+  namespace: {{ .name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    {{- include "onboarding.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: quota
+    {{ $.Values.naming.sizeLabel }}: {{ .size }}
+spec:
+  hard:
+    {{- include "onboarding.quotaHard" (list $ $ns) | nindent 4 }}
+{{- end }}
+{{- if include "onboarding.manages" (list $ $ns "limitRange") }}
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: {{ $.Values.naming.limitRange }}
+  namespace: {{ .name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    {{- include "onboarding.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: limits
+    {{ $.Values.naming.sizeLabel }}: {{ .size }}
+spec:
+  limits:
+    {{- include "onboarding.limitRangeItems" (list $ $ns) | nindent 4 }}
+{{- end }}
+{{- end }}

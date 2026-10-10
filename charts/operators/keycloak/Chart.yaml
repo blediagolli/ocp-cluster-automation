@@ -1,0 +1,4 @@
+apiVersion: v2
+name: keycloak
+description: Red Hat build of Keycloak — operator subscription, instance and realm
+version: 0.1.0

@@ -1,0 +1,30 @@
+{{- if .Values.groupSync.include }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.groupSync.serviceAccountName }}
+  namespace: {{ .Values.groupSync.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.groupSync.serviceAccountName }}
+rules:
+  - apiGroups: ["user.openshift.io"]
+    resources: ["groups"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Values.groupSync.serviceAccountName }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Values.groupSync.serviceAccountName }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.groupSync.serviceAccountName }}
+    namespace: {{ .Values.groupSync.namespace }}
+{{- end }}

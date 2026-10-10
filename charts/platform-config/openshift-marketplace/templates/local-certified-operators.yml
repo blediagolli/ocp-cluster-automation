@@ -1,0 +1,18 @@
+{{- if .Values.catalogSource.certifiedOperators.include }}
+
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: {{ .Values.catalogSource.certifiedOperators.name }}
+  namespace: {{ .Values.catalogSource.certifiedOperators.namespace }}
+spec:
+  displayName: {{ .Values.catalogSource.certifiedOperators.displayName }}
+  image: {{ .Values.cluster.registry }}/{{ .Values.catalogSource.certifiedOperators.imageRepository }}:{{ .Values.catalogSource.certifiedOperators.imageTag }}
+  publisher: {{ .Values.catalogSource.certifiedOperators.publisher }}
+  sourceType: {{ .Values.catalogSource.certifiedOperators.sourceType }}
+  updateStrategy:
+    registryPoll:
+      interval: {{ .Values.catalogSource.certifiedOperators.registryPollInterval }}
+
+{{- end }}

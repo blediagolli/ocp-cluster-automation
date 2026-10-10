@@ -1,0 +1,26 @@
+volumeSnapshotClasses:
+  include: false
+  classes:
+    - name: csi-rbdplugin-snapclass
+      include: false
+      driver: openshift-storage.rbd.csi.ceph.com
+      deletionPolicy: Delete
+      parameters: {}
+      # clusterID: openshift-storage
+      # csi.storage.k8s.io/snapshotter-secret-name: rook-csi-rbd-provisioner
+      # csi.storage.k8s.io/snapshotter-secret-namespace: openshift-storage
+    - name: csi-cephfsplugin-snapclass
+      include: false
+      driver: openshift-storage.cephfs.csi.ceph.com
+      deletionPolicy: Delete
+      parameters: {}
+    - name: csi-aws-ebs-snapclass
+      include: false
+      driver: ebs.csi.aws.com
+      deletionPolicy: Delete
+      parameters: {}
+    - name: csi-vsphere-snapclass
+      include: false
+      driver: csi.vsphere.vmware.com
+      deletionPolicy: Delete
+      parameters: {}

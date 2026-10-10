@@ -1,0 +1,4 @@
+apiVersion: v2
+name: advanced-cluster-security
+description: advanced-cluster-security — operator subscription and aCS Central instance
+version: 0.1.0

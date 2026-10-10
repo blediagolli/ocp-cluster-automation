@@ -1,0 +1,4 @@
+apiVersion: v2
+name: node-maintenance
+description: node-maintenance — operator subscription
+version: 0.1.0

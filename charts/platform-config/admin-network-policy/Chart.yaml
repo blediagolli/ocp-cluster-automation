@@ -1,0 +1,4 @@
+apiVersion: v2
+name: admin-network-policy
+description: Cluster-scoped AdminNetworkPolicy resources
+version: 0.1.0

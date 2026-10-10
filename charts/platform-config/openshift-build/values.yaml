@@ -1,0 +1,28 @@
+build:
+  include: false
+  defaultProxy:
+    httpProxy: ""
+    httpsProxy: ""
+    noProxy: ""
+    gitProxy:
+      httpProxy: ""
+      httpsProxy: ""
+      noProxy: ""
+  env: []
+  # - name: MAVEN_MIRROR_URL
+  #   value: "https://nexus.example.com/repository/maven-public/"
+  # - name: NPM_MIRROR
+  #   value: "https://nexus.example.com/repository/npm-group/"
+  resources:
+    requests:
+      cpu: ""
+      memory: ""
+    limits:
+      cpu: ""
+      memory: ""
+  nodeSelector: {}
+  # node-role.kubernetes.io/build: ""
+  tolerations: []
+  # - key: node-role.kubernetes.io/build
+  #   operator: Exists
+  #   effect: NoSchedule

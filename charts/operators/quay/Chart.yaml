@@ -1,0 +1,4 @@
+apiVersion: v2
+name: quay
+description: quay — operator subscription and quay Registry instance
+version: 0.1.0

@@ -1,0 +1,21 @@
+# Not a PolicyGenerator directory -- there is no policy-generator-config.yaml
+# here, and that is deliberate. This creates the namespace and the cluster set
+# binding that every other policy depends on, so it cannot itself be a Policy:
+# a Policy has to live in the namespace and be placed through a binding that
+# does not exist yet.
+#
+# The hub-acm-policies ApplicationSet still picks it up (it globs for
+# kustomization.yaml) and the CMP still renders it, because `kustomize build`
+# on a directory with no generators is just a plain build.
+#
+# That only holds because the CMP has no `discover` section. It used to glob for
+# policy-generator-config.yaml, which meant this directory and cluster-config-maps
+# were refused before the build ever ran -- the ApplicationSet named the plugin
+# and Argo still answered "could not find cmp-server plugin with name
+# policy-generator supporting the given repository". Do not add discovery back.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - managed-cluster-set-binding.yaml
+  - policyset.yaml

@@ -1,0 +1,4 @@
+apiVersion: v2
+name: cost-management-service
+description: cost-management-service — operator subscription and costManagementServiceConfig CR and its backing Postgres, cache, Kafka and object storage
+version: 0.1.0

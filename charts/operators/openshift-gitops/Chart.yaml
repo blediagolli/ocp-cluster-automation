@@ -1,0 +1,4 @@
+apiVersion: v2
+name: openshift-gitops
+description: openshift-gitops — operator subscription and openShift GitOps ArgoCD instance and configuration
+version: 0.1.0

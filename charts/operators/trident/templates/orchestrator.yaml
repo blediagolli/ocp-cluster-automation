@@ -1,0 +1,12 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.tridentOrchestrator.include }}
+apiVersion: trident.netapp.io/v1
+kind: TridentOrchestrator
+metadata:
+  name: {{ $v.tridentOrchestrator.name }}
+spec:
+  IPv6: false
+  debug: {{ $v.tridentOrchestrator.debug }}
+  namespace: {{ $v.tridentOrchestrator.namespace }}
+  silenceAutosupport: false
+{{- end }}

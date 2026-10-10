@@ -1,0 +1,27 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.localVolumeSet.include }}
+apiVersion: local.storage.openshift.io/v1alpha1
+kind: LocalVolumeSet
+metadata:
+  name: {{ $v.localVolumeSet.name }}
+  namespace: {{ $v.localVolumeSet.namespace }}
+spec:
+  storageClassName: {{ $v.localVolumeSet.storageClassName }}
+  volumeMode: {{ $v.localVolumeSet.volumeMode }}
+  deviceInclusionSpec:
+    deviceTypes:
+    {{- range $v.localVolumeSet.deviceTypes }}
+      - {{ . }}
+    {{- end }}
+    minSize: {{ $v.localVolumeSet.minSize }}
+  nodeSelector:
+    nodeSelectorTerms:
+      - matchExpressions:
+          - key: {{ $v.localVolumeSet.nodeSelector.key }}
+            operator: Exists
+  tolerations:
+    - key: node.ocs.openshift.io/storage
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+{{- end }}

@@ -1,0 +1,90 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.selfSignedIssuer.include }}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ $v.selfSignedIssuer.name }}
+spec:
+  selfSigned: {}
+---
+{{- end }}
+{{- if $v.caIssuer.include }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $v.caIssuer.name }}
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: {{ $v.caIssuer.name }}
+  secretName: {{ $v.caIssuer.secretName }}
+  privateKey:
+    algorithm: ECDSA
+    size: 384
+  duration: {{ $v.caIssuer.duration }}
+  renewBefore: {{ $v.caIssuer.renewBefore }}
+  issuerRef:
+    name: {{ $v.selfSignedIssuer.name }}
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ $v.caIssuer.name }}
+spec:
+  ca:
+    secretName: {{ $v.caIssuer.secretName }}
+{{- end }}
+{{- if $v.acmeIssuer.include }}
+---
+apiVersion: cloudcredential.openshift.io/v1
+kind: CredentialsRequest
+metadata:
+  name: cert-manager-dns01
+  namespace: openshift-cloud-credential-operator
+spec:
+  providerSpec:
+    apiVersion: cloudcredential.openshift.io/v1
+    kind: AWSProviderSpec
+    statementEntries:
+      - effect: Allow
+        action:
+          - route53:GetChange
+          - route53:ChangeResourceRecordSets
+          - route53:ListResourceRecordSets
+        resource: '*'
+      - effect: Allow
+        action:
+          - route53:ListHostedZones
+          - route53:ListHostedZonesByName
+          - route53:ListResourceRecordSets
+        resource: '*'
+  secretRef:
+    name: {{ $v.acmeIssuer.dns01.credentialsSecretName }}
+    namespace: cert-manager
+  serviceAccountNames:
+    - cert-manager
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ $v.acmeIssuer.name }}
+spec:
+  acme:
+    server: {{ $v.acmeIssuer.server }}
+    email: {{ $v.acmeIssuer.email }}
+    privateKeySecretRef:
+      name: {{ $v.acmeIssuer.privateKeySecretName }}
+    solvers:
+      - dns01:
+          route53:
+            region: {{ $v.acmeIssuer.dns01.region }}
+            hostedZoneID: {{ $v.acmeIssuer.dns01.hostedZoneID }}
+            accessKeyIDSecretRef:
+              name: {{ $v.acmeIssuer.dns01.credentialsSecretName }}
+              key: aws_access_key_id
+            secretAccessKeySecretRef:
+              name: {{ $v.acmeIssuer.dns01.credentialsSecretName }}
+              key: aws_secret_access_key
+{{- end }}

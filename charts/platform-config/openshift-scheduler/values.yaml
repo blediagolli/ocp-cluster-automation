@@ -1,0 +1,34 @@
+scheduler:
+  include: false
+  # Available profiles: LowNodeUtilization, HighNodeUtilization, NoScoring
+  profile: LowNodeUtilization
+  # Whether the control-plane nodes also carry the worker role. true is the
+  # OpenShift default and is what a compact cluster needs — there is nowhere
+  # else for workloads to go. Set it to false once the cluster has dedicated
+  # workers, so the control plane stops competing with workloads for CPU.
+  #
+  # Flipping it to false drops node-role.kubernetes.io/worker from the masters
+  # and restores the node-role.kubernetes.io/master:NoSchedule taint. That only
+  # stops *new* pods: NoSchedule does not evict, so anything already running
+  # there stays until the nodes are drained. Check that the workers have room
+  # for it first.
+  mastersSchedulable: true
+  customProfiles: []
+  # - name: custom-scheduler-profile
+  #   pluginConfig:
+  #     - name: NodeResourcesFit
+  #       args:
+  #         scoringStrategy:
+  #           type: MostAllocated
+  #           resources:
+  #             - name: cpu
+  #               weight: 1
+  #             - name: memory
+  #               weight: 1
+  #   plugins:
+  #     score:
+  #       disabled:
+  #         - name: NodeResourcesBalancedAllocation
+  #       enabled:
+  #         - name: NodeResourcesFit
+  #           weight: 1

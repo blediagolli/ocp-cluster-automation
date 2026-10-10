@@ -1,0 +1,73 @@
+{{- /* Central reads one composed blob, not a key per value, so the whole
+       auth-provider.yaml is built here with a placeholder where the client
+       secret goes. Under source: externalSecret the placeholder goes through
+       to ESO, which substitutes it at sync time; under inline it is replaced
+       here at render time. Same blob either way, which is the point.
+
+       A define is a separate scope, so root is passed in explicitly — a
+       file-level $v would not be visible here. */}}
+{{- define "acs.oidcAuthProvider" -}}
+{{- $v := index .root.Values .root.Chart.Name -}}
+name: {{ $v.oidc.name }}
+minimumRole: None
+uiEndpoint: {{ .uiEndpoint }}
+groups:
+  {{- range $v.oidc.groupMappings }}
+  - key: {{ .key }}
+    value: {{ .value }}
+    role: {{ .role }}
+  {{- end }}
+oidc:
+  issuer: {{ .issuer }}
+  mode: {{ $v.oidc.mode }}
+  clientID: {{ $v.oidc.clientId }}
+  clientSecret: {{ `{{ .clientSecret }}` }}
+{{- end -}}
+
+{{- $v := index .Values .Chart.Name }}
+{{- if and $v.central.include $v.oidc.include }}
+{{- $s := $v.oidc.secret }}
+{{- $issuer := $v.oidc.issuer | default (printf "https://sso.%s/realms/%s" .Values.cluster.baseDomain $v.oidc.realm) }}
+{{- $uiEndpoint := printf "central-%s.%s" $v.central.namespace .Values.cluster.baseDomain }}
+{{- $blob := include "acs.oidcAuthProvider" (dict "root" . "issuer" $issuer "uiEndpoint" $uiEndpoint) }}
+{{- if eq $s.source "externalSecret" }}
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: acs-oidc-auth-provider
+  namespace: {{ $v.central.namespace }}
+spec:
+  refreshInterval: {{ $s.refreshInterval }}
+  secretStoreRef:
+    {{- toYaml $s.secretStoreRef | nindent 4 }}
+  target:
+    name: acs-oidc-auth-provider
+    creationPolicy: Owner
+    template:
+      engineVersion: v2
+      type: Opaque
+      data:
+        auth-provider.yaml: |
+          {{- $blob | nindent 10 }}
+  data:
+    {{- range $s.properties }}
+    - secretKey: {{ .secretKey }}
+      remoteRef:
+        key: {{ required "advanced-cluster-security.oidc.secret.path is required when source is externalSecret" $s.path }}
+        property: {{ .property | default .secretKey }}
+    {{- end }}
+{{- else if eq $s.source "inline" }}
+{{- $clientSecret := required "advanced-cluster-security.oidc.secret.data.clientSecret is required when source is inline" ($s.data | default dict).clientSecret }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: acs-oidc-auth-provider
+  namespace: {{ $v.central.namespace }}
+type: Opaque
+stringData:
+  auth-provider.yaml: |
+    {{- $blob | replace "{{ .clientSecret }}" $clientSecret | nindent 4 }}
+{{- else if ne $s.source "existing" }}
+{{- fail (printf "advanced-cluster-security.oidc.secret.source: expected existing, externalSecret or inline — got %q" $s.source) }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,41 @@
+# Publishes policy-values/ onto the hub as ConfigMaps, which is what makes those
+# values reachable from a policy: an ACM hub template can read a ConfigMap, but
+# it cannot read a file out of git.
+#
+# Not a PolicyGenerator directory and not a Policy. These ConfigMaps live on the
+# hub, ArgoCD runs on the hub, so ArgoCD writes them directly -- wrapping that in
+# a Policy would add a second writer for no gain.
+#
+# One ConfigMap per scope rather than one merged ConfigMap, because kustomize
+# refuses to generate a ConfigMap whose key appears in two envs files ("illegally
+# repeats the key"). The override therefore resolves in the hub template:
+#
+#   dig "data" "<key>" "" (lookup ... policy-config-<cluster>) | default (fromConfigMap ... policy-config "<key>")
+#
+# lookup is the per-cluster half because it returns an empty result for a cluster
+# that has no file; fromConfigMap would raise and take the whole policy down with it.
+#
+# Reading ../../../policy-values is why the render needs
+# --load-restrictor LoadRestrictionsNone (set in the CMP and in make validate-policies).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: open-cluster-management-policies
+
+configMapGenerator:
+  # Fleet defaults.
+  - name: policy-config
+    # Without this kustomize appends a content hash to the name, and a hub
+    # template has to know the name it is looking up.
+    options:
+      disableNameSuffixHash: true
+    envs:
+      - ../../../policy-values/global.env
+
+  # One per file in policy-values/clusters/. The name suffix is the
+  # ManagedCluster name, which is what .ManagedClusterName resolves to in a
+  # hub template. Add a cluster by adding its file and a stanza here.
+  - name: policy-config-local-cluster
+    options:
+      disableNameSuffixHash: true
+    envs:
+      - ../../../policy-values/clusters/local-cluster.env

@@ -1,0 +1,4 @@
+apiVersion: v2
+name: amq-streams
+description: amq-streams — operator subscription
+version: 0.1.0

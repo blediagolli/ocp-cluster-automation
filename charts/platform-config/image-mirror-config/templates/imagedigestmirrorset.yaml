@@ -1,0 +1,17 @@
+{{- if .Values.imageMirror.include }}
+apiVersion: config.openshift.io/v1
+kind: ImageDigestMirrorSet
+metadata:
+  name: registry-mirrors
+spec:
+  imageDigestMirrors:
+    {{- range .Values.imageMirror.mirrors }}
+    {{- if .include }}
+    - source: {{ .source }}
+      mirrors:
+        {{- range .mirrors }}
+        - {{ . }}
+        {{- end }}
+    {{- end }}
+    {{- end }}
+{{- end }}

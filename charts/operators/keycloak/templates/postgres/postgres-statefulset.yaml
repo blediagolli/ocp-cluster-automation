@@ -1,0 +1,74 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.postgres.include }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $v.postgres.name }}
+  namespace: {{ include "operator.crNamespace" . }}
+  labels:
+    app: {{ $v.postgres.name }}
+  annotations:
+    # Ahead of the Keycloak CR (wave 0) so the database is accepting
+    # connections before Keycloak tries to run its schema migration.
+    argocd.argoproj.io/sync-wave: "-5"
+spec:
+  serviceName: {{ $v.postgres.name }}
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ $v.postgres.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $v.postgres.name }}
+    spec:
+      containers:
+        - name: postgres
+          image: {{ $v.postgres.image }}
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRESQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "keycloak.postgresSecretName" . }}
+                  key: username
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "keycloak.postgresSecretName" . }}
+                  key: password
+            # Not a secret, so it is not round-tripped through Vault.
+            - name: POSTGRESQL_DATABASE
+              value: {{ $v.postgres.database | quote }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/pgsql/data
+          readinessProbe:
+            exec:
+              command: ["/usr/libexec/check-container"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["/usr/libexec/check-container", "--live"]
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 10
+          resources:
+            {{- toYaml $v.postgres.resources | nindent 12 }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        {{- with $v.postgres.storageClassName }}
+        storageClassName: {{ . }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ $v.postgres.storageSize }}
+{{- end }}

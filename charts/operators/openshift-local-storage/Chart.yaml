@@ -1,0 +1,4 @@
+apiVersion: v2
+name: openshift-local-storage
+description: openshift-local-storage — operator subscription and local Storage LocalVolumeSet instance
+version: 0.1.0

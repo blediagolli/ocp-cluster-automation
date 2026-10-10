@@ -1,0 +1,4 @@
+apiVersion: v2
+name: etcd-defrag
+description: Automated etcd defragmentation CronJob with threshold check and alerting
+version: 0.1.0

@@ -1,0 +1,4 @@
+apiVersion: v2
+name: trident
+description: trident — operator subscription and trident orchestrator and storage configuration
+version: 0.1.0

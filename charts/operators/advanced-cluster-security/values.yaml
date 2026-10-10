@@ -1,0 +1,254 @@
+# Whether this chart installs its operator, or only configures one that is
+# already there. Set per cluster in conf.yaml, which every operator
+# Application reads; false drops the Namespace, OperatorGroup and
+# Subscriptions and keeps the CRs. Replaces conf.yaml's deployOperators,
+# which used to switch a whole Application on and off.
+installOperators: true
+
+# All of this chart's values nest under the chart name, so a shared
+# operators.yaml can carry several operators without their `operator:`
+# blocks colliding. A per-operator file uses the identical shape, which is
+# what lets a block move between the two by cut-and-paste.
+#
+# The templates reach them with `index .Values .Chart.Name`, so the chart
+# directory name and this top-level key must stay in step.
+advanced-cluster-security:
+  operator:
+    # --- facts about this operator, not settings ---
+    # Values only so that namespace.yaml, operatorgroup.yaml and
+    # subscription.yaml stay byte-identical across every chart under
+    # charts/operators/. Overriding them per cluster is not meaningful.
+    namespace: rhacs-operator
+    operatorGroup: rhacs-operator
+    package: rhacs-operator
+    sourceNamespace: openshift-marketplace
+    clusterScoped: true
+    skipNamespace: false
+    skipOperatorGroup: false
+    namespaceLabels: {}
+    namespaceAnnotations: {}
+
+    # --- the parts you actually set ---
+    channel: stable
+    source: redhat-operators
+    installPlanApproval: Automatic
+    # Pin to a specific CSV instead of taking the channel head.
+    startingCSV: ""
+
+  # Namespace for the CRs below. Empty inherits operator.namespace.
+  namespace: ""
+  # Only consulted when namespace above differs from operator.namespace.
+  createNamespace: false
+
+  # ---- from charts/operator-instances/acs-central ----
+  central:
+    include: false
+    createNamespace: false
+    name: stackrox-central-services
+    namespace: stackrox
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2
+        memory: 4Gi
+    exposure:
+      route:
+        enabled: true
+      loadBalancer:
+        enabled: false
+        port: 443
+      nodePort:
+        enabled: false
+    persistence:
+      claimName: stackrox-db
+      size: 100Gi
+    db:
+      isEnabled: Default
+      persistence:
+        claimName: central-db
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+        limits:
+          cpu: 2
+          memory: 6Gi
+    telemetry:
+      enabled: true
+    monitoring:
+      openshift:
+        enabled: true
+    egress:
+      connectivityPolicy: Online
+    scanner:
+      scannerComponent: Enabled
+      analyzer:
+        scaling:
+          autoScaling: Enabled
+          minReplicas: 2
+          maxReplicas: 5
+          replicas: 2
+      monitoring:
+        exposeEndpoint: Enabled
+    scannerV4:
+      scannerComponent: Default
+      indexer:
+        scaling:
+          autoScaling: Enabled
+          minReplicas: 2
+          maxReplicas: 5
+          replicas: 3
+      matcher:
+        scaling:
+          autoScaling: Enabled
+          minReplicas: 2
+          maxReplicas: 5
+          replicas: 3
+      db:
+        claimName: scanner-v4-db
+        persistence:
+          size: 50Gi
+  initBundle:
+    include: false
+    # "job" = PostSync job calls Central API to generate init bundle secrets
+    # Set to "job" when Central and SecuredCluster are on the same cluster
+    mode: "job"
+    password: ""
+    # distribute Central admin password to managed clusters via ACM Policy
+    distributeAuth: false
+    targetEnvironments:
+      - dev
+      - prod
+  oidc:
+    include: false
+    name: "Keycloak SSO"
+    issuer: ""
+    clientId: stackrox
+    # Where the OIDC client secret comes from. It is the same value Keycloak
+    # issued for this client, so under externalSecret it belongs at the realm's
+    # path rather than one of its own. See docs/cluster-configuration/secrets.md.
+    #
+    # Central consumes a composed auth-provider.yaml, so whichever mode is in
+    # use the chart produces one Secret with that single key; `clientSecret` is
+    # the placeholder inside it, not a key Central reads.
+    secret:
+      source: existing
+      refreshInterval: 1h
+      secretStoreRef:
+        name: vault
+        kind: ClusterSecretStore
+      # Required when source is externalSecret; the render fails if unset.
+      path: ""
+      properties:
+        - secretKey: clientSecret
+          property: client-stackrox
+      data:
+        clientSecret: ""
+    # "auto", "fragment", "post", or "query"
+    mode: auto
+    realm: sso
+    # Map Keycloak groups/roles to ACS roles
+    groupMappings:
+      - key: groups
+        value: admins
+        role: Admin
+      - key: groups
+        value: users
+        role: Analyst
+
+  defaultTLS:
+    include: false
+    secretName: central-default-tls-cert
+    # Where Central's serving certificate comes from. See
+    # docs/cluster-configuration/secrets.md. On a cluster with no secrets manager,
+    # source: existing and point secretName at a cert created some other way —
+    # the tls-certificates platform chart can issue one via cert-manager.
+    secret:
+      source: existing
+      refreshInterval: 1h
+      secretStoreRef:
+        name: vault
+        kind: ClusterSecretStore
+      path: openshift/wildcard-cert
+      properties:
+        - secretKey: tls.crt
+          property: tls.crt
+        - secretKey: tls.key
+          property: tls.key
+      data:
+        tls.crt: ""
+        tls.key: ""
+
+  trustedCA:
+    include: false
+    name: trusted-ca-bundle
+
+  centralConsoleLink:
+    include: false
+    centralUrl: ""
+
+  # ---- from charts/operator-instances/acs-secured-cluster ----
+  securedCluster:
+    include: false
+    createNamespace: false
+    name: stackrox-secured-cluster-services
+    namespace: stackrox
+    centralEndpoint: ""
+    # "job" = secrets are created by the init bundle job the central: block above
+    #         renders (same cluster)
+    # "preExisting" = secrets are pre-created with cert data from values below (or external-secrets/sealed-secrets)
+    # "external" = secrets are managed out-of-band (init bundle applied directly), chart skips secret creation
+    # "generate" = PostSync job calls Central API from the managed cluster to generate init bundle
+    #              requires central-auth secret (distributed via ACM Policy from the
+    #              hub, where this chart renders central:)
+    secretMode: "preExisting"
+    secrets:
+      admissionControl:
+        name: admission-control-tls
+        ca: ""
+        cert: ""
+        key: ""
+      sensor:
+        name: sensor-tls
+        ca: ""
+        cert: ""
+        key: ""
+        acsHost: ""
+      collector:
+        name: collector-tls
+        ca: ""
+        cert: ""
+        key: ""
+    auditLogs:
+      collection: Auto
+    admissionControl:
+      listenOnCreates: false
+      listenOnUpdates: false
+      listenOnEvents: true
+      contactImageScanners: ScanIfMissing
+      # what happens when admission controller is unavailable (Ignore or Fail)
+      failurePolicy: Ignore
+    perNode:
+      collector:
+        collection: CORE_BPF
+        imageFlavor: Regular
+      taintToleration: TolerateTaints
+    scannerV4:
+      # AutoSense enables delegated image scanning when connected to a Central that supports it
+      scannerComponent: AutoSense
+    network:
+      # controls whether ACS generates NetworkPolicies (empty string = default behavior)
+      policies: ""
+    customize:
+      # custom environment variables (e.g., ROX_VIRTUAL_MACHINES)
+      envVars: []
+    # enable virtual machine scanning
+    vmScanning: false
+    sensor: {}
+    monitoring:
+      openshift:
+        enabled: true
+    consolePlugin:
+      include: false

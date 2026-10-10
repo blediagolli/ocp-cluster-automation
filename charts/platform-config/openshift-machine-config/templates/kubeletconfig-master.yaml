@@ -1,0 +1,31 @@
+{{- if .Values.kubeletConfigMaster.include }}
+apiVersion: machineconfiguration.openshift.io/v1
+kind: KubeletConfig
+metadata:
+  name: {{ .Values.kubeletConfigMaster.name }}
+spec:
+  kubeletConfig:
+    maxPods: {{ .Values.kubeletConfigMaster.maxPods }}
+    podsPerCore: {{ .Values.kubeletConfigMaster.podsPerCore }}
+    kubeAPIQPS: {{ .Values.kubeletConfigMaster.kubeAPIQPS }}
+    kubeAPIBurst: {{ .Values.kubeletConfigMaster.kubeAPIBurst }}
+    imageGCHighThresholdPercent: {{ .Values.kubeletConfigMaster.imageGCHighThresholdPercent }}
+    imageGCLowThresholdPercent: {{ .Values.kubeletConfigMaster.imageGCLowThresholdPercent }}
+    imageMinimumGCAge: {{ .Values.kubeletConfigMaster.imageMinimumGCAge }}
+    evictionHard:
+      {{- range $key, $val := .Values.kubeletConfigMaster.evictionHard }}
+      {{ $key }}: {{ $val | quote }}
+      {{- end }}
+    evictionSoft:
+      {{- range $key, $val := .Values.kubeletConfigMaster.evictionSoft }}
+      {{ $key }}: {{ $val | quote }}
+      {{- end }}
+    evictionSoftGracePeriod:
+      {{- range $key, $val := .Values.kubeletConfigMaster.evictionSoftGracePeriod }}
+      {{ $key }}: {{ $val }}
+      {{- end }}
+    evictionPressureTransitionPeriod: {{ .Values.kubeletConfigMaster.evictionPressureTransitionPeriod }}
+  machineConfigPoolSelector:
+    matchLabels:
+      pools.operator.machineconfiguration.openshift.io/master: ""
+{{- end }}

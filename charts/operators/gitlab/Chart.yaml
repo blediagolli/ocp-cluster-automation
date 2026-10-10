@@ -1,0 +1,4 @@
+apiVersion: v2
+name: gitlab
+description: gitlab — operator subscription
+version: 0.1.0

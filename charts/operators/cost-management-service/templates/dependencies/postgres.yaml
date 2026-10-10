@@ -1,0 +1,47 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if and $v.costManagementService.include $v.costManagementService.postgres.include }}
+{{- $cms := $v.costManagementService }}
+{{- $pg := $cms.postgres }}
+{{- $sc := include "cost-management-service.storageClass" (dict "component" $pg.storageClass "root" $) }}
+{{- /* CloudNativePG. The cost management operator connects to a database
+       server, it never provisions one, so this is a hard dependency of the CR
+       rather than a convenience.
+
+       enableSuperuserAccess exists for the bootstrap Job below: initdb makes
+       exactly one database and the owner role it creates has no CREATEDB, so
+       nothing in the cluster can add the remaining databases without it. CNPG
+       generates the superuser password itself into <cluster>-superuser; it is
+       never read by a human and never reaches git. */}}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ $pg.name }}
+  namespace: {{ $cms.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+spec:
+  instances: {{ $pg.instances }}
+  imageName: {{ $pg.imageName }}
+  enableSuperuserAccess: true
+  {{- with $pg.sharedPreloadLibraries }}
+  postgresql:
+    # pg_stat_statements cannot be created with CREATE EXTENSION unless the
+    # library is preloaded at server start — the bootstrap Job's CREATE would
+    # fail with "must be loaded via shared_preload_libraries" however many
+    # privileges it has. CNPG's default for this is empty. Changing it
+    # restarts the instance, so it belongs here rather than in a later patch.
+    shared_preload_libraries:
+      {{- toYaml . | nindent 6 }}
+  {{- end }}
+  bootstrap:
+    initdb:
+      database: {{ first (include "cost-management-service.databases" $ | fromYamlArray) }}
+      owner: {{ $pg.username }}
+      secret:
+        name: {{ $pg.secretName }}
+  storage:
+    size: {{ $pg.storageSize }}
+    {{- with $sc }}
+    storageClass: {{ . }}
+    {{- end }}
+{{- end }}

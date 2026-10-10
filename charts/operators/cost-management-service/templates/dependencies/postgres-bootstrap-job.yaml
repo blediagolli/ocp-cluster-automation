@@ -1,0 +1,132 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if and $v.costManagementService.include $v.costManagementService.postgres.include }}
+{{- $cms := $v.costManagementService }}
+{{- $pg := $cms.postgres }}
+{{- $databases := include "cost-management-service.databases" $ | fromYamlArray }}
+{{- $roles := include "cost-management-service.dbRoles" $ | fromYamlArray }}
+{{- /* Jobs are immutable, so anything the Job's behaviour depends on goes in
+       the name hash or the change can never roll out over the existing Job.
+       Note what is deliberately absent: the password values. They are not
+       known at template time, so rotating one in Vault does not re-run this —
+       delete the Job, or change something that is in the hash.
+
+       Same pattern and same caveat as the keycloak chart's realm-sync Job. */}}
+{{- $jobHash := printf "%v" (dict "databases" $databases "roles" $roles "owner" $pg.username "host" (include "cost-management-service.dbHost" $) "extensions" $pg.extensions) | sha256sum | trunc 8 }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $pg.name }}-bootstrap-{{ $jobHash }}
+  namespace: {{ $cms.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  backoffLimit: 6
+  template:
+    metadata:
+      name: {{ $pg.name }}-bootstrap
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: bootstrap
+          image: {{ $pg.imageName }}
+          env:
+            # The superuser CNPG generated. The owner role from initdb has
+            # neither CREATEDB nor CREATEROLE, so it cannot do any of this.
+            - name: PGHOST
+              value: {{ include "cost-management-service.dbHost" $ | quote }}
+            - name: PGPORT
+              value: {{ $pg.port | quote }}
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $pg.name }}-superuser
+                  key: username
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $pg.name }}-superuser
+                  key: password
+            # Connect through the maintenance database: CREATE DATABASE
+            # cannot run inside a transaction, nor from a connection to the
+            # database being created.
+            - name: PGDATABASE
+              value: postgres
+            {{- range $roles }}
+            - name: {{ printf "%s_PASSWORD" (.user | upper | regexReplaceAll "[^A-Z0-9]" "_") }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $pg.secretName }}
+                  key: {{ .userKey | replace "-user" "-password" }}
+            {{- end }}
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+
+              echo "Waiting for ${PGHOST}:${PGPORT}..."
+              for i in $(seq 1 60); do
+                if pg_isready -q; then break; fi
+                sleep 5
+              done
+              pg_isready || { echo "Postgres never became ready"; exit 1; }
+
+              echo "=== databases ==="
+              {{- range $databases }}
+              # Idempotent: psql has no CREATE DATABASE IF NOT EXISTS, so the
+              # existence check has to be a separate query.
+              if [ "$(psql -tAc "SELECT 1 FROM pg_database WHERE datname = '{{ . }}'")" = "1" ]; then
+                echo "  {{ . }} exists"
+              else
+                psql -q -c 'CREATE DATABASE "{{ . }}" OWNER "{{ $pg.username }}"'
+                echo "  {{ . }} created"
+              fi
+              psql -q -c 'ALTER DATABASE "{{ . }}" OWNER TO "{{ $pg.username }}"'
+              {{- end }}
+
+              echo "=== roles ==="
+              {{- range $roles }}
+              {{- $env := printf "%s_PASSWORD" (.user | upper | regexReplaceAll "[^A-Z0-9]" "_") }}
+              # The password is read by psql straight from the environment
+              # with \getenv and quoted with :'...'. It never reaches a
+              # command line, so it cannot show up in the process list, and
+              # it never reaches a file.
+              psql -q -v ON_ERROR_STOP=1 <<'SQL'
+              \getenv pw {{ $env }}
+              SELECT 'CREATE ROLE "{{ .user }}" LOGIN'
+                WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{{ .user }}')
+              \gexec
+              ALTER ROLE "{{ .user }}" WITH LOGIN PASSWORD :'pw';
+              GRANT ALL PRIVILEGES ON DATABASE "{{ .database }}" TO "{{ .user }}";
+              GRANT "{{ .user }}" TO "{{ $pg.username }}";
+              SQL
+              # Schema-level grants have to be made inside the database, not
+              # from the maintenance connection above.
+              psql -q -v ON_ERROR_STOP=1 -d '{{ .database }}' \
+                -c 'GRANT ALL ON SCHEMA public TO "{{ .user }}"'
+              echo "  {{ .user }} -> {{ .database }}"
+              {{- end }}
+
+              {{- if $pg.extensions }}
+              echo "=== extensions ==="
+              # Koku's Django migration runs CREATE EXTENSION pg_stat_statements
+              # and fails with "Must be superuser to create this extension" —
+              # it connects as the per-component role, which is not one. Doing
+              # it here, as the superuser, makes the migration's own CREATE a
+              # no-op: CREATE EXTENSION IF NOT EXISTS returns a notice and skips
+              # the privilege check entirely when the extension already exists.
+              #
+              # Every database gets every extension. They are cheap, and
+              # tracking which component needs which would drift the moment the
+              # operator's image changes.
+              {{- range $db := $databases }}
+              {{- range $pg.extensions }}
+              psql -q -v ON_ERROR_STOP=1 -d '{{ $db }}' \
+                -c 'CREATE EXTENSION IF NOT EXISTS "{{ . }}"'
+              echo "  {{ . }} -> {{ $db }}"
+              {{- end }}
+              {{- end }}
+              {{- end }}
+
+              echo "PASS: databases, roles and extensions present"
+{{- end }}

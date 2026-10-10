@@ -1,0 +1,481 @@
+# Whether this chart installs its operator, or only configures one that is
+# already there. Set per cluster in conf.yaml, which every operator
+# Application reads; false drops the Namespace, OperatorGroup and
+# Subscriptions and keeps the CRs. Replaces conf.yaml's deployOperators,
+# which used to switch a whole Application on and off.
+installOperators: true
+
+# All of this chart's values nest under the chart name, so a shared
+# operators.yaml can carry several operators without their `operator:`
+# blocks colliding. A per-operator file uses the identical shape, which is
+# what lets a block move between the two by cut-and-paste.
+keycloak:
+  # OLM installation of rhbk-operator. Unlike every other include: in this repo,
+  # operator.include has no toggle — listing this chart in conf.yaml's
+  # operatorCharts is the opt-in, and a chart that is deployed but does not
+  # install its operator would be an empty Application. The CRs below keep their
+  # own include: false defaults, so adding the chart installs the operator and
+  # nothing else until you ask for an instance.
+  operator:
+    # --- facts about rhbk-operator, not settings ---
+    # These are values only so that namespace.yaml, operatorgroup.yaml and
+    # subscription.yaml stay byte-identical across every chart under
+    # charts/operators/. Overriding them per cluster is not meaningful.
+    namespace: keycloak
+    operatorGroup: keycloak-operator
+    package: rhbk-operator
+    sourceNamespace: openshift-marketplace
+    # rhbk-operator does not support the AllNamespaces install mode: a global
+    # OperatorGroup leaves the CSV Failed with UnsupportedOperatorGroup. So it
+    # gets a dedicated namespace and an OwnNamespace OperatorGroup, which is why
+    # clusterScoped is false and neither skip flag is set. An operator that lives
+    # in openshift-operators instead sets both skips true — that namespace and
+    # its global OperatorGroup already exist.
+    clusterScoped: false
+    skipNamespace: false
+    skipOperatorGroup: false
+    namespaceLabels: {}
+    namespaceAnnotations: {}
+
+    # --- the parts you actually set ---
+    # No default: a wrong channel produces a Subscription that installs nothing
+    # and reports no error, so the template requires an explicit one.
+    channel: ""
+    source: redhat-operators
+    installPlanApproval: Automatic
+    # Pin to a specific CSV instead of taking the channel head.
+    startingCSV: ""
+
+  # Namespace for the CRs below. Empty inherits operator.namespace, which is
+  # correct whenever the operator is installed beside the CR it reconciles —
+  # the case here. Sits beside operator: rather than inside instance: because
+  # the Postgres and realm resources land in it too, and because every chart
+  # under charts/operators/ puts it here.
+  namespace: ""
+  # Only consulted when namespace above differs from operator.namespace; the
+  # install namespace is always created by this chart unless skipNamespace.
+  createNamespace: false
+
+  instance:
+    include: false
+    name: keycloak
+    instances: 1
+    # Full external URL including scheme, e.g. https://sso.example.com. Empty
+    # defaults to https://sso.<cluster.baseDomain>. A bare hostname without a
+    # scheme makes Keycloak warn that it is running in an insecure context.
+    hostname: ""
+    # Secret holding the serving certificate. The operator does NOT generate one;
+    # with neither tlsSecret nor httpEnabled, Keycloak exits with "Key material
+    # not provided to setup HTTPS" and the chart refuses to render.
+    tlsSecret: ""
+    # Serve plain HTTP and let the operator's edge-terminated Route do TLS. This
+    # is the normal OpenShift pattern and the alternative to supplying tlsSecret.
+    httpEnabled: false
+    # Which reverse-proxy headers to trust. Required when httpEnabled is true and
+    # traffic arrives through a Route, otherwise Keycloak builds URLs from the
+    # internal address and redirects/CORS break. "xforwarded" suits OpenShift.
+    proxyHeaders: ""
+    db:
+      vendor: postgres
+      # Leave empty to use the bundled Postgres below. Set it to point Keycloak at
+      # an external database instead; an explicit value always wins.
+      host: ""
+      database: keycloak
+      usernameSecret:
+        # Empty defaults to the bundled Postgres Secret.
+        name: ""
+        key: username
+      passwordSecret:
+        name: ""
+        key: password
+
+  # Minimal in-cluster PostgreSQL for Keycloak. Keycloak has no usable embedded
+  # database in production mode, and the RHBK operator does not provision one, so
+  # without this (or an external keycloak.db.host) the Keycloak pod never starts.
+  # Single replica, no HA, no backups — suitable for a platform SSO instance that
+  # can be rebuilt from the realm import, not for critical user data.
+  postgres:
+    include: false
+    name: keycloak-postgres
+    image: registry.redhat.io/rhel9/postgresql-16:latest
+    database: keycloak
+    username: keycloak
+    # Empty defaults to "<name>-db".
+    secretName: ""
+    # Where the database password comes from. See
+    # docs/cluster-configuration/secrets.md.
+    #   existing        the Secret already exists under secretName — the default,
+    #                   because a chart should not assume a secrets manager
+    #   externalSecret  pulled from a backend by ESO; needs a ClusterSecretStore
+    #                   (see the vault-server platform chart) and `path` set
+    #   inline          taken from `data` below, for clusters with no secrets
+    #                   manager. Do not commit a real password this way.
+    secret:
+      source: existing
+      refreshInterval: 1h
+      secretStoreRef:
+        name: vault
+        kind: ClusterSecretStore
+      # KV v2 path holding the password, including the "data/" segment, e.g.
+      # secret/data/clusters/acm-hub/keycloak-db. Required when source is
+      # externalSecret; the template fails the render if unset.
+      path: ""
+      properties:
+        - secretKey: password
+          property: password
+      data:
+        password: ""
+    # Empty uses the cluster default StorageClass.
+    storageClassName: ""
+    storageSize: 10Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+
+  realm:
+    include: false
+    name: sso
+    groups: []
+    # Realm roles to create, as a list of {name, description}. Created by the
+    # realm-sync Job with create-if-missing semantics, never overwritten — a
+    # partialImport OVERWRITE on a role deletes and recreates it, which drops
+    # every user's mapping to it. Roles referenced by realm.users[].realmRoles
+    # must exist, so anything not built into a fresh realm belongs here.
+    roles: []
+    # Client scopes to create in the realm, as a map of scope name to
+    # {description, protocol, attributes}. Only needed for scopes Keycloak does
+    # not ship with — a client naming one of the builtins (profile, email,
+    # roles, acr, web-origins) in defaultClientScopes needs nothing here.
+    #
+    # Created by the realm-sync Job before the client partialImport, with
+    # create-if-missing semantics, because a client referencing a scope that
+    # does not exist yet imports without it and no error says so. A client can
+    # only request a scope that is assigned to it, so an unknown scope name in
+    # a token request comes back as `invalid_scope`.
+    clientScopes: {}
+    # Realm policy for user attributes that are not declared in the user
+    # profile. Empty leaves the realm's own setting alone. Set to ENABLED to
+    # allow arbitrary attributes (ADMIN_EDIT, ADMIN_VIEW and DISABLED are the
+    # other Keycloak values). Required before attributes below have any effect:
+    # with the default DISABLED policy Keycloak silently drops them.
+    unmanagedAttributes: ""
+    # Realm-level session and token settings, as raw Keycloak
+    # RealmRepresentation fields — no translation layer, so anything Keycloak
+    # accepts can go here and the names match its admin API and its UI. Empty
+    # leaves every one of them at whatever the realm already has.
+    #
+    # Applied by the realm-sync Job over the admin API rather than through the
+    # KeycloakRealmImport CR, because the import only runs once per realm: the
+    # operator marks it Done and never revisits it, so a timeout changed in git
+    # afterwards would silently never reach a realm that already exists.
+    #
+    # The one that bites is ssoSessionIdleTimeout, 1800 by default. oauth2-proxy
+    # in front of an app refreshes its access token only while requests are
+    # arriving, so a tab left open and untouched for longer than this has its
+    # refresh token rejected — and apps that react to the resulting 401 by
+    # navigating to their own /logout turn that into a login loop the user
+    # cannot click their way out of. See cost-management-service's HANDOFF,
+    # "An idle session becomes a login loop".
+    #
+    #   ssoSessionIdleTimeout: 28800     # 8h — survives a working day idle
+    #   ssoSessionMaxLifespan: 36000     # 10h hard cap, idle or not
+    #   accessTokenLifespan: 300         # must stay above every oauth2-proxy
+    #                                    # cookieRefresh pointed at this realm
+    sessions: {}
+    # username, plus optional email / firstName / lastName, realmRoles, groups,
+    # attributes (a map of extra user attributes, e.g. org_id), and
+    # passwordProperty — the key in Vault holding this user's password. A
+    # user without one is created with no credentials. Users listed here are
+    # created by the realm-sync Job if the realm import did not already make
+    # them, so adding one to an existing realm works; see HANDOFF.md for why
+    # they are not part of the partialImport payload.
+    users: []
+    # Where the realm's client secrets and user passwords come from. The
+    # KeycloakRealmImport CR cannot reference a Secret, so the realm-sync Job
+    # reads the Secret this produces and applies the credentials over the admin
+    # API after the import. See docs/cluster-configuration/secrets.md.
+    #
+    # The key set is derived from the realm itself — "client-<name>" per
+    # confidential client, "user-<username>" per user with a passwordProperty —
+    # so `properties` is computed, not written here. Under source: inline every
+    # one of those keys has to appear in `data` or the render fails; that is
+    # deliberate, because an empty value would otherwise be applied as the
+    # client secret. Prefer externalSecret: these are exactly the credentials
+    # that must not be committed.
+    secret:
+      source: existing
+      refreshInterval: 1h
+      secretStoreRef:
+        name: vault
+        kind: ClusterSecretStore
+      # KV v2 path holding every realm credential as a separate property, e.g.
+      # secret/data/clusters/acm-hub/keycloak-realm. Required whenever the realm
+      # has a confidential client or a user with a password.
+      path: ""
+      data: {}
+      # Empty defaults to "<keycloak name>-realm-credentials".
+      secretName: ""
+    clients:
+      quay:
+        include: false
+        clientId: quay
+        publicClient: false
+        standardFlowEnabled: true
+        directAccessGrantsEnabled: false
+        redirectUris: []
+        webOrigins: []
+      openshift:
+        include: false
+        clientId: openshift
+        publicClient: false
+        standardFlowEnabled: true
+        directAccessGrantsEnabled: false
+        redirectUris: []
+        webOrigins: []
+        defaultClientScopes:
+          - web-origins
+          - acr
+          - profile
+          - email
+        protocolMappers:
+          - name: groups
+            protocol: openid-connect
+            protocolMapper: oidc-group-membership-mapper
+            config:
+              claim.name: groups
+              full.path: "false"
+              id.token.claim: "true"
+              access.token.claim: "true"
+              userinfo.token.claim: "true"
+      # Browser sign-in to the cost management UI, through its oauth2-proxy.
+      # Exactly one redirect URI, and it must match the UI Route exactly or
+      # login fails after the UI has already loaded.
+      cost-management-ui:
+        include: false
+        clientId: cost-management-ui
+        publicClient: false
+        standardFlowEnabled: true
+        directAccessGrantsEnabled: false
+        redirectUris: []
+        webOrigins: []
+        # "roles" is what puts org-admin into realm_access.roles; the cost
+        # management gateway reads it from there.
+        defaultClientScopes:
+          - web-origins
+          - acr
+          - profile
+          - email
+          - roles
+        protocolMappers:
+          # The aud the gateway checks is the server's configured audience, not
+          # this client's ID. Both audience fields have to be set — an Audience
+          # mapper with either left empty does not write aud at all.
+          - name: aud-cost-management-operator
+            protocol: openid-connect
+            protocolMapper: oidc-audience-mapper
+            config:
+              included.client.audience: cost-management-operator
+              included.custom.audience: cost-management-operator
+              access.token.claim: "true"
+              id.token.claim: "false"
+          # The client's own ID, as an audience of itself. That reads like a
+          # no-op and is not: Keycloak never puts a client's own ID into the
+          # access token's aud — that claim holds only mapper-added audiences
+          # plus "account" from the roles scope's audience-resolve mapper. The
+          # UI's oauth2-proxy verifies the access token against its own client
+          # ID, so without this, login succeeds at Keycloak and then dies on the
+          # callback with HTTP 500:
+          #
+          #   audience from claim aud with value [cost-management-operator
+          #   account] does not match with any of allowed audiences
+          #   map[cost-management-ui:{}]
+          #
+          # Which names the right claim and the right expectation and still
+          # points at the wrong client, because the audience it is missing is
+          # the one nothing asked Keycloak to add.
+          - name: aud-cost-management-ui
+            protocol: openid-connect
+            protocolMapper: oidc-audience-mapper
+            config:
+              included.client.audience: cost-management-ui
+              included.custom.audience: cost-management-ui
+              access.token.claim: "true"
+              # Also in the ID token. Keycloak already puts the client there, so
+              # this changes nothing today; it costs nothing and removes the
+              # dependence on which of the two tokens oauth2-proxy happens to
+              # check, which is a detail of its keycloak-oidc provider.
+              id.token.claim: "true"
+          # The gateway reads org_id, account_number and realm_access.roles out
+          # of the **ID token**, not the access token, so all three mappers below
+          # set id.token.claim. The browser flow reaches Envoy as
+          # oauth2-proxy's --pass-authorization-header, and that flag passes the
+          # OIDC ID token — the access token only ever leaves oauth2-proxy under
+          # --pass-access-token, which the operator does not set. An
+          # access-token-only mapper is invisible to the gateway: the Lua filter
+          # rejects the request with a bare
+          #
+          #   401 Unauthorized: Missing org_id in JWT claims
+          #
+          # after jwt_authn has already accepted the very same token, so the
+          # signature, issuer and aud are all demonstrably fine and only the
+          # claim is absent. The UI turns that 401 into /logout, which lands back
+          # on the Keycloak form — a login that "works" and bounces straight
+          # back. access.token.claim stays true for the machine client's sake.
+          - name: org_id
+            protocol: openid-connect
+            protocolMapper: oidc-usermodel-attribute-mapper
+            config:
+              user.attribute: org_id
+              claim.name: org_id
+              jsonType.label: String
+              access.token.claim: "true"
+              id.token.claim: "true"
+              userinfo.token.claim: "false"
+              multivalued: "false"
+          - name: account_number
+            protocol: openid-connect
+            protocolMapper: oidc-usermodel-attribute-mapper
+            config:
+              user.attribute: account_number
+              claim.name: account_number
+              jsonType.label: String
+              access.token.claim: "true"
+              id.token.claim: "true"
+              userinfo.token.claim: "false"
+              multivalued: "false"
+          # The "roles" scope above writes realm_access.roles to the access token
+          # only — its built-in mapper leaves id.token.claim unset, which
+          # Keycloak reads as false. The gateway's is_org_admin test reads
+          # realm_access.roles, so on the ID token it sees no realm_access at all
+          # and every user is a non-admin no matter which roles they hold. This
+          # mapper writes the same claim into the ID token. It duplicates the
+          # scope's mapper on the access token, which is harmless: both write the
+          # identical value.
+          - name: realm-roles-id-token
+            protocol: openid-connect
+            protocolMapper: oidc-usermodel-realm-role-mapper
+            config:
+              claim.name: realm_access.roles
+              jsonType.label: String
+              access.token.claim: "true"
+              id.token.claim: "true"
+              userinfo.token.claim: "false"
+              multivalued: "true"
+      # Machine client for the Cost Management Metrics Operator's uploads. No
+      # browser is involved: client_credentials only, so standard flow is off
+      # and there is no redirect URI.
+      cost-management-metrics-operator:
+        include: false
+        clientId: cost-management-metrics-operator
+        publicClient: false
+        standardFlowEnabled: false
+        directAccessGrantsEnabled: false
+        serviceAccountsEnabled: true
+        redirectUris: []
+        webOrigins: []
+        defaultClientScopes:
+          - acr
+          - email
+          - roles
+          # The operator hardcodes scope=api.console on its client_credentials
+          # request — the name Red Hat's hosted SSO uses. A self-managed realm
+          # has no such scope, and Keycloak rejects the request outright with
+          # `invalid_scope: Invalid scopes: api.console`. Declared in
+          # realm.clientScopes so the realm-sync Job creates it first.
+          - api.console
+          # `profile` is deliberately absent. Its builtin username mapper writes
+          # preferred_username from the user's real username, which for a service
+          # account is the Keycloak-generated `service-account-<clientId>` — a
+          # name cost management's RBAC service rejects outright. The
+          # preferred_username mapper below supplies the claim instead, and two
+          # mappers writing the same claim would race. See HANDOFF.md.
+        protocolMappers:
+          # Cost management's gateway builds the x-rh-identity username from
+          # preferred_username, and its RBAC service treats any username starting
+          # with `service-account-` as one of its own service-account principals,
+          # which must be `service-account-<uuid>`. The Keycloak-generated name is
+          # not, so RBAC answers
+          #   400 {"detail":"Invalid format for a Service Account username"}
+          # koku reads that as "no access" and every sources call 403s, with
+          # is_org_admin: true in its own log line. Hardcoding the claim to a name
+          # without that prefix makes RBAC treat the caller as an ordinary org
+          # admin, which is what it is.
+          - name: preferred_username
+            protocol: openid-connect
+            protocolMapper: oidc-hardcoded-claim-mapper
+            config:
+              claim.name: preferred_username
+              claim.value: cost-management-metrics-operator
+              jsonType.label: String
+              access.token.claim: "true"
+              id.token.claim: "false"
+              userinfo.token.claim: "false"
+          - name: aud-cost-management-operator
+            protocol: openid-connect
+            protocolMapper: oidc-audience-mapper
+            config:
+              included.client.audience: cost-management-operator
+              included.custom.audience: cost-management-operator
+              access.token.claim: "true"
+              id.token.claim: "false"
+          - name: org_id
+            protocol: openid-connect
+            protocolMapper: oidc-usermodel-attribute-mapper
+            config:
+              user.attribute: org_id
+              claim.name: org_id
+              jsonType.label: String
+              access.token.claim: "true"
+              id.token.claim: "false"
+              userinfo.token.claim: "false"
+              multivalued: "false"
+          - name: account_number
+            protocol: openid-connect
+            protocolMapper: oidc-usermodel-attribute-mapper
+            config:
+              user.attribute: account_number
+              claim.name: account_number
+              jsonType.label: String
+              access.token.claim: "true"
+              id.token.claim: "false"
+              userinfo.token.claim: "false"
+              multivalued: "false"
+        # Applied to the client's own service-account user. Client attributes
+        # are never copied into tokens, so org_id and account_number have to
+        # live on this user for the mappers above to find anything.
+        serviceAccount:
+          attributes: {}
+          realmRoles: []
+      stackrox:
+        include: false
+        clientId: stackrox
+        publicClient: false
+        standardFlowEnabled: true
+        directAccessGrantsEnabled: false
+        serviceAccountsEnabled: true
+        redirectUris: []
+        webOrigins: []
+        defaultClientScopes:
+          - web-origins
+          - acr
+          - profile
+          - email
+        optionalClientScopes:
+          - offline_access
+          - address
+          - phone
+          - microprofile-jwt
+        protocolMappers:
+          - name: groups
+            protocol: openid-connect
+            protocolMapper: oidc-group-membership-mapper
+            config:
+              claim.name: groups
+              full.path: "false"
+              id.token.claim: "true"
+              access.token.claim: "true"
+              userinfo.token.claim: "true"

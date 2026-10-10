@@ -1,0 +1,9 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.uiPlugins.troubleshootingPanel.include }}
+apiVersion: observability.openshift.io/v1alpha1
+kind: UIPlugin
+metadata:
+  name: troubleshooting-panel
+spec:
+  type: TroubleshootingPanel
+{{- end }}

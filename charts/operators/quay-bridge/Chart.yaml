@@ -1,0 +1,4 @@
+apiVersion: v2
+name: quay-bridge
+description: quay-bridge — operator subscription
+version: 0.1.0

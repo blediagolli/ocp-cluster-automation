@@ -1,0 +1,4 @@
+apiVersion: v2
+name: gatekeeper
+description: gatekeeper — operator subscription and gatekeeper constraint framework instance
+version: 0.1.0

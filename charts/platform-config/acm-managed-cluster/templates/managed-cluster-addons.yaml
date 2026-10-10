@@ -1,0 +1,15 @@
+{{- if and .Values.managedCluster.include .Values.managedCluster.addons.include }}
+{{- range $name, $enabled := .Values.managedCluster.addons }}
+{{- if and (ne $name "include") $enabled }}
+---
+apiVersion: addon.open-cluster-management.io/v1beta1
+kind: ManagedClusterAddOn
+metadata:
+  name: {{ $name }}
+  namespace: {{ $.Values.cluster.name }}
+  annotations:
+    argocd.argoproj.io/sync-options: ServerSideApply=true
+spec: {}
+{{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,119 @@
+# Whether this chart installs its operator, or only configures one that is
+# already there. Set per cluster in conf.yaml, which every operator
+# Application reads; false drops the Namespace, OperatorGroup and
+# Subscriptions and keeps the CRs. Replaces conf.yaml's deployOperators,
+# which used to switch a whole Application on and off.
+installOperators: true
+
+# All of this chart's values nest under the chart name, so a shared
+# operators.yaml can carry several operators without their `operator:`
+# blocks colliding. A per-operator file uses the identical shape, which is
+# what lets a block move between the two by cut-and-paste.
+#
+# The templates reach them with `index .Values .Chart.Name`, so the chart
+# directory name and this top-level key must stay in step.
+kyverno:
+  operator:
+    # --- facts about this operator, not settings ---
+    # Values only so that namespace.yaml, operatorgroup.yaml and
+    # subscription.yaml stay byte-identical across every chart under
+    # charts/operators/. Overriding them per cluster is not meaningful.
+    namespace: openshift-operators
+    operatorGroup: ""
+    package: enterprise-kyverno
+    sourceNamespace: openshift-marketplace
+    # Installed into openshift-operators, which already exists and already
+    # has a global OperatorGroup, so this chart creates neither.
+    clusterScoped: false
+    skipNamespace: true
+    skipOperatorGroup: true
+    namespaceLabels: {}
+    namespaceAnnotations: {}
+
+    # --- the parts you actually set ---
+    channel: alpha
+    source: certified-operators
+    installPlanApproval: Automatic
+    # Pin to a specific CSV instead of taking the channel head.
+    startingCSV: ""
+
+  # Namespace for the CRs below. Empty inherits operator.namespace.
+  namespace: ""
+  # Only consulted when namespace above differs from operator.namespace.
+  createNamespace: false
+
+  kyverno:
+    include: false
+    name: enterprisekyverno
+    namespace: openshift-operators
+    antiAffinity:
+      enable: true
+    config:
+      annotations: {}
+      existingConfig: ""
+      generateSuccessEvents: false
+      metricsConfig:
+        annotations: {}
+        namespaces:
+          exclude: []
+          include: []
+      resourceFilters:
+        - '[Event,*,*]'
+        - '[*,kube-system,*]'
+        - '[*,kube-public,*]'
+        - '[*,kube-node-lease,*]'
+        - '[Node,*,*]'
+        - '[APIService,*,*]'
+        - '[TokenReview,*,*]'
+        - '[SubjectAccessReview,*,*]'
+        - '[SelfSubjectAccessReview,*,*]'
+        - '[Binding,*,*]'
+        - '[ReplicaSet,*,*]'
+        - '[AdmissionReport,*,*]'
+        - '[ClusterAdmissionReport,*,*]'
+        - '[BackgroundScanReport,*,*]'
+        - '[ClusterBackgroundScanReport,*,*]'
+    createSelfSignedCert: false
+    dnsPolicy: ClusterFirst
+    envVars: {}
+    envVarsInit: {}
+    excludeKyvernoNamespace: true
+    extraArgs:
+      - '--autogenInternals=true'
+      - '--loggingFormat=text'
+    hostNetwork: false
+    image:
+      pullPolicy: IfNotPresent
+      repository: ghcr.io/nirmata/kyverno
+      tag: v1.8.1-n4kbuild.1
+      pullSecrets:
+        create: false
+        name: image-pull-secret
+        registry: ghcr.io
+    installCRDs: true
+    kyvernoOperatorImage: ghcr.io/nirmata/nirmata-kyverno-monitor
+    kyvernoOperatorImageTag: 0.1.0
+    livenessProbe:
+      failureThreshold: 2
+      httpGet:
+        path: /health/liveness
+        port: 9443
+        scheme: HTTPS
+      initialDelaySeconds: 15
+      periodSeconds: 30
+      successThreshold: 1
+      timeoutSeconds: 5
+    metricsService:
+      create: true
+      port: 8000
+      type: ClusterIP
+    networkPolicy:
+      enabled: false
+      ingressFrom: []
+    nodeSelector: {}
+    podAffinity: {}
+    podAnnotations: {}
+    podAntiAffinity: {}
+    serviceMonitor:
+      namespace: ""
+    webhookNamespace: ""

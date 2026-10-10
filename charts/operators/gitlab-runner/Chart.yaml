@@ -1,0 +1,4 @@
+apiVersion: v2
+name: gitlab-runner
+description: gitlab-runner — operator subscription
+version: 0.1.0

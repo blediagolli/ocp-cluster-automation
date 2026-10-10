@@ -1,0 +1,391 @@
+# Provisions one team's namespaces on one cluster: Namespace, ResourceQuota,
+# LimitRange, baseline NetworkPolicies and human RBAC.
+#
+# Nothing here is set by hand. The cluster-onboarding-namespaces ApplicationSet
+# supplies these files in order, each overriding the last:
+#
+#   1. this file                                    chart defaults
+#   2. teams/<team>.yaml                            who the team is, what it owns
+#   3. env/<env>/conf.yaml                          environment-wide settings
+#   4. env/<env>/namespace-sizes.yaml               environment tier definitions
+#   5. env/<env>/teams/<team>.yaml                  per-team environment override
+#   6. clusters/<env>/<cluster>/conf.yaml           cluster-wide settings
+#   7. clusters/<env>/<cluster>/namespace-sizes.yaml  cluster tier override
+#   8. clusters/<env>/<cluster>/teams/<team>.yaml   per-team cluster override
+#
+# Helm deep-merges maps, so an override that sets one leaf keeps the rest of
+# this file's values underneath it.
+
+cluster:
+  # Selects which key of team.namespaces is rendered. Comes from
+  # clusters/<env>/<cluster>/conf.yaml. Required -- an empty value would select
+  # no namespaces, render nothing, and let ArgoCD's prune delete the live ones.
+  environment: ""
+
+team:
+  # The team slug. Names or namespaces every object both onboarding charts
+  # create. Required.
+  name: ""
+  # OpenShift group bound to ClusterRole/admin in each of the team's
+  # namespaces, and to role:admin in its ArgoCD. Required.
+  admins: ""
+  # Optional OpenShift group bound to ClusterRole/view in each namespace, and
+  # to role:readonly in the team's ArgoCD. Omit it if the team has no
+  # read-only group -- no RoleBinding is rendered.
+  readers: ""
+  # The team's application repo. Consumed by application-gitops for the
+  # AppProject's sourceRepos; declared here because the two charts share
+  # teams/<team>.yaml and _helpers.tpl. A list (team.repos) is also accepted.
+  repo: ""
+  # Free-form map rendered as labels on EVERY object both charts create, not
+  # just the namespaces -- so Gatekeeper constraints, Kyverno policies and ACM
+  # policies can select a team's objects by these wherever they live. A new
+  # column in an upstream tracker becomes a new label with no chart change.
+  # Kubernetes rejects an invalid key or an over-63-character value at apply
+  # time, naming the offending label.
+  #   metadata:
+  #     org: example-org
+  #     division: example-division
+  #     app: example-app
+  metadata: {}
+  # Additional RoleBindings, applied to every namespace the team owns. The
+  # list is unbounded, and the same group may appear more than once against
+  # different roles.
+  #
+  # admins and readers above are shorthand for the two every team has; they
+  # keep their <team>-admin / <team>-view names, so adopting this list renames
+  # nothing. Entries here are named "<group>-<role>" unless you set `name`,
+  # because a name derived from the list position would rename every binding
+  # below an insertion -- and renaming a RoleBinding is a delete plus a create,
+  # which drops a team's access to its own namespace mid-sync.
+  #
+  # `role` is a ClusterRole name, bound namespace-locally. A role that does not
+  # exist on the cluster is NOT an error: the RoleBinding is created and grants
+  # nothing, silently. Check custom role names against the cluster first.
+  #
+  # `kind` defaults to Group; User and ServiceAccount also work.
+  #   roleBindings:
+  #     - group: example-cicd-group
+  #       role: edit
+  #     - group: example-migration-group
+  #       role: admin
+  #     - group: example-migration-group
+  #       role: namespace-metadata-editor
+  #       name: example-migration-metadata
+  roleBindings: []
+  # Namespaces this team owns, keyed by environment. Each entry is
+  # {name, size}, where size must be a key of namespaceSizes below.
+  #
+  # displayName and description become the openshift.io/display-name and
+  # openshift.io/description annotations -- the two fields the console shows
+  # instead of the raw namespace name. labels and annotations are merged over
+  # the chart-wide `namespace:` block below, so one namespace can opt out of a
+  # team-wide label without restating the rest.
+  #   namespaces:
+  #     dev:
+  #       - name: team-alpha-dev
+  #         size: small
+  #         displayName: "Team Alpha - DEV"
+  #         description: "Team Alpha development namespace"
+  #         labels:
+  #           ocp-infra: "true"
+  #         annotations:
+  #           example.com/owner: alpha-lead@example.com
+  namespaces: {}
+  # The only lifecycle flag. Stops deployment and withdraws access, keeps the
+  # data.
+  #
+  # This chart still renders the namespaces, their ResourceQuota, LimitRange
+  # and NetworkPolicies, but drops every RoleBinding and the
+  # argocd.argoproj.io/managed-by label, so the team can no longer reach the
+  # namespaces and its ArgoCD can no longer deploy into them. They get a
+  # gfo.io/lifecycle: quiesced label instead, which is how you list what is
+  # being retained. application-gitops keeps only the <team>-gitops namespace
+  # and prunes the ArgoCD instance inside it.
+  #
+  # Reversible: clear it and the team comes back as it was. It does NOT stop
+  # pods that are already running -- scale those down first if that matters.
+  #
+  # team.name is required alongside it, so quiescing always names its subject.
+  #
+  # DELETING a team is deliberately not a chart flag. Neither chart will ever
+  # render nothing -- an empty render is always a broken values file, and the
+  # chart fails on it. To remove a tenancy for good:
+  #
+  #   1. team.quiesce: true, let it sync, confirm the team's ArgoCD is gone
+  #   2. remove the team's entry from the cluster's conf.yaml
+  #   3. oc delete ns -l app.kubernetes.io/part-of=<team>
+  #
+  # Step 3 is manual on purpose. It deletes every PersistentVolumeClaim in
+  # those namespaces, and a PV with the default Delete reclaim policy takes
+  # the underlying volume with it. See HANDOFF.md for why this is not wired
+  # into the chart.
+  quiesce: false
+
+# Object names and the size label key.
+#
+# These are hardcoded in two ACM policies as well as here:
+# policies/stable/resource-quota selects the ResourceQuota by name, and
+# policies/stable/network-isolation selects namespaces by the size label.
+# Overriding a value below does not un-scope those policies loudly -- they keep
+# reporting Compliant while checking an object that no longer exists. Change
+# one, change the policy.
+naming:
+  resourceQuota: team-quota
+  limitRange: team-limits
+  sizeLabel: namespace-size
+
+# Labels and annotations applied to every tenant namespace, on top of the
+# per-team ones from team.metadata and under the per-namespace labels: and
+# annotations: maps. Chart-wide rather than per-team because these are the
+# cluster's admission posture, not a team's identity: set them once in
+# env/<env>/conf.yaml and every namespace on that environment carries them.
+#
+# The two defaults below are opt-OUT. Both Gatekeeper and Kyverno treat an
+# absent label as "not enforced", so a namespace that quietly loses one is
+# unconstrained and reports nothing -- which is why they default on here and
+# not in each team's file. Setting either to "false" for one namespace is a
+# deliberate exemption; record why next to it.
+#
+# These are plain labels, not a policy. Neither engine is installed by this
+# repo: on a cluster without them the labels are inert, and on a cluster with
+# them the constraints are owned elsewhere. Nothing here makes a namespace
+# compliant; the labels only make it visible to whoever enforces.
+namespace:
+  labels:
+    gatekeeper-policy-enforcement: "true"
+    kyverno-image-signature-enforcement: "true"
+    # Marks a namespace as platform infrastructure rather than a tenant
+    # workload. Tenant namespaces are the thing this chart creates, so "false".
+    ocp-infra: "false"
+  # Free-form, empty by default. Ownership and contact annotations tend to live
+  # here: they carry no RFC-1123 restriction, unlike labels, so an email
+  # address or a sentence is fine.
+  #   annotations:
+  #     example.com/cost-centre: "12345"
+  annotations: {}
+
+# Network isolation for tenant namespaces.
+#
+# These five exist here because charts/platform-config/project-request-template
+# does NOT cover these namespaces: it is the cluster's projectRequestTemplate,
+# expanded only by the project request API (`oc new-project`). A plain
+# kind: Namespace, which is what this chart creates, bypasses it entirely.
+#
+# The bodies must stay identical to that chart's. Switching any off is a
+# deliberate hole; defaultDenyIngress is the one that matters, since without
+# it the other four are decoration.
+networkPolicy:
+  baseline: true
+  defaultDenyIngress: true
+  allowSameNamespace: true
+  allowFromOpenShiftIngress: true
+  # Without this, Prometheus cannot scrape anything in the namespace.
+  allowFromOpenShiftMonitoring: true
+  # Without this, admission and conversion webhooks in the namespace fail.
+  allowFromKubeApiserver: true
+  # Team-specific rules, rendered into every namespace the team owns. Each
+  # entry is {name, spec}, where spec is a NetworkPolicy spec rendered
+  # verbatim. Prefer adding a rule here over switching a baseline policy off.
+  #   custom:
+  #     - name: allow-from-shared-monitoring
+  #       spec:
+  #         podSelector: {}
+  #         policyTypes: [Ingress]
+  #         ingress:
+  #           - from:
+  #               - namespaceSelector:
+  #                   matchLabels:
+  #                     kubernetes.io/metadata.name: shared-monitoring
+  custom: []
+
+# Stale-quota cleanup. Runs as a PostSync hook in each tenant namespace and
+# deletes ResourceQuotas and LimitRanges named `default` or after a size tier,
+# left over from before this chart consolidated onto team-quota/team-limits. A
+# stale quota is additive with ours -- Kubernetes enforces the most restrictive
+# of every quota in a namespace -- so one left behind silently caps the team
+# below its tier.
+cleanup:
+  # Switch this off per cluster once that cluster has no pre-chart namespaces
+  # left. The Job otherwise runs on every sync, forever, to delete nothing.
+  include: true
+  # The internal registry's `cli` imagestream, which every OpenShift cluster
+  # ships and which needs no pull secret. Previously
+  # registry.redhat.io/openshift4/ose-cli:latest, which needs a
+  # registry.redhat.io credential that a freshly created tenant namespace has
+  # no reason to carry -- the hook could not have pulled it.
+  image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+  imagePullPolicy: IfNotPresent
+  # The requests have a FLOOR, not just a ceiling: the Job runs inside a tenant
+  # namespace, under the LimitRange this same chart puts there, so a request
+  # below that tier's Container `min` is rejected. 50m/64Mi is the highest min
+  # any tier in this repo sets, so this clears all of them exactly.
+  #
+  # It is worth knowing how this fails, because it is quiet. Admission rejects
+  # the POD, which the Job controller creates -- not the Job, which ArgoCD
+  # creates. So the hook object applies cleanly, the Application reports Synced
+  # and Healthy, and the only trace is FailedCreate events on the Job until
+  # activeDeadlineSeconds expires. Raise a tier's min above these and
+  # `make validate-onboarding` fails rather than letting you find out that way.
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# T-shirt size definitions. Fully replaced by env/<env>/namespace-sizes.yaml on
+# dev and prod; env/mgt is `{}`, so THESE VALUES ARE LIVE on the mgt clusters.
+# They are not dead code -- do not delete them, and do not "align" them with
+# env/dev, which would silently resize every mgt namespace.
+#
+# Each tier has two independently switchable halves:
+#
+#   resourceQuota.include   render the ResourceQuota at all (default true)
+#   limitRange.include      render the LimitRange at all    (default true)
+#
+# and one namespace can override either, so a tier switched off can be opted
+# back into per namespace -- which is how an existing estate migrates onto this
+# chart without a flag day:
+#
+#   team:
+#     namespaces:
+#       dev:
+#         - name: legacy-app-dev
+#           size: large
+#           resourceQuota: false   # not enforced here yet
+#           limitRange: false
+#
+# Switching one OFF for a namespace that already has the object DELETES the
+# live object -- sync policy is prune: true. Going the other way is safe.
+# Disabling the quota also turns policies/stable/resource-quota NonCompliant
+# for that namespace, which is the point: it is the migration's burndown list,
+# and the policy is `inform`, so it reports without acting.
+#
+# A tier takes any key a ResourceQuota accepts, so a cluster needing
+# object-count caps (configmaps, secrets, replicationcontrollers, services,
+# services.loadbalancers) adds them in
+# clusters/<env>/<cluster>/namespace-sizes.yaml without touching the chart.
+#
+# An override MERGES, it does not replace, so writing
+#
+#   namespaceSizes:
+#     large:
+#       resourceQuota:
+#         hard:
+#           limits.cpu: "212"
+#           limits.memory: 360Gi
+#
+# leaves the environment tier's requests.cpu and requests.memory underneath,
+# and Kubernetes enforces requests against the SAME pods -- the namespace ends
+# up capped by whichever is smaller, not by the number written here. Remove
+# each one you do not want by name:
+#
+#           requests.cpu: null
+#           requests.memory: null
+#
+# null means "drop this limit" for any key under `hard` and any field under
+# `limitRange.types`, wherever in the chain it is written. The chart filters
+# nulls itself rather than leaving it to Helm, whose own behaviour here splits
+# on whether this file happens to declare the key -- see onboarding.quotaHard.
+#
+# Nulling every key under `hard` is an error, not an empty quota: an empty
+# ResourceQuota enforces nothing while looking managed. Use include: false.
+#
+# `scripts/render.sh <env>/<cluster> namespace-config --team <team>` is the
+# only way to see what a tier actually resolves to. The override file alone
+# does not tell you.
+namespaceSizes:
+  small:
+    resourceQuota:
+      include: true
+      # Any key set to null here, or anywhere later in the chain, is dropped.
+      hard:
+        requests.cpu: "2"
+        requests.memory: 4Gi
+        limits.cpu: "4"
+        limits.memory: 8Gi
+        pods: "10"
+        persistentvolumeclaims: "5"
+        requests.storage: 25Gi
+    limitRange:
+      include: true
+      # Keyed by LimitRange type (Container, Pod, PersistentVolumeClaim)
+      # rather than a list, so an override can change one field instead of
+      # restating every item. A field or a whole type set to null is
+      # dropped. This replaced `limits:`, which the chart now rejects.
+      types:
+        Container:
+          default:
+            cpu: 250m
+            memory: 256Mi
+          defaultRequest:
+            cpu: 50m
+            memory: 128Mi
+          max:
+            cpu: "2"
+            memory: 4Gi
+          # The floor every container in the namespace must clear. Keep it low:
+          # it is admission, not scheduling, so anything under it is rejected
+          # outright. Short-lived maintenance Pods -- including this chart's own
+          # PostSync cleanup Job -- ask for very little, and a floor set at a
+          # "reasonable workload" figure rejects them with
+          # `minimum cpu usage per Container is <n>, but request is <m>`.
+          min:
+            cpu: 10m
+            memory: 64Mi
+  medium:
+    resourceQuota:
+      include: true
+      hard:
+        requests.cpu: "4"
+        requests.memory: 8Gi
+        limits.cpu: "8"
+        limits.memory: 16Gi
+        pods: "20"
+        persistentvolumeclaims: "10"
+        requests.storage: 50Gi
+    limitRange:
+      include: true
+      types:
+        Container:
+          default:
+            cpu: 500m
+            memory: 512Mi
+          defaultRequest:
+            cpu: 100m
+            memory: 256Mi
+          max:
+            cpu: "4"
+            memory: 8Gi
+          min:
+            cpu: 10m
+            memory: 64Mi
+  large:
+    resourceQuota:
+      include: true
+      hard:
+        requests.cpu: "8"
+        requests.memory: 16Gi
+        limits.cpu: "16"
+        limits.memory: 32Gi
+        pods: "50"
+        persistentvolumeclaims: "20"
+        requests.storage: 100Gi
+    limitRange:
+      include: true
+      types:
+        Container:
+          default:
+            cpu: "1"
+            memory: 1Gi
+          defaultRequest:
+            cpu: 200m
+            memory: 512Mi
+          max:
+            cpu: "8"
+            memory: 16Gi
+          min:
+            cpu: 10m
+            memory: 64Mi

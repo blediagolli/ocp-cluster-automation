@@ -1,0 +1,4 @@
+apiVersion: v2
+name: global-pull-secrets
+description: Pull secrets for external container registries
+version: 0.1.0

@@ -1,0 +1,146 @@
+# Whether this chart installs its operator, or only configures one that is
+# already there. Set per cluster in conf.yaml, which every operator
+# Application reads; false drops the Namespace, OperatorGroup and
+# Subscriptions and keeps the CRs. Replaces conf.yaml's deployOperators,
+# which used to switch a whole Application on and off.
+installOperators: true
+
+# All of this chart's values nest under the chart name, so a shared
+# operators.yaml can carry several operators without their `operator:`
+# blocks colliding. A per-operator file uses the identical shape, which is
+# what lets a block move between the two by cut-and-paste.
+#
+# The templates reach them with `index .Values .Chart.Name`, so the chart
+# directory name and this top-level key must stay in step.
+cost-management-metrics:
+  operator:
+    # --- facts about this operator, not settings ---
+    # Values only so that namespace.yaml, operatorgroup.yaml and
+    # subscription.yaml stay byte-identical across every chart under
+    # charts/operators/. Overriding them per cluster is not meaningful.
+    namespace: costmanagement-metrics-operator
+    operatorGroup: costmanagement-metrics-operator
+    package: costmanagement-metrics-operator
+    sourceNamespace: openshift-marketplace
+    # Does not support the AllNamespaces install mode: a global OperatorGroup
+    # leaves the CSV Failed with UnsupportedOperatorGroup. Hence a dedicated
+    # namespace and a targetNamespaces OperatorGroup.
+    clusterScoped: false
+    skipNamespace: false
+    skipOperatorGroup: false
+    namespaceLabels: {}
+    namespaceAnnotations: {}
+
+    # --- the parts you actually set ---
+    channel: stable
+    source: redhat-operators
+    installPlanApproval: Automatic
+    # Pin to a specific CSV instead of taking the channel head.
+    startingCSV: ""
+
+  # Namespace for the CRs below. Empty inherits operator.namespace.
+  namespace: ""
+  # Only consulted when namespace above differs from operator.namespace.
+  createNamespace: false
+
+  costManagementMetrics:
+    include: false
+    name: cost-management-metrics
+    # The operator's own namespace, created by operator-deployment.yaml.
+    namespace: costmanagement-metrics-operator
+    createNamespace: false
+
+    # HTTPS origin of the cost management API, with no path. For a self-managed
+    # server this is the gateway Route on the cluster running the Cost Management
+    # Service Operator; for hosted cost management it is
+    # https://console.redhat.com. Required when include is true.
+    apiUrl: ""
+
+    authentication:
+      # "service-account" for a self-managed server behind Keycloak,
+      # "token" for hosted cost management via the cluster pull secret.
+      type: service-account
+      # Keycloak token endpoint. Required when type is service-account; the
+      # realm here is the server's realm, which defaults to "kubernetes" and is
+      # not necessarily the realm this cluster's users log in to.
+      tokenUrl: ""
+      # Keycloak clientId of the service-account client. Not a secret, so it is
+      # written into the Secret as a literal rather than fetched from a backend
+      # — see the note on `properties` under secret below. Must match the
+      # clientId of the corresponding client in the keycloak chart, or the
+      # token request fails with invalid_client.
+      clientId: cost-management-metrics-operator
+      # Secret holding the Keycloak service-account client credentials. What
+      # creates it depends on secret.source below; under the default
+      # `existing` it must already be in the namespace.
+      secretName: cost-management-service-account
+
+    source:
+      # Empty defaults to cluster.name, which is what the cost management UI
+      # labels this cluster's data with.
+      name: ""
+      # Leave false unless the service account holds the org-admin realm role —
+      # the operator cannot create a source without it and retries on every
+      # check cycle.
+      createSource: false
+      # Minutes between source checks. The operator stamps last_check_time even
+      # when the check *fails*, and gates the next attempt on this interval — so
+      # at the 1440 default a source that could not be created waits a full day
+      # before retrying, long after whatever blocked it was fixed. Lower it while
+      # an integration is being brought up; the check is one cheap GET.
+      checkCycle: 1440
+      sourcesPath: /api/cost-management/v1/
+
+    upload:
+      ingressPath: /api/ingress/v1/upload
+      uploadCycle: 360
+      uploadToggle: true
+      # A self-managed gateway usually serves the cluster's own ingress cert,
+      # which the operator does not trust. Hosted cost management should set
+      # this back to true.
+      validateCert: false
+
+    packaging:
+      maxReportsToStore: 30
+      maxSizeMB: 100
+
+    prometheusConfig:
+      collectPreviousData: true
+      contextTimeout: 120
+      disableMetricsCollectionCostManagement: false
+      # Resource-optimization metrics are collected but discarded by a
+      # self-managed server with ros.enabled false. Harmless, just wasted work.
+      disableMetricsCollectionResourceOptimization: false
+      serviceAddress: "https://thanos-querier.openshift-monitoring.svc:9091"
+      skipTlsVerification: false
+
+    # Where the Keycloak service-account credentials come from. The CR
+    # references the Secret by name only, so under source: existing it has to
+    # be created some other way and the client secret ends up outside git with
+    # nothing reconciling it. See docs/cluster-configuration/secrets.md for the modes.
+    secret:
+      source: existing
+      refreshInterval: 1h
+      secretStoreRef:
+        name: vault
+        kind: ClusterSecretStore
+      # KV v2 path holding the service-account client secret. Point this at the
+      # same path the keycloak chart's realm reads, so the secret the realm-sync
+      # Job applies to the client and the one the operator presents back are
+      # literally the same property — two copies drift and the failure is an
+      # opaque invalid_client. Required when source is externalSecret; the
+      # template fails the render if unset.
+      path: ""
+      # client_id is not fetched by default: it is not a secret, and requiring
+      # it in the backend would mean seeding two properties where only one has
+      # to be protected. It is written as the literal authentication.clientId
+      # instead. Add a client_id entry here only if it genuinely lives in the
+      # backend, and the literal then drops out.
+      #
+      # The property name follows the keycloak chart's realm convention,
+      # client-<client key>, e.g. client-cost-management-metrics-operator.
+      properties:
+        - secretKey: client_secret
+          property: client-secret
+      data:
+        client_secret: ""

@@ -1,0 +1,9 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.quayRegistry.createNamespace }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $v.quayRegistry.namespace }}
+  labels:
+    openshift.io/cluster-monitoring: "true"
+{{- end }}

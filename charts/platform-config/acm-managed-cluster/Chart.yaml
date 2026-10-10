@@ -1,0 +1,4 @@
+apiVersion: v2
+name: acm-managed-cluster
+description: ACM managed cluster import with addons and auto-import
+version: 1.0.0

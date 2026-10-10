@@ -1,0 +1,40 @@
+{{- /* No worker pool when there are no workers. A MachinePool with replicas:
+       0 is not harmless on single-node OpenShift: Hive still reconciles it
+       into a MachineSet per availability zone, and on a cluster whose only
+       node is the master those MachineSets are permanent empty scaffolding
+       that the console reports as a degraded pool. Compact three-master
+       clusters get the same treatment for the same reason. */}}
+{{- if and .Values.provision.include (eq (include "cluster.isIPI" .) "true") (gt (int .Values.workers.count) 0) }}
+apiVersion: hive.openshift.io/v1
+kind: MachinePool
+metadata:
+  name: {{ .Values.cluster.name }}-worker
+  namespace: {{ .Values.cluster.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  clusterDeploymentRef:
+    name: {{ .Values.cluster.name }}
+  name: worker
+  replicas: {{ .Values.workers.count }}
+  platform:
+    {{- if eq .Values.cluster.platform "vsphere" }}
+    vsphere:
+      cpus: {{ .Values.vsphere.workers.cpus }}
+      coresPerSocket: {{ .Values.vsphere.workers.coresPerSocket }}
+      memoryMB: {{ .Values.vsphere.workers.memoryMB }}
+      osDisk:
+        diskSizeGB: {{ .Values.vsphere.workers.diskGB }}
+    {{- else if eq .Values.cluster.platform "aws" }}
+    aws:
+      rootVolume:
+        iops: 100
+        size: {{ .Values.aws.workers.rootVolume.size }}
+        type: {{ .Values.aws.workers.rootVolume.type }}
+      type: {{ .Values.aws.workers.instanceType }}
+      {{- if .Values.aws.workers.zones }}
+      zones:
+        {{- toYaml .Values.aws.workers.zones | nindent 8 }}
+      {{- end }}
+    {{- end }}
+{{- end }}

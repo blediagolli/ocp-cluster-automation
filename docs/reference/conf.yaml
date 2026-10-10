@@ -1,0 +1,195 @@
+# ── Cluster Identity ──────────────────────────────────────────────────────────
+# Available to all charts as .Values.cluster.*
+
+cluster:
+  # Cluster name — must match the directory name under clusters/<env>/
+  name: example-cluster
+  # Environment — must match a directory under env/ (dev, mgt, prod)
+  environment: dev
+  # API server address — for managed clusters use the ACM cluster-proxy URL;
+  # for the hub use https://kubernetes.default.svc
+  address: "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/example-cluster"
+  # Cluster base domain — used by TLS charts for cert dnsNames
+  baseDomain: example.com
+  # Default storage class — used by charts that need PVCs (etcd-backup, monitoring, etc.)
+  storageClass: gp3-csi
+
+# ── Platform Charts ──────────────────────────────────────────────────────────
+# Charts from charts/platform-config/ — each gets an ArgoCD Application via
+# the cluster-platform-config ApplicationSet. Values come from platform-config.yaml.
+
+platformCharts:
+
+  # ── Critical — enable on every cluster ──
+
+  - chart: tls-certificates          # API server + ingress wildcard certs
+  - chart: openshift-apiserver       # API server config — audit logging, named certificates
+  - chart: openshift-ingress         # Ingress controller — replicas, default cert, endpoint publishing
+  - chart: openshift-proxy           # Cluster-wide proxy and custom CA trust bundle
+  - chart: openshift-oauth           # Identity provider configuration (LDAP, OIDC, HTPasswd)
+  - chart: openshift-image-registry  # Internal registry config (storage backend, routes)
+  - chart: global-pull-secrets       # Pull secrets for external registries
+  - chart: openshift-machine-config  # MachineConfig, KubeletConfig, ContainerRuntimeConfig
+  - chart: acm-managed-cluster       # ManagedCluster resource configuration
+
+  # ── Recommended — enable on most clusters ──
+
+  - chart: etcd-backup               # Automated etcd backup CronJob
+  - chart: etcd-defrag               # Automated etcd defrag with threshold alerting
+  - chart: user-workload-monitoring  # Prometheus monitoring for user workloads
+  - chart: project-request-template  # Default namespace resources (NetworkPolicy, LimitRange, ResourceQuota)
+  - chart: machine-health-checks     # Auto-remediation of unhealthy nodes
+  - chart: image-pruner              # Automatic cleanup of old images in the internal registry
+  - chart: openshift-console         # Console branding, links, and customization
+  - chart: prometheus-rules          # Critical cluster alert rules
+  - chart: alertmanager-config       # Alert routing and notification (Slack, PagerDuty, email)
+  - chart: rbac                      # Cluster RBAC — ClusterRoles, ClusterRoleBindings
+  - chart: openshift-build           # Cluster-wide build defaults
+  - chart: openshift-group-sync      # LDAP/AD group sync CronJob
+
+  # ACM governance policies are not a platform chart. They live in policies/ at
+  # the repo root and reach the hub through the hub-acm-policies ApplicationSet.
+  # See docs/governance/acm-policies.md.
+
+  # ── Nice to Have — enable based on workload needs ──
+
+  - chart: storage-classes           # Custom StorageClass definitions
+  - chart: volume-snapshot-classes   # VolumeSnapshotClass for CSI drivers
+  - chart: openshift-image           # Cluster-wide image configuration (registries, policies)
+  - chart: image-mirror-config       # ImageDigestMirrorSet for registry mirroring
+  - chart: openshift-dns             # DNS configuration (upstream resolvers, node placement)
+  - chart: openshift-scheduler       # Scheduler profile (LowNodeUtilization, HighNodeUtilization)
+  - chart: openshift-marketplace     # Custom CatalogSources
+  - chart: admin-network-policy      # Cluster-scoped network policies (OVN-Kubernetes)
+  - chart: vault-server              # HashiCorp Vault with Raft storage
+
+# ── Operator Charts ──────────────────────────────────────────────────────────
+# Charts from charts/operators/ — each gets an ArgoCD Application via the
+# cluster-operators ApplicationSet, named op-<env>-<cluster>-<chart>.
+#
+# One chart per operator. It installs the operator (Namespace, OperatorGroup,
+# Subscription, at sync waves -30/-29/-28) and renders that operator's custom
+# resources above them, so a CR is never applied before its CRD exists.
+#
+# Values come from up to four optional files, later winning:
+#   env/<env>/operators.yaml              shared, several operators
+#   env/<env>/operators/<chart>.yaml      one operator
+#   clusters/<env>/<cluster>/operators.yaml
+#   clusters/<env>/<cluster>/operators/<chart>.yaml
+# Every chart nests its values under its own name, so a block is identical in
+# both places. For the fields each operator takes, read
+# charts/operators/<chart>/values.yaml — that is the reference now, and it is
+# where this file used to point at docs/reference/operator-instances.yaml.
+#
+# Listing a chart installs the operator and nothing else: every CR keeps its own
+# `include: false` default, so you opt in to operands one at a time.
+
+operatorCharts:
+
+  # ── Critical ──
+
+  - chart: openshift-gitops                # ArgoCD
+  - chart: external-secrets                # External Secrets Operator + its CRs
+
+  # ── Recommended ──
+
+  - chart: advanced-cluster-security       # ACS: Central (hub) and SecuredCluster
+  - chart: compliance                      # CIS/NIST compliance scanning
+  - chart: advanced-cluster-management     # ACM MultiClusterHub + Observability (hub only)
+  - chart: logging                         # Cluster logging + Loki
+  - chart: odf                             # OpenShift Data Foundation (Ceph)
+  - chart: openshift-local-storage         # Local disk provisioning
+  - chart: cert-manager                    # cert-manager + ClusterIssuers
+
+  # ── Nice to Have ──
+
+  - chart: cluster-observability           # COO UIPlugins, MonitoringStacks, ThanosQueriers
+  - chart: gatekeeper                      # OPA Gatekeeper policy admission control
+  - chart: kyverno                         # Kyverno policy admission control
+  - chart: ansible-automation-platform     # AAP Controller + Hub
+  - chart: keycloak                        # Keycloak identity and SSO
+  - chart: quay                            # Quay private container registry
+  - chart: quay-bridge                     # Registers Quay with the cluster's image streams
+  - chart: opentelemetry                   # OpenTelemetry collector
+  - chart: tempo                           # Tempo distributed tracing backend
+  - chart: lvm                             # LVM thin-provisioning (SNO, compact clusters)
+  - chart: metallb                         # Bare-metal load balancer
+  - chart: nmstate                         # Declarative node network config
+  - chart: node-feature-discovery          # Auto-label nodes by hardware features
+  - chart: node-maintenance                # Cordon/drain via NodeMaintenance CRs
+  - chart: openshift-virtualization        # KubeVirt for running VMs
+  - chart: mtv                             # Migration Toolkit for Virtualization
+  - chart: servicemesh3                    # Istio service mesh, sidecar or ambient
+  - chart: trident                         # NetApp Trident CSI
+  - chart: group-sync                      # Group sync from an external IdP
+  - chart: oadp                            # OADP/Velero backup and restore
+  - chart: trusted-artifact-signer         # Sigstore-based artifact signing
+  - chart: cost-management-metrics         # Cost management metrics collector
+  - chart: cost-management-service         # Cost management server side (brings its own CatalogSource)
+  - chart: amq-streams                     # Kafka
+  - chart: cloudnative-pg                  # PostgreSQL
+  - chart: openshift-pipelines             # Tekton
+  - chart: dev-spaces                      # Cloud development environments
+  - chart: developer-hub                   # Backstage
+  - chart: gitlab                          # GitLab
+  - chart: gitlab-runner                   # GitLab CI runners
+  - chart: jfrog                           # JFrog Artifactory
+
+# ── Operator Installation ────────────────────────────────────────────────────
+# Whether the charts above render their Namespace, OperatorGroup and
+# Subscription, or only their custom resources. false means the operators are
+# installed by something other than this repo — an ACM policy, or by hand — and
+# these charts contribute the configuration only.
+
+installOperators: true
+
+# ── Deploy Toggles ───────────────────────────────────────────────────────────
+# Boolean gates that control which ApplicationSets generate Applications for this cluster.
+
+# Whether ArgoCD can actually reach this cluster — true once it is imported and
+# has a cluster secret in openshift-gitops. While false, every ApplicationSet
+# that targets the cluster itself generates nothing for it.
+#
+# This is not an optimisation. An Application whose destination ArgoCD cannot
+# resolve fails the entire ApplicationSet, for every cluster, and surfaces as a
+# Degraded platform-root — so one cluster that is described here but not yet
+# imported takes the fleet's status with it.
+#
+# cluster-import and cluster-provisioning ignore this flag: they run against the
+# hub to bring the cluster into existence. `make validate-clusters` reports when
+# the flag disagrees with the live hub.
+clusterRegistered: true
+
+# Deploy cluster-specific raw manifests from a clusters/<env>/<name>/overlay/ directory
+deployOverlay: false
+
+# Import this cluster into ACM (ManagedCluster + KlusterletAddonConfig)
+deployImport: true
+
+# Provision this cluster via ACM/Hive — enable only for new cluster deployments
+deployProvision: false
+
+# ── Team Onboarding ──────────────────────────────────────────────────────────
+# Teams listed here get ArgoCD AppProjects and namespaces with quotas/policies
+# via the cluster-onboarding-gitops and cluster-onboarding-namespaces ApplicationSets.
+# Team definitions live in teams/<team-name>.yaml.
+#
+# Each entry drives both ApplicationSets. Either half can be switched off per
+# team; absent means on, so a bare `- team: x` gets both. Write false unquoted.
+#
+# Switching a half off is NOT a retirement — it deletes the Application, and
+# preserveResourcesOnDeletion strands whatever that Application owned.
+#
+# Retiring a team is one flag in teams/<team>.yaml: team.quiesce: true prunes
+# the team's ArgoCD and withdraws access while keeping the namespaces and
+# their data. Let it sync, confirm, and only then remove the entry here.
+# Deleting the namespaces for good is a manual step after that -- neither
+# chart will ever render nothing, so neither can delete a tenancy on its own.
+# See charts/onboarding/namespace-config/HANDOFF.md.
+
+teams:
+  - team: team-alpha
+  - team: team-beta
+    applicationGitops: false   # namespaces only — no per-team ArgoCD instance
+  - team: team-gamma
+    namespaceConfig: false     # ArgoCD instance only — no namespaces

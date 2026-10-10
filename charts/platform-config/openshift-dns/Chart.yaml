@@ -1,0 +1,4 @@
+apiVersion: v2
+name: openshift-dns
+description: OpenShift DNS configuration
+version: 0.1.0

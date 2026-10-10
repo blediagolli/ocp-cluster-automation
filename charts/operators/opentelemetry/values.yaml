@@ -1,0 +1,73 @@
+# Whether this chart installs its operator, or only configures one that is
+# already there. Set per cluster in conf.yaml, which every operator
+# Application reads; false drops the Namespace, OperatorGroup and
+# Subscriptions and keeps the CRs. Replaces conf.yaml's deployOperators,
+# which used to switch a whole Application on and off.
+installOperators: true
+
+# All of this chart's values nest under the chart name, so a shared
+# operators.yaml can carry several operators without their `operator:`
+# blocks colliding. A per-operator file uses the identical shape, which is
+# what lets a block move between the two by cut-and-paste.
+#
+# The templates reach them with `index .Values .Chart.Name`, so the chart
+# directory name and this top-level key must stay in step.
+opentelemetry:
+  operator:
+    # --- facts about this operator, not settings ---
+    # Values only so that namespace.yaml, operatorgroup.yaml and
+    # subscription.yaml stay byte-identical across every chart under
+    # charts/operators/. Overriding them per cluster is not meaningful.
+    namespace: openshift-opentelemetry-operator
+    operatorGroup: openshift-opentelemetry-operator
+    package: opentelemetry-product
+    sourceNamespace: openshift-marketplace
+    clusterScoped: true
+    skipNamespace: false
+    skipOperatorGroup: false
+    namespaceLabels: {}
+    namespaceAnnotations: {}
+
+    # --- the parts you actually set ---
+    # No catalogue default was ever recorded for this operator — the old
+    # chart carried a change-me tripwire. The template `required`s it, so
+    # the failure is at render rather than a Subscription that installs
+    # nothing and reports no error.
+    channel: ""
+    source: redhat-operators
+    installPlanApproval: Automatic
+    # Pin to a specific CSV instead of taking the channel head.
+    startingCSV: ""
+
+  # Namespace for the CRs below. Empty inherits operator.namespace.
+  namespace: ""
+  # Only consulted when namespace above differs from operator.namespace.
+  createNamespace: false
+
+  otel:
+    include: false
+    name: otel
+    namespace: istio-system
+    mode: deployment
+    observability:
+      metrics: {}
+    deploymentUpdateStrategy: {}
+    config:
+      exporters:
+        otlp:
+          endpoint: tempo-servicemesh-distributor.tracing-system.svc.cluster.local:4317
+          tls:
+            insecure: true
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:4317
+            http: {}
+      service:
+        pipelines:
+          traces:
+            exporters:
+              - otlp
+            receivers:
+              - otlp

@@ -1,0 +1,24 @@
+# Attests that etcd encryption at rest is switched on, with the expected cipher.
+#
+# APIServer/cluster is a cluster-scoped singleton, so there is deliberately no
+# namespaceSelector on this policy -- one would narrow nothing and only suggest
+# the object were namespaced.
+#
+# The cipher is a hub template, resolved once per target cluster when the policy
+# is propagated. Two tiers: the cluster's own ConfigMap wins, the fleet default
+# fills in. lookup is used for the per-cluster half rather than fromConfigMap
+# because lookup returns an empty result for a cluster that has no ConfigMap,
+# while fromConfigMap raises and takes the whole policy down. See
+# policies/stable/cluster-config-maps.
+#
+# Written by: charts/platform-config/openshift-apiserver.
+apiVersion: config.openshift.io/v1
+kind: APIServer
+metadata:
+  name: cluster
+spec:
+  encryption:
+    type: '{{hub dig "data" "etcdEncryptionType" ""
+      (lookup "v1" "ConfigMap" "open-cluster-management-policies"
+        (printf "policy-config-%s" .ManagedClusterName))
+      | default (fromConfigMap "open-cluster-management-policies" "policy-config" "etcdEncryptionType") hub}}'

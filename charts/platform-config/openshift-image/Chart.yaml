@@ -1,0 +1,4 @@
+apiVersion: v2
+name: openshift-image
+description: Cluster-wide image policy and registry configuration
+version: 0.1.0
