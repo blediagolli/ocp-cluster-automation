@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  namespace: openshift-marketplace
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  containers:
+    - name: test
+      image: registry.redhat.io/openshift4/ose-cli:latest
+      command:
+        - /bin/bash
+        - -c
+        - |
+          set -euo pipefail
+          {{- if .Values.catalogSource.certifiedOperators.include }}
+          echo "--- Checking certified CatalogSource ---"
+          oc get catalogsource {{ .Values.catalogSource.certifiedOperators.name }} -n openshift-marketplace
+          {{- end }}
+          {{- if .Values.catalogSource.communityOperators.include }}
+          echo "--- Checking community CatalogSource ---"
+          oc get catalogsource {{ .Values.catalogSource.communityOperators.name }} -n openshift-marketplace
+          {{- end }}
+          echo "PASSED"

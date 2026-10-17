@@ -1,0 +1,157 @@
+# Whether this chart installs its operator, or only configures one that is
+# already there. Set per cluster in conf.yaml, which every operator
+# Application reads; false drops the Namespace, OperatorGroup and
+# Subscriptions and keeps the CRs. Replaces conf.yaml's deployOperators,
+# which used to switch a whole Application on and off.
+installOperators: true
+
+# All of this chart's values nest under the chart name, so a shared
+# operators.yaml can carry several operators without their `operator:`
+# blocks colliding. A per-operator file uses the identical shape, which is
+# what lets a block move between the two by cut-and-paste.
+#
+# The templates reach them with `index .Values .Chart.Name`, so the chart
+# directory name and this top-level key must stay in step.
+openshift-gitops:
+  operator:
+    # --- facts about this operator, not settings ---
+    # Values only so that namespace.yaml, operatorgroup.yaml and
+    # subscription.yaml stay byte-identical across every chart under
+    # charts/operators/. Overriding them per cluster is not meaningful.
+    namespace: openshift-gitops-operator
+    operatorGroup: openshift-gitops-operator
+    package: openshift-gitops-operator
+    sourceNamespace: openshift-marketplace
+    clusterScoped: true
+    skipNamespace: false
+    skipOperatorGroup: false
+    namespaceLabels: {}
+    namespaceAnnotations: {}
+
+    # --- the parts you actually set ---
+    channel: gitops-1.21
+    source: redhat-operators
+    installPlanApproval: Automatic
+    # Pin to a specific CSV instead of taking the channel head.
+    startingCSV: ""
+
+  # Namespace for the CRs below. Empty inherits operator.namespace.
+  namespace: ""
+  # Only consulted when namespace above differs from operator.namespace.
+  createNamespace: false
+
+  argocd:
+    include: false
+    name: openshift-gitops
+    namespace: openshift-gitops
+    applicationSet:
+      resources:
+        limits:
+          cpu: "2"
+          memory: 1Gi
+        requests:
+          cpu: 250m
+          memory: 512Mi
+    controller:
+      resources:
+        limits:
+          cpu: "2"
+          memory: 6Gi
+        requests:
+          cpu: 250m
+          memory: 1Gi
+    ha:
+      enabled: false
+    rbac:
+      defaultPolicy: role:admin
+      policy: |
+        g, system:cluster-admins, role:admin
+        g, cluster-admins, role:admin
+      scopes: '[groups, preferred_username]'
+    redis:
+      resources:
+        limits:
+          cpu: 500m
+          memory: 256Mi
+        requests:
+          cpu: 250m
+          memory: 128Mi
+    repo:
+      resources:
+        limits:
+          cpu: "1"
+          memory: 1Gi
+        requests:
+          cpu: 250m
+          memory: 256Mi
+
+    # PolicyGenerator ConfigManagementPlugin. Renders the PolicyGenerator
+    # directories under policies/ for the hub-acm-policies ApplicationSet.
+    #
+    # Hub-only: the plugin exists to turn policies/ into ACM Policy CRs, and
+    # only the ACM hub has anywhere to put them. Leaving it off elsewhere also
+    # avoids pulling the ACM image onto clusters that have no ACM.
+    #
+    # This must stay consistent with
+    # clusters/mgt/acm-hub/bootstrap/openshift-gitops/instance/, which carries
+    # the same CMP for the hand-applied bootstrap path. Two copies exist because
+    # bootstrap runs before this chart can; if they diverge, flipping
+    # argocd.include silently removes the sidecar and every policy Application
+    # starts failing with ComparisonError.
+    policyGenerator:
+      include: false
+      # Digest-pinned, because an exec plugin whose binary silently changes
+      # under you is worse than one that fails to start. Refresh after an ACM
+      # or GitOps upgrade:
+      #   oc get deploy -n open-cluster-management multicluster-operators-hub-subscription \
+      #     -o jsonpath='{.spec.template.spec.containers[0].image}'
+      #   oc get deploy -n openshift-gitops openshift-gitops-repo-server \
+      #     -o jsonpath='{.spec.template.spec.containers[0].image}'
+      # The sidecar image must track the repo-server: it runs that image's
+      # argocd-cmp-server binary.
+      acmImage: registry.redhat.io/rhacm2/multicluster-operators-subscription-rhel9@sha256:d7641848278a3e3e77b863a56ae9c5753c5211cd0c331441ab93ccf7a47127b0
+      sidecarImage: registry.redhat.io/openshift-gitops-1/argocd-rhel9@sha256:17e904f4722c8de639278a97aad598a878fa1fd284b68f0740b6e3d6b8643e25
+      # The sidecar runs the render, not the repo-server. Unbounded it competes
+      # with the repo-server and renders time out when the ApplicationSet fans out.
+      resources:
+        limits:
+          cpu: "1"
+          memory: 1Gi
+        requests:
+          cpu: 250m
+          memory: 256Mi
+    resourceExclusions: |
+      - apiGroups:
+        - tekton.dev
+        clusters:
+        - '*'
+        kinds:
+        - TaskRun
+        - PipelineRun
+    server:
+      autoscale:
+        enabled: false
+      route:
+        enabled: true
+      resources:
+        limits:
+          cpu: "1"
+          memory: 1Gi
+        requests:
+          cpu: 125m
+          memory: 128Mi
+
+  clusterRoleBinding:
+    include: false
+
+  appProject:
+    include: false
+    name: platform
+    description: Provisioning, cluster configuration, and operator management
+    sourceRepos:
+      - git@github.com:YOUR_ORG/ocp-cluster-automation.git
+
+  consolePlugin:
+    include: false
+    plugins:
+      - gitops-plugin

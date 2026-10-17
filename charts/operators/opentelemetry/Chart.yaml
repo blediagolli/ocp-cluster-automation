@@ -1,0 +1,7 @@
+apiVersion: v2
+name: opentelemetry
+description: opentelemetry — operator subscription and openTelemetry Collector instance
+version: 0.1.0
+annotations:
+  oca.io/target: spoke
+  oca.io/maturity: incubating

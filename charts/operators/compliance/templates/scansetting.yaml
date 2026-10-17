@@ -1,0 +1,35 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.scanSetting.include }}
+apiVersion: compliance.openshift.io/v1alpha1
+kind: ScanSetting
+metadata:
+  name: {{ $v.scanSetting.name }}
+  namespace: {{ include "operator.crNamespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    {{- /* On a cluster that has never had compliance-operator this CRD does
+           not exist when ArgoCD computes the diff, and the whole Application
+           fails comparison with `no matches for kind "ScanSetting"` before
+           any wave runs — waves order the apply, not the dry-run. Skipping
+           the dry-run for this resource lets comparison succeed; the wave -28
+           Subscription then guarantees the CRD is registered by the time
+           wave 0 is actually applied. */}}
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+{{- /* ScanSetting has no spec: — every field below is top level on the
+       object, which is why this reads unlike every other CR in the repo. */}}
+autoApplyRemediations: {{ $v.scanSetting.autoApplyRemediations }}
+rawResultStorage:
+  pvAccessModes:
+    {{- toYaml $v.scanSetting.rawResultStorage.pvAccessModes | nindent 4 }}
+  rotation: {{ $v.scanSetting.rawResultStorage.rotation }}
+  size: {{ $v.scanSetting.rawResultStorage.size }}
+  tolerations:
+    {{- toYaml $v.scanSetting.rawResultStorage.tolerations | nindent 4 }}
+roles:
+  {{- toYaml $v.scanSetting.roles | nindent 2 }}
+scanTolerations:
+  {{- toYaml $v.scanSetting.scanTolerations | nindent 2 }}
+schedule: {{ $v.scanSetting.schedule | quote }}
+showNotApplicable: {{ $v.scanSetting.showNotApplicable }}
+strictNodeScan: {{ $v.scanSetting.strictNodeScan }}
+{{- end }}

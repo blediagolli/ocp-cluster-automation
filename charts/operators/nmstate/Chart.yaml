@@ -1,0 +1,7 @@
+apiVersion: v2
+name: nmstate
+description: nmstate — operator subscription and nMState instance
+version: 0.1.0
+annotations:
+  oca.io/target: spoke
+  oca.io/maturity: incubating

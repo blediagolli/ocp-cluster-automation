@@ -1,0 +1,44 @@
+{{- if .Values.userWorkloadMonitoring.include }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-monitoring-config
+  namespace: openshift-monitoring
+data:
+  config.yaml: |
+    enableUserWorkload: true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-workload-monitoring-config
+  namespace: openshift-user-workload-monitoring
+data:
+  config.yaml: |
+    prometheus:
+      retention: {{ .Values.userWorkloadMonitoring.prometheus.retention }}
+      {{- $sc := .Values.userWorkloadMonitoring.prometheus.storageClass | default .Values.cluster.storageClass }}
+      {{- if $sc }}
+      volumeClaimTemplate:
+        spec:
+          storageClassName: {{ $sc }}
+          resources:
+            requests:
+              storage: {{ .Values.userWorkloadMonitoring.prometheus.pvcSize }}
+      {{- end }}
+      resources:
+        {{- .Values.userWorkloadMonitoring.prometheus.resources | toYaml | nindent 8 }}
+      {{- if .Values.userWorkloadMonitoring.remoteWrite }}
+      remoteWrite:
+        {{- .Values.userWorkloadMonitoring.remoteWrite | toYaml | nindent 8 }}
+      {{- end }}
+    {{- if .Values.userWorkloadMonitoring.thanosRuler.enabled }}
+    thanosRuler:
+      resources:
+        {{- .Values.userWorkloadMonitoring.thanosRuler.resources | toYaml | nindent 8 }}
+    {{- end }}
+    {{- if .Values.userWorkloadMonitoring.alertmanager.enabled }}
+    alertmanager:
+      enabled: true
+    {{- end }}
+{{- end }}

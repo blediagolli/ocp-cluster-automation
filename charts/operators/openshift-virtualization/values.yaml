@@ -1,0 +1,53 @@
+# Whether this chart installs its operator, or only configures one that is
+# already there. Set per cluster in conf.yaml, which every operator
+# Application reads; false drops the Namespace, OperatorGroup and
+# Subscriptions and keeps the CRs. Replaces conf.yaml's deployOperators,
+# which used to switch a whole Application on and off.
+installOperators: true
+
+# All of this chart's values nest under the chart name, so a shared
+# operators.yaml can carry several operators without their `operator:`
+# blocks colliding. A per-operator file uses the identical shape, which is
+# what lets a block move between the two by cut-and-paste.
+#
+# The templates reach them with `index .Values .Chart.Name`, so the chart
+# directory name and this top-level key must stay in step.
+openshift-virtualization:
+  operator:
+    # --- facts about this operator, not settings ---
+    # Values only so that namespace.yaml, operatorgroup.yaml and
+    # subscription.yaml stay byte-identical across every chart under
+    # charts/operators/. Overriding them per cluster is not meaningful.
+    namespace: openshift-cnv
+    operatorGroup: openshift-cnv
+    package: kubevirt-hyperconverged
+    sourceNamespace: openshift-marketplace
+    # Does not support the AllNamespaces install mode: a global OperatorGroup
+    # leaves the CSV Failed with UnsupportedOperatorGroup. Hence a dedicated
+    # namespace and a targetNamespaces OperatorGroup.
+    clusterScoped: false
+    skipNamespace: false
+    skipOperatorGroup: false
+    namespaceLabels: {}
+    namespaceAnnotations: {}
+
+    # --- the parts you actually set ---
+    channel: stable
+    source: redhat-operators
+    installPlanApproval: Automatic
+    # Pin to a specific CSV instead of taking the channel head.
+    startingCSV: ""
+
+  # Namespace for the CRs below. Empty inherits operator.namespace.
+  namespace: ""
+  # Only consulted when namespace above differs from operator.namespace.
+  createNamespace: false
+
+  hyperConverged:
+    include: false
+    name: kubevirt-hyperconverged
+    namespace: openshift-cnv
+    liveMigration:
+      parallelMigrationsPerCluster: 5
+      parallelOutboundMigrationsPerNode: 2
+    vmiCPUAllocationRatio: 10

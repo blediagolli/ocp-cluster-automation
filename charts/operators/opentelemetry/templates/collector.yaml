@@ -1,0 +1,32 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.otel.include }}
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: {{ $v.otel.name }}
+  namespace: {{ $v.otel.namespace }}
+spec:
+  mode: {{ $v.otel.mode }}
+  observability:
+    metrics: {}
+  deploymentUpdateStrategy: {}
+  config: |
+    exporters:
+      otlp:
+        endpoint: {{ $v.otel.config.exporters.otlp.endpoint }}
+        tls:
+          insecure: true
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: {{ $v.otel.config.receivers.otlp.protocols.grpc.endpoint | quote }}
+          http: {}
+    service:
+      pipelines:
+        traces:
+          exporters:
+            - otlp
+          receivers:
+            - otlp
+{{- end }}

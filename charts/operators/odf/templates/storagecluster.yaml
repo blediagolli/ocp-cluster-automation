@@ -1,0 +1,41 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.storageCluster.include }}
+apiVersion: ocs.openshift.io/v1
+kind: StorageCluster
+metadata:
+  name: {{ $v.storageCluster.name }}
+  namespace: {{ $v.storageCluster.namespace }}
+spec:
+  storageDeviceSets:
+    - name: ocs-deviceset
+      count: {{ $v.storageCluster.deviceSets.count }}
+      replica: {{ $v.storageCluster.deviceSets.replicas }}
+      dataPVCTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: {{ $v.storageCluster.deviceSets.storageSize }}
+          storageClassName: {{ $v.storageCluster.deviceSets.storageClassName }}
+          volumeMode: Block
+      portable: true
+  encryption:
+    clusterWide: {{ $v.storageCluster.encryption.clusterWide }}
+    enable: true
+    kms: {}
+    keyRotation:
+      # Must be a valid CronJob schedule: five fields or an "@" macro. A bare
+      # "weekly" is accepted by the StorageCluster CRD and only rejected later,
+      # when rook builds the OSD key-rotation CronJob — which aborts the whole
+      # OSD reconcile, so device classes never populate and the StorageCluster
+      # sits in Progressing forever with Ceph itself reporting HEALTH_OK.
+      schedule: {{ $v.storageCluster.encryption.keyRotationSchedule | quote }}
+  resourceProfile: {{ $v.storageCluster.resourceProfile }}
+  {{- with $v.storageCluster.labelSelector }}
+  labelSelector:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  multiCloudGateway:
+    reconcileStrategy: manage
+{{- end }}

@@ -1,0 +1,7 @@
+apiVersion: v2
+name: group-sync
+description: group-sync — operator subscription and groupSync CR for the group-sync-operator (redhat-cop)
+version: 0.1.0
+annotations:
+  oca.io/target: spoke
+  oca.io/maturity: incubating

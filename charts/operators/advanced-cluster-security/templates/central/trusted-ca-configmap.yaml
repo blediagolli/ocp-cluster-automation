@@ -1,0 +1,10 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.trustedCA.include }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $v.trustedCA.name }}
+  namespace: {{ $v.central.namespace }}
+  labels:
+    config.openshift.io/inject-trusted-cabundle: "true"
+{{- end }}

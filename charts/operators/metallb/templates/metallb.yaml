@@ -1,0 +1,9 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.metallb.include }}
+apiVersion: metallb.io/v1beta1
+kind: MetalLB
+metadata:
+  name: {{ $v.metallb.name }}
+  namespace: {{ $v.metallb.namespace }}
+spec: {}
+{{- end }}

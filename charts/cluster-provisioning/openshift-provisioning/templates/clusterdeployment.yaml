@@ -1,0 +1,120 @@
+{{- if .Values.provision.include }}
+{{- /* Platform before topology: validateTopology's single-node branch does
+       `index .Values .Values.cluster.platform`, which on an unrecognised
+       platform reports a nil dereference rather than the name you mistyped. */}}
+{{- include "cluster.validatePlatform" . }}
+{{- include "cluster.validateTopology" . }}
+apiVersion: hive.openshift.io/v1
+kind: ClusterDeployment
+metadata:
+  name: {{ .Values.cluster.name }}
+  namespace: {{ .Values.cluster.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    cloud: {{ include "cluster.cloudLabel" . }}
+    vendor: OpenShift
+    hive.openshift.io/cluster-platform: {{ include "cluster.platformLabel" . }}
+    cluster.open-cluster-management.io/clusterset: {{ .Values.cluster.clusterSet }}
+spec:
+  baseDomain: {{ .Values.cluster.baseDomain }}
+  clusterName: {{ .Values.cluster.name }}
+  controlPlaneConfig:
+    servingCertificates: {}
+  {{- if eq (include "cluster.isAgent" .) "true" }}
+  installed: false
+  {{- else }}
+  installAttemptsLimit: 1
+  {{- end }}
+  {{- if eq .Values.cluster.platform "vsphere" }}
+  platform:
+    vsphere:
+      cluster: {{ .Values.vsphere.cluster }}
+      certificatesSecretRef:
+        name: {{ .Values.cluster.name }}-vsphere-certs
+      credentialsSecretRef:
+        name: {{ .Values.cluster.name }}-vsphere-creds
+      vCenter: {{ .Values.vsphere.vcenter }}
+      datacenter: {{ .Values.vsphere.datacenter }}
+      defaultDatastore: {{ .Values.vsphere.datastore }}
+      network: {{ .Values.vsphere.network }}
+  {{- else if eq .Values.cluster.platform "aws" }}
+  platform:
+    aws:
+      credentialsSecretRef:
+        name: {{ .Values.cluster.name }}-aws-creds
+      region: {{ .Values.aws.region }}
+  {{- else if eq .Values.cluster.platform "gcp" }}
+  platform:
+    gcp:
+      {{- /* No projectID here, unlike install-config: Hive reads the project
+             out of the service account JSON and spec.platform.gcp has no
+             field for it. The asymmetry looks like an omission and is not —
+             naming a project that disagrees with the key is caught by the
+             installer, which is why install-config asks for it explicitly. */}}
+      credentialsSecretRef:
+        name: {{ .Values.cluster.name }}-gcp-creds
+      region: {{ .Values.gcp.region }}
+  {{- else if eq .Values.cluster.platform "azure" }}
+  platform:
+    azure:
+      {{- /* The exact inverse of the GCP branch above, so read them together
+             before assuming either is a mistake. GCP's projectID lives in
+             install-config only; Azure's baseDomainResourceGroupName has to
+             be in both places. Hive does not parse it out of install-config:
+             it uses this copy to find the public DNS zone when it reconciles
+             records and again when it deprovisions. Omit it here and the
+             install still succeeds -- the installer has its own copy -- while
+             Hive reports DNSNotReady against a resource group it was never
+             told about. */}}
+      baseDomainResourceGroupName: {{ required "azure.baseDomainResourceGroupName is required for an Azure IPI cluster" .Values.azure.baseDomainResourceGroupName }}
+      credentialsSecretRef:
+        name: {{ .Values.cluster.name }}-azure-creds
+      region: {{ .Values.azure.region }}
+      {{- /* Omitted entirely rather than defaulted to AzurePublicCloud. Hive
+             defaults it to the same value, and an explicit cloudName is the
+             field that has to change for Government and operator-owned
+             clouds, so leaving it unset keeps the sovereign-cloud case a
+             values edit rather than a template edit. */}}
+      {{- if .Values.azure.cloudName }}
+      cloudName: {{ .Values.azure.cloudName }}
+      {{- end }}
+  {{- else if eq (include "cluster.isAgent" .) "true" }}
+  platform:
+    agentBareMetal:
+      agentSelector:
+        matchLabels:
+          cluster-name: {{ .Values.cluster.name }}
+  clusterInstallRef:
+    group: extensions.hive.openshift.io
+    kind: AgentClusterInstall
+    name: {{ .Values.cluster.name }}
+    version: v1beta1
+  {{- end }}
+  {{- /* Deliberately no trailing else. validatePlatform has already rejected
+         anything that is neither IPI nor agent, so the only way to reach the
+         end of that chain is to add a platform to cluster.isIPI without
+         giving it a branch here — and then the ClusterDeployment renders
+         with no platform at all, which Hive rejects outright. That is the
+         failure we want; the bare else this replaced instead handed the new
+         platform a bare-metal install it would never complete. */}}
+  {{- if eq (include "cluster.isIPI" .) "true" }}
+  provisioning:
+    installConfigSecretRef:
+      name: {{ .Values.cluster.name }}-install-config
+    sshPrivateKeySecretRef:
+      name: {{ .Values.cluster.name }}-ssh-private-key
+    imageSetRef:
+      name: {{ .Values.cluster.imageSetRef }}
+    {{- if or .Values.imageContentSources.enabled .Values.customManifests.enabled }}
+    manifestsConfigMapRef:
+      {{- if .Values.customManifests.enabled }}
+      name: {{ .Values.cluster.name }}-custom-manifests
+      {{- else }}
+      name: {{ .Values.cluster.name }}-image-content-sources
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  pullSecretRef:
+    name: {{ .Values.cluster.name }}-pull-secret
+{{- end }}

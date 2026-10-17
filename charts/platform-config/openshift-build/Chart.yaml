@@ -1,0 +1,7 @@
+apiVersion: v2
+name: openshift-build
+description: Cluster-wide build defaults and overrides
+version: 0.1.0
+annotations:
+  oca.io/target: spoke
+  oca.io/maturity: incubating

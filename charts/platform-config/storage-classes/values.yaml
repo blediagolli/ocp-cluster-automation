@@ -1,0 +1,30 @@
+storageClasses:
+  include: false
+  classes:
+    - name: fast-ssd
+      include: false
+      provisioner: kubernetes.io/aws-ebs
+      reclaimPolicy: Delete
+      volumeBindingMode: WaitForFirstConsumer
+      allowVolumeExpansion: true
+      parameters:
+        type: gp3
+        iops: "3000"
+        throughput: "125"
+        encrypted: "true"
+    - name: standard
+      include: false
+      provisioner: kubernetes.io/aws-ebs
+      reclaimPolicy: Delete
+      volumeBindingMode: WaitForFirstConsumer
+      allowVolumeExpansion: true
+      parameters:
+        type: gp3
+    - name: archival
+      include: false
+      provisioner: kubernetes.io/aws-ebs
+      reclaimPolicy: Retain
+      volumeBindingMode: WaitForFirstConsumer
+      allowVolumeExpansion: true
+      parameters:
+        type: sc1

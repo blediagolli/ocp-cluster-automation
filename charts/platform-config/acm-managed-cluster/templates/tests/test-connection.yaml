@@ -1,0 +1,39 @@
+{{- if .Values.managedCluster.include }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  containers:
+    - name: test
+      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+          APISERVER=https://kubernetes.default.svc
+          CA=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          CLUSTER="{{ .Values.cluster.name }}"
+
+          echo "--- Checking ManagedCluster ---"
+          MC=$(curl -s --cacert $CA -H "Authorization: Bearer $TOKEN" \
+            "$APISERVER/apis/cluster.open-cluster-management.io/v1/managedclusters/$CLUSTER")
+          JOINED=$(echo "$MC" | grep -o '"type":"ManagedClusterJoined"' || true)
+          AVAILABLE=$(echo "$MC" | grep -o '"type":"ManagedClusterConditionAvailable"' || true)
+          echo "  Joined: ${JOINED:-not found}"
+          echo "  Available: ${AVAILABLE:-not found}"
+          if [ -z "$JOINED" ]; then echo "FAIL: ManagedCluster not joined"; exit 1; fi
+
+          echo "--- Checking ManagedClusterAddOns ---"
+          ADDONS=$(curl -s --cacert $CA -H "Authorization: Bearer $TOKEN" \
+            "$APISERVER/apis/addon.open-cluster-management.io/v1beta1/namespaces/$CLUSTER/managedclusteraddons")
+          ADDON_COUNT=$(echo "$ADDONS" | grep -c '"kind":"ManagedClusterAddOn"' || true)
+          echo "  AddOns found: $ADDON_COUNT"
+
+          echo "PASS: ManagedCluster $CLUSTER is joined and available"
+{{- end }}

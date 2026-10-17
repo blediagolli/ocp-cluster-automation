@@ -1,0 +1,19 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.gatekeeper.include }}
+apiVersion: operator.gatekeeper.sh/v1alpha1
+kind: Gatekeeper
+metadata:
+  name: {{ $v.gatekeeper.name }}
+  namespace: {{ $v.gatekeeper.namespace }}
+spec:
+  audit:
+    auditChunkSize: {{ $v.gatekeeper.audit.auditChunkSize }}
+    logLevel: {{ $v.gatekeeper.audit.logLevel }}
+    replicas: {{ $v.gatekeeper.audit.replicas }}
+  validatingWebhook: {{ $v.gatekeeper.validatingWebhook }}
+  mutatingWebhook: {{ $v.gatekeeper.mutatingWebhook }}
+  webhook:
+    emitAdmissionEvents: {{ $v.gatekeeper.webhook.emitAdmissionEvents }}
+    logLevel: {{ $v.gatekeeper.webhook.logLevel }}
+    replicas: {{ $v.gatekeeper.webhook.replicas }}
+{{- end }}

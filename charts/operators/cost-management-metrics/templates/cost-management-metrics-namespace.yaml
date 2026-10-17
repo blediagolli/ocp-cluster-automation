@@ -1,0 +1,7 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if and $v.costManagementMetrics.include $v.costManagementMetrics.createNamespace }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $v.costManagementMetrics.namespace }}
+{{- end }}

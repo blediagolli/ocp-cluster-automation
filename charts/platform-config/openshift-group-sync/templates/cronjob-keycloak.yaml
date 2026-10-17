@@ -1,0 +1,145 @@
+{{- if and .Values.groupSync.include (eq .Values.groupSync.provider "keycloak") }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-group-sync-script
+  namespace: {{ .Values.groupSync.namespace }}
+data:
+  sync.sh: |
+    #!/bin/bash
+    set -euo pipefail
+
+    KEYCLOAK_URL="{{ .Values.groupSync.keycloak.url }}"
+    REALM="{{ .Values.groupSync.keycloak.realm }}"
+    CLIENT_ID=$(cat /etc/credentials/client-id)
+    CLIENT_SECRET=$(cat /etc/credentials/client-secret)
+
+    {{- if .Values.groupSync.keycloak.insecure }}
+    CURL_OPTS="-sk"
+    {{- else if and .Values.groupSync.keycloak.caConfigMapName (ne .Values.groupSync.keycloak.caConfigMapName "") }}
+    CURL_OPTS="-s --cacert /etc/ca/ca.crt"
+    {{- else }}
+    CURL_OPTS="-s"
+    {{- end }}
+
+    echo "Obtaining access token..."
+    TOKEN=$(curl ${CURL_OPTS} -X POST \
+      "${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/token" \
+      -d "grant_type=client_credentials" \
+      -d "client_id=${CLIENT_ID}" \
+      -d "client_secret=${CLIENT_SECRET}" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+    if [ -z "${TOKEN}" ]; then
+      echo "ERROR: Failed to obtain access token"
+      exit 1
+    fi
+
+    API="${KEYCLOAK_URL}/admin/realms/${REALM}"
+
+    echo "Fetching groups from Keycloak realm '${REALM}'..."
+    GROUPS=$(curl ${CURL_OPTS} -H "Authorization: Bearer ${TOKEN}" "${API}/groups?briefRepresentation=false")
+
+    {{- if .Values.groupSync.keycloak.groupMappings }}
+    declare -A GROUP_MAP
+    {{- range .Values.groupSync.keycloak.groupMappings }}
+    GROUP_MAP[{{ .keycloakGroup | quote }}]={{ .openshiftGroup | quote }}
+    {{- end }}
+    {{- end }}
+
+    echo "${GROUPS}" | python3 -c "
+    import sys, json
+
+    groups = json.load(sys.stdin)
+
+    def flatten(groups, prefix=''):
+        result = []
+        for g in groups:
+            name = g['name']
+            result.append({'id': g['id'], 'name': name, 'path': g.get('path', '/' + name)})
+            if 'subGroups' in g and g['subGroups']:
+                result.extend(flatten(g['subGroups'], name + '/'))
+        return result
+
+    for g in flatten(groups):
+        print(f\"{g['id']}|{g['name']}\")
+    " | while IFS='|' read -r GROUP_ID GROUP_NAME; do
+      {{- if .Values.groupSync.keycloak.groupMappings }}
+      OCP_GROUP="${GROUP_MAP[${GROUP_NAME}]:-}"
+      if [ -z "${OCP_GROUP}" ]; then
+        echo "Skipping unmapped group: ${GROUP_NAME}"
+        continue
+      fi
+      {{- else }}
+      OCP_GROUP="${GROUP_NAME}"
+      {{- end }}
+
+      echo "Syncing group: ${GROUP_NAME} -> ${OCP_GROUP}"
+
+      MEMBERS=$(curl ${CURL_OPTS} -H "Authorization: Bearer ${TOKEN}" \
+        "${API}/groups/${GROUP_ID}/members?max=1000" | \
+        python3 -c "import sys,json; [print(u['username']) for u in json.load(sys.stdin)]")
+
+      if oc get group "${OCP_GROUP}" &>/dev/null; then
+        EXISTING=$(oc get group "${OCP_GROUP}" -o jsonpath='{.users[*]}')
+        oc patch group "${OCP_GROUP}" --type=merge -p "{\"users\": []}" 2>/dev/null || true
+      else
+        oc adm groups new "${OCP_GROUP}" 2>/dev/null || true
+      fi
+
+      for USER in ${MEMBERS}; do
+        oc adm groups add-users "${OCP_GROUP}" "${USER}" 2>/dev/null || true
+        echo "  Added user: ${USER}"
+      done
+    done
+
+    echo "Group sync complete."
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: keycloak-group-sync
+  namespace: {{ .Values.groupSync.namespace }}
+spec:
+  schedule: {{ .Values.groupSync.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: {{ .Values.groupSync.serviceAccountName }}
+          restartPolicy: OnFailure
+          containers:
+            - name: keycloak-group-sync
+              image: {{ .Values.groupSync.image }}
+              command:
+                - /bin/bash
+                - /scripts/sync.sh
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+                  readOnly: true
+                - name: credentials
+                  mountPath: /etc/credentials
+                  readOnly: true
+                {{- if and .Values.groupSync.keycloak.caConfigMapName (ne .Values.groupSync.keycloak.caConfigMapName "") }}
+                - name: keycloak-ca
+                  mountPath: /etc/ca
+                  readOnly: true
+                {{- end }}
+          volumes:
+            - name: script
+              configMap:
+                name: keycloak-group-sync-script
+                defaultMode: 0755
+            - name: credentials
+              secret:
+                secretName: {{ .Values.groupSync.keycloak.credentialsSecretName }}
+            {{- if and .Values.groupSync.keycloak.caConfigMapName (ne .Values.groupSync.keycloak.caConfigMapName "") }}
+            - name: keycloak-ca
+              configMap:
+                name: {{ .Values.groupSync.keycloak.caConfigMapName }}
+            {{- end }}
+{{- end }}

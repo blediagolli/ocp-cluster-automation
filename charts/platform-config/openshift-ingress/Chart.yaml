@@ -1,0 +1,16 @@
+apiVersion: v2
+name: openshift-ingress
+description: OpenShift Ingress Controller configuration
+version: 0.1.0
+annotations:
+  oca.io/target: spoke
+  # Re-proven on acm-hub 2026-10-13. It had been demoted when sno-dev was
+  # destroyed on 2026-10-12 and this chart had nowhere it was running.
+  #
+  # What was actually verified, not just that the Application went Healthy:
+  # console-openshift-console.apps.<domain>:443 presents a certificate issued by
+  # `O=Let's Encrypt, CN=YE1` rather than the installer's
+  # `CN=ingress-operator@...`. That is the one field this chart asserts
+  # (defaultCertificate on the default IngressController) reaching the thing it
+  # is supposed to affect.
+  oca.io/maturity: incubating

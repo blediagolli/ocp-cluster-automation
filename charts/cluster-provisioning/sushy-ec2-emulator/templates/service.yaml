@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sushy-ec2
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: sushy-ec2-emulator
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: sushy-ec2-tls
+spec:
+  ports:
+    - name: redfish
+      port: 8000
+      targetPort: 8000
+  selector:
+    app: sushy-ec2-emulator

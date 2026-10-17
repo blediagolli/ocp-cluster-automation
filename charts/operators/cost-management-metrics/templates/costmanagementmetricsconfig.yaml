@@ -1,0 +1,43 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.costManagementMetrics.include }}
+{{- $cm := $v.costManagementMetrics }}
+{{- if not $cm.apiUrl }}
+{{- fail "costManagementMetrics.apiUrl is required when costManagementMetrics.include is true — set it to the HTTPS origin of the cost management gateway (no path), e.g. https://cost-onprem-gateway-cost-onprem.apps.<cluster>." }}
+{{- end }}
+{{- if and (eq $cm.authentication.type "service-account") (not $cm.authentication.tokenUrl) }}
+{{- fail "costManagementMetrics.authentication.tokenUrl is required when authentication.type is service-account — set it to the Keycloak token endpoint, e.g. https://sso.<domain>/realms/kubernetes/protocol/openid-connect/token." }}
+{{- end }}
+apiVersion: costmanagement-metrics-cfg.openshift.io/v1beta1
+kind: CostManagementMetricsConfig
+metadata:
+  name: {{ $cm.name }}
+  namespace: {{ $cm.namespace }}
+spec:
+  api_url: {{ $cm.apiUrl | quote }}
+  authentication:
+    type: {{ $cm.authentication.type }}
+    {{- if eq $cm.authentication.type "service-account" }}
+    token_url: {{ $cm.authentication.tokenUrl | quote }}
+    secret_name: {{ $cm.authentication.secretName }}
+    {{- end }}
+  packaging:
+    max_reports_to_store: {{ $cm.packaging.maxReportsToStore }}
+    max_size_MB: {{ $cm.packaging.maxSizeMB }}
+  prometheus_config:
+    collect_previous_data: {{ $cm.prometheusConfig.collectPreviousData }}
+    context_timeout: {{ $cm.prometheusConfig.contextTimeout }}
+    disable_metrics_collection_cost_management: {{ $cm.prometheusConfig.disableMetricsCollectionCostManagement }}
+    disable_metrics_collection_resource_optimization: {{ $cm.prometheusConfig.disableMetricsCollectionResourceOptimization }}
+    service_address: {{ $cm.prometheusConfig.serviceAddress | quote }}
+    skip_tls_verification: {{ $cm.prometheusConfig.skipTlsVerification }}
+  source:
+    name: {{ $cm.source.name | default .Values.cluster.name | quote }}
+    create_source: {{ $cm.source.createSource }}
+    check_cycle: {{ $cm.source.checkCycle }}
+    sources_path: {{ $cm.source.sourcesPath | quote }}
+  upload:
+    ingress_path: {{ $cm.upload.ingressPath | quote }}
+    upload_cycle: {{ $cm.upload.uploadCycle }}
+    upload_toggle: {{ $cm.upload.uploadToggle }}
+    validate_cert: {{ $cm.upload.validateCert }}
+{{- end }}

@@ -1,0 +1,8 @@
+# Environment-level defaults shared by every cluster in this environment.
+# Precedence: chart defaults < env/<env>/platform-config.yaml < clusters/<env>/<cluster>/platform-config.yaml
+#
+# Intentionally empty. This repository ships the structure, not the
+# configuration — fill in what your environment needs.
+#
+# See docs/reference/platform-config.yaml for every supported field.
+{}

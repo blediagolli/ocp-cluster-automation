@@ -1,0 +1,7 @@
+# The marker file the hub-acm-policies ApplicationSet globs for, and the entry
+# point the CMP's `kustomize build` uses. PolicyGenerator runs as a generator
+# plugin, which is why the render needs --enable-alpha-plugins.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+generators:
+  - policy-generator-config.yaml

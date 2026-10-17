@@ -1,0 +1,42 @@
+{{- /*
+Fences the team's ArgoCD to its own repo and its own namespaces. This is the
+only thing stopping a team's Application from targeting kube-system, so an
+over-broad destination here is not a cosmetic problem.
+
+namespaceResourceWhitelist stays '*'/'*' on purpose. Enforcement lives in the
+ArgoCD instance's own ServiceAccount RBAC, which the gitops-operator writes
+from the argocd.argoproj.io/managed-by label namespace-config puts on each
+tenant namespace. Duplicating the list here would give two places to tighten
+and one of them would drift.
+*/ -}}
+{{- include "onboarding.validate" . }}
+{{- if not (include "onboarding.quiescing" .) }}
+{{- $namespaces := include "onboarding.namespaces" . | fromYamlArray }}
+{{- $gitops := include "onboarding.teamGitops" . }}
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: {{ .Values.team.name }}
+  namespace: {{ $gitops }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    {{- include "onboarding.labels" . | nindent 4 }}
+    app.kubernetes.io/component: appproject
+spec:
+  sourceRepos:
+    {{- include "onboarding.repos" . | nindent 4 }}
+  destinations:
+    {{- range $server := .Values.argocd.destinations }}
+    - namespace: {{ $gitops }}
+      server: {{ $server.server }}
+    {{- range $ns := $namespaces }}
+    - namespace: {{ $ns.name }}
+      server: {{ $server.server }}
+    {{- end }}
+    {{- end }}
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+{{- end }}

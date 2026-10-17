@@ -1,0 +1,48 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.assistedService.include }}
+# AgentServiceConfig's CRD arrives with MultiClusterHub, so it is absent on a
+# first sync. See gitops-cluster.yaml for why the sync-wave alone does not
+# cover that and SkipDryRunOnMissingResource is needed. The ConfigMap below
+# needs no such treatment, but its namespace (multicluster-engine) is also
+# MCH-created, which the wave does handle.
+apiVersion: agent-install.openshift.io/v1beta1
+kind: AgentServiceConfig
+metadata:
+  name: agent
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  databaseStorage:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: {{ $v.assistedService.databaseStorage }}
+  filesystemStorage:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: {{ $v.assistedService.filesystemStorage }}
+  imageStorage:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: {{ $v.assistedService.imageStorage }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: assisted-service-config
+  namespace: multicluster-engine
+  labels:
+    app: assisted-service
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+data:
+  LOG_LEVEL: {{ $v.assistedService.logLevel }}
+  ISO_IMAGE_TYPE: {{ $v.assistedService.isoImageType }}
+  DISABLED_HOST_VALIDATIONS: ""
+{{- end }}

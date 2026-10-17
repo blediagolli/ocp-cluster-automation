@@ -1,0 +1,98 @@
+{{- /* No worker pool when there are no workers. A MachinePool with replicas:
+       0 is not harmless on single-node OpenShift: Hive still reconciles it
+       into a MachineSet per availability zone, and on a cluster whose only
+       node is the master those MachineSets are permanent empty scaffolding
+       that the console reports as a degraded pool. Compact three-master
+       clusters get the same treatment for the same reason. */}}
+{{- if and .Values.provision.include (eq (include "cluster.isIPI" .) "true") (gt (int .Values.workers.count) 0) }}
+apiVersion: hive.openshift.io/v1
+kind: MachinePool
+metadata:
+  name: {{ .Values.cluster.name }}-worker
+  namespace: {{ .Values.cluster.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  clusterDeploymentRef:
+    name: {{ .Values.cluster.name }}
+  name: worker
+  replicas: {{ .Values.workers.count }}
+  platform:
+    {{- if eq .Values.cluster.platform "vsphere" }}
+    vsphere:
+      cpus: {{ .Values.vsphere.workers.cpus }}
+      coresPerSocket: {{ .Values.vsphere.workers.coresPerSocket }}
+      memoryMB: {{ .Values.vsphere.workers.memoryMB }}
+      osDisk:
+        diskSizeGB: {{ .Values.vsphere.workers.diskGB }}
+    {{- else if eq .Values.cluster.platform "aws" }}
+    aws:
+      rootVolume:
+        iops: 100
+        size: {{ .Values.aws.workers.rootVolume.size }}
+        type: {{ .Values.aws.workers.rootVolume.type }}
+      type: {{ .Values.aws.workers.instanceType }}
+      {{- if .Values.aws.workers.zones }}
+      zones:
+        {{- toYaml .Values.aws.workers.zones | nindent 8 }}
+      {{- end }}
+    {{- else if eq .Values.cluster.platform "gcp" }}
+    gcp:
+      {{- /* No iops knob to mirror the AWS branch above: GCP persistent-disk
+             throughput is a function of disk type and size, not a field you
+             set. Resize the disk, not the IOPS. */}}
+      type: {{ .Values.gcp.workers.machineType }}
+      osDisk:
+        diskType: {{ .Values.gcp.workers.osDisk.diskType }}
+        diskSizeGB: {{ .Values.gcp.workers.osDisk.diskSizeGB }}
+      {{- if .Values.gcp.workers.zones }}
+      zones:
+        {{- toYaml .Values.gcp.workers.zones | nindent 8 }}
+      {{- end }}
+    {{- else if eq .Values.cluster.platform "azure" }}
+    azure:
+      type: {{ .Values.azure.workers.vmSize }}
+      osDisk:
+        diskType: {{ .Values.azure.workers.osDisk.diskType }}
+        diskSizeGB: {{ .Values.azure.workers.osDisk.diskSizeGB }}
+      {{- if .Values.azure.workers.zones }}
+      {{- /* Quoted for the same reason as install-config: the field is
+             []string and the zone names are bare digits. */}}
+      zones:
+        {{- range .Values.azure.workers.zones }}
+        - {{ . | quote }}
+        {{- end }}
+      {{- end }}
+      {{- /* The pre-existing vnet has to be repeated here, and this is the
+             one place in the chart where a MachinePool needs network fields
+             at all. Hive does not read install-config for them: its own CRD
+             documents the fields as defaulting to ${infraID}-vnet and
+             ${infraID}-worker-subnet, names that do not exist in a BYO-vnet
+             install. Leave them out and the installer places the initial
+             workers correctly from install-config, then Hive reconciles the
+             pool and generates MachineSets pointed at a vnet and subnet that
+             were never created -- so the cluster installs clean and only
+             fails later, when a worker is replaced or the pool is scaled.
+
+             GCP needs no counterpart: its MachinePool has no network fields,
+             so there is nothing to keep in sync. Azure is the exception. */}}
+      {{- if .Values.azure.virtualNetwork }}
+      networkResourceGroupName: {{ required "azure.networkResourceGroupName is required alongside azure.virtualNetwork" .Values.azure.networkResourceGroupName }}
+      virtualNetwork: {{ .Values.azure.virtualNetwork }}
+      computeSubnet: {{ required "azure.computeSubnet is required alongside azure.virtualNetwork" .Values.azure.computeSubnet }}
+      {{- end }}
+      {{- /* Likewise: the MachinePool default is Loadbalancer regardless of
+             what install-config says, so a UserDefinedRouting cluster would
+             get worker MachineSets built for an outbound load balancer it
+             deliberately does not have. */}}
+      {{- if .Values.azure.outboundType }}
+      outboundType: {{ .Values.azure.outboundType }}
+      {{- end }}
+    {{- else }}
+    {{- /* Reachable only if a platform joins cluster.isIPI without a worker
+           pool shape here. Without this the template renders `platform:`
+           with nothing under it -- valid YAML, and a null Hive goes on
+           reconciling into no MachineSets at all. */}}
+    {{- fail (printf "machinepool.yaml has no worker pool shape for platform %q" .Values.cluster.platform) }}
+    {{- end }}
+{{- end }}

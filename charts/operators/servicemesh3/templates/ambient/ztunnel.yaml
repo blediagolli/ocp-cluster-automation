@@ -1,0 +1,10 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.ztunnel.include }}
+apiVersion: sailoperator.io/v1alpha1
+kind: ZTunnel
+metadata:
+  name: {{ $v.ztunnel.name }}
+spec:
+  profile: {{ $v.ztunnel.profile }}
+  namespace: {{ $v.ztunnel.namespace }}
+{{- end }}

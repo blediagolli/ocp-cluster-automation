@@ -1,0 +1,146 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.selfSignedIssuer.include }}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ $v.selfSignedIssuer.name }}
+spec:
+  selfSigned: {}
+---
+{{- end }}
+{{- if $v.caIssuer.include }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $v.caIssuer.name }}
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: {{ $v.caIssuer.name }}
+  secretName: {{ $v.caIssuer.secretName }}
+  privateKey:
+    algorithm: ECDSA
+    size: 384
+  duration: {{ $v.caIssuer.duration }}
+  renewBefore: {{ $v.caIssuer.renewBefore }}
+  issuerRef:
+    name: {{ $v.selfSignedIssuer.name }}
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ $v.caIssuer.name }}
+spec:
+  ca:
+    secretName: {{ $v.caIssuer.secretName }}
+{{- end }}
+{{- if $v.acmeIssuer.include }}
+{{- $dns01 := $v.acmeIssuer.dns01 }}
+{{- /* Closed set, so a typo is a render error rather than a CredentialsRequest
+       the Cloud Credential Operator silently ignores and an issuer with no
+       solver at all. Both halves below branch on this one value. */}}
+{{- if not (has $dns01.provider (list "route53" "cloudDNS")) }}
+{{- fail (printf "cert-manager.acmeIssuer.dns01.provider: %q — expected route53 or cloudDNS" $dns01.provider) }}
+{{- end }}
+---
+{{- /* No cloud credentials in git, on either provider. The Cloud Credential
+       Operator mints a scoped identity from this request and writes it into
+       the cert-manager namespace: on AWS an IAM user with two keys, on GCP a
+       dedicated service account with a custom role and a single JSON key.
+       Mint mode is what makes that work, and it is the installer default on
+       both clouds. Under Manual the Secret has to be created out of band,
+       which is a per-cluster prerequisite rather than something the chart can
+       cover. */}}
+apiVersion: cloudcredential.openshift.io/v1
+kind: CredentialsRequest
+metadata:
+  name: cert-manager-dns01
+  namespace: openshift-cloud-credential-operator
+spec:
+  providerSpec:
+    apiVersion: cloudcredential.openshift.io/v1
+{{- if eq $dns01.provider "route53" }}
+    kind: AWSProviderSpec
+    statementEntries:
+      - effect: Allow
+        action:
+          - route53:GetChange
+          - route53:ChangeResourceRecordSets
+          - route53:ListResourceRecordSets
+        resource: '*'
+      - effect: Allow
+        action:
+          - route53:ListHostedZones
+          - route53:ListHostedZonesByName
+          - route53:ListResourceRecordSets
+        resource: '*'
+{{- else }}
+    kind: GCPProviderSpec
+    {{- /* Fine-grained permissions rather than roles/dns.admin, which is what
+           cert-manager's own docs suggest: CCO builds a custom role from this
+           list, and dns.admin additionally carries managedZones.create and
+           .delete — the ability to delete the zone serving the cluster, handed
+           to a controller that only ever needs to write one TXT record.
+
+           The first five are the same set OpenShift's own openshift-ingress-gcp
+           request uses for the *.apps record. The managedZones pair is the
+           difference: cert-manager looks the zone up by name before writing,
+           and cannot read its own propagation without it. */}}
+    permissions:
+      - dns.changes.create
+      - dns.changes.get
+      - dns.resourceRecordSets.create
+      - dns.resourceRecordSets.delete
+      - dns.resourceRecordSets.list
+      - dns.resourceRecordSets.update
+      - dns.managedZones.get
+      - dns.managedZones.list
+{{- end }}
+  secretRef:
+    name: {{ $dns01.credentialsSecretName }}
+    namespace: cert-manager
+  serviceAccountNames:
+    - cert-manager
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ $v.acmeIssuer.name }}
+spec:
+  acme:
+    server: {{ $v.acmeIssuer.server }}
+    email: {{ $v.acmeIssuer.email }}
+    privateKeySecretRef:
+      name: {{ $v.acmeIssuer.privateKeySecretName }}
+    solvers:
+      - dns01:
+{{- if eq $dns01.provider "route53" }}
+          route53:
+            region: {{ $dns01.region }}
+            hostedZoneID: {{ $dns01.hostedZoneID }}
+            accessKeyIDSecretRef:
+              name: {{ $dns01.credentialsSecretName }}
+              key: aws_access_key_id
+            secretAccessKeySecretRef:
+              name: {{ $dns01.credentialsSecretName }}
+              key: aws_secret_access_key
+{{- else }}
+          cloudDNS:
+            {{- /* The GCP project holding the zone, which is not necessarily
+                   the project the cluster runs in and has no default worth
+                   guessing — an empty one is valid YAML that fails as a 403
+                   inside the challenge an hour later. */}}
+            project: {{ required "cert-manager.acmeIssuer.dns01.projectID is required when provider is cloudDNS" $dns01.projectID }}
+            {{- if $dns01.hostedZoneName }}
+            hostedZoneName: {{ $dns01.hostedZoneName }}
+            {{- end }}
+            {{- /* One key, not two: CCO writes the whole GCP service account
+                   JSON under service_account.json, the same name every
+                   in-cluster GCP credential uses. */}}
+            serviceAccountSecretRef:
+              name: {{ $dns01.credentialsSecretName }}
+              key: service_account.json
+{{- end }}
+{{- end }}

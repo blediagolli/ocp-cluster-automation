@@ -1,0 +1,18 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.kiali.include }}
+apiVersion: kiali.io/v1alpha1
+kind: Kiali
+metadata:
+  name: {{ $v.kiali.name }}
+  namespace: {{ $v.kiali.namespace }}
+spec:
+  istio_namespace: {{ $v.istio.namespace }}
+  auth:
+    strategy: {{ $v.kiali.authStrategy }}
+  deployment:
+    cluster_wide_access: true
+  external_services:
+    prometheus:
+      thanos_proxy:
+        enabled: true
+{{- end }}

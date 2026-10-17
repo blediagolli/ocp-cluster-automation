@@ -1,0 +1,124 @@
+# Whether this chart installs its operator, or only configures one that is
+# already there. Set per cluster in conf.yaml, which every operator
+# Application reads; false drops the Namespace, OperatorGroup and
+# Subscriptions and keeps the CRs. Replaces conf.yaml's deployOperators,
+# which used to switch a whole Application on and off.
+installOperators: true
+
+# All of this chart's values nest under the chart name, so a shared
+# operators.yaml can carry several operators without their `operator:`
+# blocks colliding. A per-operator file uses the identical shape, which is
+# what lets a block move between the two by cut-and-paste.
+#
+# The templates reach them with `index .Values .Chart.Name`, so the chart
+# directory name and this top-level key must stay in step.
+cert-manager:
+  operator:
+    # --- facts about this operator, not settings ---
+    # Values only so that namespace.yaml, operatorgroup.yaml and
+    # subscription.yaml stay byte-identical across every chart under
+    # charts/operators/. Overriding them per cluster is not meaningful.
+    namespace: cert-manager-operator
+    operatorGroup: cert-manager-operator
+    package: openshift-cert-manager-operator
+    sourceNamespace: openshift-marketplace
+    clusterScoped: true
+    skipNamespace: false
+    skipOperatorGroup: false
+    namespaceLabels: {}
+    namespaceAnnotations: {}
+
+    # --- the parts you actually set ---
+    # No catalogue default was ever recorded for this operator — the old
+    # chart carried a change-me tripwire. The template `required`s it, so
+    # the failure is at render rather than a Subscription that installs
+    # nothing and reports no error.
+    channel: ""
+    source: redhat-operators
+    installPlanApproval: Automatic
+    # Pin to a specific CSV instead of taking the channel head.
+    startingCSV: ""
+
+  # Namespace for the CRs below. Empty inherits operator.namespace.
+  namespace: ""
+  # Only consulted when namespace above differs from operator.namespace.
+  createNamespace: false
+
+  selfSignedIssuer:
+    include: false
+    name: selfsigned
+  caIssuer:
+    include: false
+    name: cluster-ca
+    secretName: cluster-ca-key-pair
+    duration: 17520h
+    renewBefore: 2160h
+  caBundle:
+    include: false
+    configMapName: custom-ca-bundle
+    namespace: openshift-config
+  acmeIssuer:
+    include: false
+    name: letsencrypt
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: ""
+    privateKeySecretName: letsencrypt-account-key
+    dns01:
+      # Which cloud's DNS serves the zone the ACME challenge record goes into.
+      # One of: route53 | cloudDNS. Anything else fails the render — an
+      # unrecognised name would otherwise produce a CredentialsRequest the
+      # Cloud Credential Operator ignores and an issuer with no solver.
+      #
+      # This follows the *zone*, not the cluster. They are the same thing on
+      # every cluster here so far, but a cluster whose base domain is delegated
+      # to another cloud sets the provider its zone lives in.
+      provider: route53
+
+      # Both providers. The Secret the Cloud Credential Operator mints into the
+      # cert-manager namespace from the CredentialsRequest the chart emits:
+      # two keys on AWS, one JSON key on GCP. Nothing to put in git either way.
+      credentialsSecretName: cert-manager-dns01-credentials
+      # cert-manager normally checks propagation against the zone's
+      # authoritative nameservers. Set true to check via public recursive
+      # resolvers instead (8.8.8.8, 1.1.1.1 — see certmanager-config.yaml).
+      #
+      # Needed whenever the answer from the authoritative servers is not the
+      # answer Let's Encrypt will get. The usual cause is indirect delegation
+      # from a parent zone someone else manages, which is every sandbox; on GCP
+      # a split-horizon zone does it too, since the cluster's own private zone
+      # shadows the public one for exactly the names being validated.
+      recursiveNameserversOnly: false
+
+      # --- provider: route53 ---
+      region: us-east-1
+      # The zone that is *authoritative for the challenge record*, which on a
+      # cluster whose own zone is private is the public parent, not the
+      # per-cluster subdomain.
+      hostedZoneID: ""
+
+      # --- provider: cloudDNS ---
+      # The GCP project holding the zone. No default worth guessing, and not
+      # necessarily the project the cluster runs in, so the template `required`s
+      # it: empty is valid YAML that fails as a 403 inside a challenge later.
+      projectID: ""
+      # The Cloud DNS managed zone's **resource name** (`dns-zone-abcde`), not
+      # its DNS name (`example.com.`). Optional — cert-manager discovers the
+      # zone when it is empty — but set it on any cluster GCP IPI built, and
+      # that is all of them: the installer creates a *private* zone for the
+      # cluster's own subdomain alongside the public parent, and a solver that
+      # picks the private one writes a challenge record Let's Encrypt cannot
+      # resolve. Read it off the cluster rather than guessing:
+      #   oc get dns.config cluster -o jsonpath='{.spec.publicZone.id}'
+      hostedZoneName: ""
+  apiCert:
+    include: false
+    namespace: openshift-config
+    duration: 8760h
+    renewBefore: 720h
+    issuerName: cluster-ca
+  ingressCert:
+    include: false
+    namespace: openshift-ingress
+    duration: 8760h
+    renewBefore: 720h
+    issuerName: cluster-ca

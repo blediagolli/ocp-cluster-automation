@@ -1,0 +1,42 @@
+{{- if .Values.etcdBackup.include }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  containers:
+    - name: test
+      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+          APISERVER=https://kubernetes.default.svc
+          CA=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          NS="{{ .Values.etcdBackup.namespace }}"
+
+          echo "--- Checking CronJob ---"
+          CJ=$(curl -s -o /dev/null -w '%{http_code}' --cacert $CA -H "Authorization: Bearer $TOKEN" \
+            "$APISERVER/apis/batch/v1/namespaces/$NS/cronjobs/etcd-backup")
+          echo "  CronJob: HTTP $CJ"
+          if [ "$CJ" != "200" ]; then echo "FAIL: CronJob not found"; exit 1; fi
+
+          echo "--- Checking ServiceAccount ---"
+          SA=$(curl -s -o /dev/null -w '%{http_code}' --cacert $CA -H "Authorization: Bearer $TOKEN" \
+            "$APISERVER/api/v1/namespaces/$NS/serviceaccounts/etcd-backup")
+          echo "  ServiceAccount: HTTP $SA"
+          if [ "$SA" != "200" ]; then echo "FAIL: ServiceAccount not found"; exit 1; fi
+
+          echo "--- Checking backup script ConfigMap ---"
+          SCRIPT=$(curl -s -o /dev/null -w '%{http_code}' --cacert $CA -H "Authorization: Bearer $TOKEN" \
+            "$APISERVER/api/v1/namespaces/$NS/configmaps/etcd-backup-script")
+          echo "  ConfigMap: HTTP $SCRIPT"
+          if [ "$SCRIPT" != "200" ]; then echo "FAIL: Backup script ConfigMap not found"; exit 1; fi
+
+          echo "PASS: etcd-backup CronJob is configured"
+{{- end }}

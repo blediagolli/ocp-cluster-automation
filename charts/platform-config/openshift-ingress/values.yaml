@@ -1,0 +1,196 @@
+cluster:
+  name: ""
+  domain: ""
+
+ingress:
+  controller:
+    include: false
+    # Whether this chart owns IngressController/default — the one serving the
+    # console and the ArgoCD route, i.e. the path you would undo a mistake
+    # through. Read HANDOFF.md before setting this true on a live cluster.
+    manageDefault: false
+
+    default:
+      # How the router is published. **Empty means do not render the field**,
+      # leaving whatever the installer chose in place, and that is the right
+      # answer almost every time: the API documents this field as not
+      # updatable, and the installer always creates IngressController/default,
+      # so there is no cluster on which writing it is a fresh creation. A value
+      # that differs from the live one does not switch anything over — it
+      # leaves the resource permanently OutOfSync with selfHeal re-applying a
+      # change the operator will not act on.
+      #
+      # Set it only when it matches what the platform already produced, as
+      # documentation, or when creating a *new* IngressController elsewhere.
+      # The installer's own default, from the IngressController API:
+      #
+      #   AWS, Azure, GCP, IBMCloud, AlibabaCloud  LoadBalancerService (External)
+      #   Libvirt                                  HostNetwork
+      #   every other platform, including None     HostNetwork
+      #
+      # So bare metal, vSphere, Nutanix and OpenStack all land on HostNetwork,
+      # and the cloud IPI platforms all land on LoadBalancerService. Check with
+      #   oc get infrastructure cluster -o jsonpath='{.status.platformStatus.type}'
+      #
+      # One of: "" | LoadBalancerService | HostNetwork | NodePortService | Private
+      endpointPublishingStrategy: ""
+
+      # --- endpointPublishingStrategy: LoadBalancerService (cloud IPI) ---
+      loadBalancer:
+        # External puts the router behind an internet-facing load balancer;
+        # Internal keeps it inside the VPC/VNet.
+        scope: External
+        # Managed | Unmanaged. Unmanaged stops the ingress operator maintaining
+        # the wildcard DNS record, for clusters whose DNS lives elsewhere.
+        dnsManagementPolicy: ""
+        # CIDRs allowed to reach the load balancer. Empty means no restriction.
+        allowedSourceRanges: []
+        providerParameters:
+          # Empty leaves the platform's own defaults alone — the usual choice.
+          # Only set this to tune the load balancer the cloud provider creates.
+          # One of: "" | AWS | GCP | IBM | OpenStack
+          type: ""
+          aws:
+            # NLB is the modern default on new AWS clusters; Classic is what
+            # older ones were installed with. Switching an existing cluster
+            # between them replaces the load balancer, and the wildcard DNS
+            # record with it.
+            type: NLB
+            networkLoadBalancer:
+              # Static EIPs, one per public subnet, for a stable address.
+              eipAllocations: []
+              subnets:
+                ids: []
+                names: []
+            classicLoadBalancer:
+              # e.g. "30m". "0s" disables the idle timeout.
+              connectionIdleTimeout: ""
+              subnets:
+                ids: []
+                names: []
+          gcp:
+            # Global | Local. Global lets clients in any region reach an
+            # internal load balancer.
+            clientAccess: ""
+          ibm:
+            # TCP | PROXY
+            protocol: ""
+          openstack:
+            # Pre-allocated floating IP. Must already exist.
+            floatingIP: ""
+
+      # --- endpointPublishingStrategy: HostNetwork (bare metal, vSphere, None) ---
+      # The router binds these ports directly on each node it runs on, so they
+      # must be free there. Non-default ports let a second IngressController
+      # share the same nodes.
+      hostNetwork:
+        # TCP | PROXY. PROXY expects an upstream that speaks the PROXY protocol,
+        # which is how the client IP survives an external load balancer.
+        protocol: ""
+        httpPort: 0
+        httpsPort: 0
+        statsPort: 0
+
+      # --- endpointPublishingStrategy: NodePortService ---
+      nodePort:
+        # TCP | PROXY
+        protocol: ""
+
+      # --- endpointPublishingStrategy: Private ---
+      # Publishes nothing; for clusters fronted by their own ingress path.
+      private:
+        # TCP | PROXY
+        protocol: ""
+
+      # Node label the router is pinned to. **Empty renders no nodePlacement**,
+      # letting the routers schedule wherever they fit.
+      #
+      # Unlike the strategy above, this field is mutable, which makes it the
+      # one that actually takes ingress down: name a label no node carries and
+      # the router pods are rescheduled to nowhere. `node-role.kubernetes.io/infra`
+      # is only correct on a cluster that really has infra nodes — on a compact
+      # three-node cluster it matches nothing. Confirm with
+      #   oc get nodes -L node-role.kubernetes.io/infra
+      placement: ""
+      # 0 renders no replicas field, keeping whatever is live. Two is the
+      # installer's default on a multi-node cluster; a replica count above the
+      # number of eligible nodes leaves the surplus pods Pending, and with
+      # HostNetwork two replicas cannot share a node at all.
+      replicas: 0
+      tolerations: []
+
+    # Router access logging. Off by default: HAProxy logs nothing about client
+    # requests until this block exists, which is the upstream default and the
+    # right one, because the volume is one line per request on every route.
+    logging:
+      enabled: false
+      destination:
+        # Container | Syslog
+        #
+        # Container writes to a sidecar on each router pod, so the logs are
+        # `oc logs -c logs` away and are collected by whatever already collects
+        # pod logs. Nothing to stand up, which makes it the one to start with.
+        # The sidecar's buffer is finite and it drops rather than blocks under
+        # load, so it is for diagnosis, not for an audit trail you must not
+        # lose. Syslog is the durable option and needs a collector reachable
+        # from the router pods.
+        type: Container
+        container:
+          # 480-8192. Omitted when 0, which takes the API default of 1024.
+          # Raise it with httpLogFormat below: a format that captures headers
+          # or long URLs will exceed 1024 and be truncated, and the truncation
+          # is silent.
+          maxLength: 0
+        syslog:
+          address: ""
+          port: 10514
+          # Omitted when empty; the API default is "local1".
+          facility: ""
+          # 480-4096 here, a tighter ceiling than Container's 8192. Omitted
+          # when 0 for the API default of 1024.
+          maxLength: 0
+      # HAProxy log format string. Empty renders no field, which gives the
+      # operator's default format — a sane one, and what you want unless
+      # something downstream needs specific fields.
+      #
+      # This is HAProxy's own syntax, not OpenShift's: `%` directives, and
+      # `%{+Q}` to quote a value. Write it as a single line; HAProxy does not
+      # accept a folded one. It is not validated at admission, so a malformed
+      # format is only visible as the router failing to reload afterwards.
+      #
+      # A worked example, the operator's default with the backend name and the
+      # X-Forwarded-For header added:
+      #   httpLogFormat: '%ci:%cp [%t] %ft %b/%s %B %bq %HM %HU %HV'
+      httpLogFormat: ""
+      # Log | Ignore. Empty renders no field; the API default is Log.
+      #
+      # Empty requests are connections that are opened and closed without a
+      # request — mostly load balancer health probes and browser preconnects,
+      # which on a cluster with an external LB is a steady background rate that
+      # drowns the real traffic. Ignore drops them. Keep Log when chasing
+      # network errors or port scans, which produce the same shape.
+      logEmptyRequests: ""
+    tlsSecurityProfile:
+      enabled: false
+      type: Custom
+      custom:
+        ciphers:
+          - TLS_AES_128_GCM_SHA256
+          - TLS_AES_256_GCM_SHA384
+          - ECDHE-ECDSA-AES128-GCM-SHA256
+          - ECDHE-RSA-AES128-GCM-SHA256
+          - ECDHE-ECDSA-AES256-GCM-SHA384
+          - ECDHE-RSA-AES256-GCM-SHA384
+        minTLSVersion: VersionTLS12
+    http2:
+      enabled: false
+    hsts:
+      enabled: false
+      value: "max-age=31536000; includeSubDomains; preload"
+    defaultCertificate:
+      # The named Secret must already exist in openshift-ingress. On this repo's
+      # clusters it is issued by the tls-certificates chart, so that chart has
+      # to land first — naming a Secret that is not there degrades the
+      # IngressController on its own.
+      enabled: false
+      name: custom-default-cert

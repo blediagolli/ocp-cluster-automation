@@ -1,0 +1,210 @@
+# ---------------------------------------------------------------------------
+# KubeletConfig — worker pool
+# ---------------------------------------------------------------------------
+kubeletConfigWorker:
+  include: false
+  name: worker-kubeletconfig
+  maxPods: 250
+  podsPerCore: 0
+  kubeAPIQPS: 50
+  kubeAPIBurst: 100
+  imageGCHighThresholdPercent: 85
+  imageGCLowThresholdPercent: 80
+  imageMinimumGCAge: 5m
+  evictionHard:
+    memory.available: 500Mi
+    nodefs.available: 10%
+    nodefs.inodesFree: 5%
+    imagefs.available: 15%
+    imagefs.inodesFree: 5%
+  evictionSoft:
+    memory.available: 1Gi
+    nodefs.available: 15%
+    nodefs.inodesFree: 10%
+    imagefs.available: 20%
+    imagefs.inodesFree: 10%
+  evictionSoftGracePeriod:
+    memory.available: 1m30s
+    nodefs.available: 1m30s
+    nodefs.inodesFree: 1m30s
+    imagefs.available: 1m30s
+    imagefs.inodesFree: 1m30s
+  evictionPressureTransitionPeriod: 0s
+
+# ---------------------------------------------------------------------------
+# KubeletConfig — master pool
+# ---------------------------------------------------------------------------
+kubeletConfigMaster:
+  include: false
+  name: master-kubeletconfig
+  maxPods: 250
+  podsPerCore: 0
+  kubeAPIQPS: 50
+  kubeAPIBurst: 100
+  imageGCHighThresholdPercent: 75
+  imageGCLowThresholdPercent: 60
+  imageMinimumGCAge: 5m
+  evictionHard:
+    memory.available: 500Mi
+    nodefs.available: 10%
+    nodefs.inodesFree: 5%
+    imagefs.available: 15%
+    imagefs.inodesFree: 5%
+  evictionSoft:
+    memory.available: 1Gi
+    nodefs.available: 15%
+    nodefs.inodesFree: 10%
+    imagefs.available: 20%
+    imagefs.inodesFree: 10%
+  evictionSoftGracePeriod:
+    memory.available: 1m30s
+    nodefs.available: 1m30s
+    nodefs.inodesFree: 1m30s
+    imagefs.available: 1m30s
+    imagefs.inodesFree: 1m30s
+  evictionPressureTransitionPeriod: 0s
+
+# ---------------------------------------------------------------------------
+# ContainerRuntimeConfig — CRI-O settings
+# ---------------------------------------------------------------------------
+containerRuntimeConfig:
+  include: false
+  name: custom-crio
+  machineConfigPoolSelector: worker
+  pidsLimit: 4096
+  logSizeMax: "-1"
+  logLevel: info
+
+# ---------------------------------------------------------------------------
+# MachineConfig — Chrony / NTP
+# ---------------------------------------------------------------------------
+machineConfigChrony:
+  include: false
+  name: 99-worker-chrony
+  role: worker
+  ntpServers:
+    - 0.rhel.pool.ntp.org
+    - 1.rhel.pool.ntp.org
+    - 2.rhel.pool.ntp.org
+    - 3.rhel.pool.ntp.org
+
+# ---------------------------------------------------------------------------
+# MachineConfig — Kernel arguments and sysctls
+# ---------------------------------------------------------------------------
+machineConfigKernel:
+  include: false
+  name: 99-worker-kernel-args
+  role: worker
+  kernelArguments: []
+  #   - nosmt
+  #   - hugepagesz=2M
+  #   - hugepages=128
+  sysctls: {}
+  #   vm.max_map_count: "262144"
+  #   net.core.somaxconn: "32768"
+  #   net.ipv4.ip_local_port_range: "1024 65535"
+
+# ---------------------------------------------------------------------------
+# MachineConfig — SELinux permissive (disabled by default for compliance)
+# ---------------------------------------------------------------------------
+selinuxPermissive:
+  include: false
+
+# ---------------------------------------------------------------------------
+# MachineConfigPool — Infra nodes
+# ---------------------------------------------------------------------------
+machineConfigPoolInfra:
+  include: false
+  name: infra
+  nodeSelector:
+    node-role.kubernetes.io/infra: ""
+  maxUnavailable: 1
+  paused: false
+
+# ---------------------------------------------------------------------------
+# Custom MachineConfigs — generic template for arbitrary configs
+# ---------------------------------------------------------------------------
+# Each entry creates a MachineConfig with optional files and kernel arguments.
+# Use this to add any node-level config without creating a new template.
+#
+# Example:
+#   customMachineConfigs:
+#     - name: 99-worker-custom-sysctl
+#       include: true
+#       role: worker
+#       files:
+#         - path: /etc/sysctl.d/99-custom.conf
+#           mode: 0644
+#           content: |
+#             vm.max_map_count = 262144
+#             net.core.somaxconn = 32768
+#     - name: 99-worker-disable-thp
+#       include: true
+#       role: worker
+#       files:
+#         - path: /etc/tmpfiles.d/disable-thp.conf
+#           mode: 0644
+#           content: |
+#             w /sys/kernel/mm/transparent_hugepage/enabled - - - - never
+#             w /sys/kernel/mm/transparent_hugepage/defrag - - - - never
+#     - name: 99-worker-custom-kernel-args
+#       include: true
+#       role: worker
+#       kernelArguments:
+#         - nosmt
+#         - hugepagesz=2M
+#         - hugepages=128
+customMachineConfigs: []
+
+# ---------------------------------------------------------------------------
+# Pure Storage FlashArray — host prerequisites
+# ---------------------------------------------------------------------------
+# Renders one MachineConfig per role (templates/pure-storage/) that writes
+# /etc/multipath.conf and /etc/udev/rules.d/99-pure-storage.rules and enables
+# multipathd + iscsid.
+#
+# Its own block rather than a customMachineConfigs entry because that template
+# has no systemd.units support — it would write the files and leave multipathd
+# stopped, which is the whole point of the config.
+#
+# The same config covers FC, iSCSI and NVMe-oF: the multipath.conf carries
+# both the SCSI (PURE/FlashArray) and NVMe device stanzas, and iscsid is
+# harmless on FC-only hosts. Source: Portworx FlashArray prep docs
+# (docs.portworx.com/portworx-csi/install/prepare/flash-array).
+#
+# Needed by any node that attaches FlashArray volumes, whichever way the array
+# is consumed — the PX-CSI driver, or LUNs that openshift-local-storage
+# discovers for ODF. Neither does this prep itself, and without it LSO sees
+# each path as a separate device instead of one multipath device.
+#
+# WARNING: enabling or changing this rolls every node in the targeted pools
+# (drain + reboot, gated by the pool's maxUnavailable). It shares an ArgoCD
+# Application with the kubelet and chrony settings above, so a reboot-free
+# change here is not possible — stage it deliberately.
+#
+# Protocol-specific steps that are NOT config and are not handled here:
+#   - iSCSI: every node needs a unique IQN in /etc/iscsi/initiatorname.iscsi
+#   - FC: optionally check HBA (QLogic/Emulex) LUN limits
+#   - NVMe-oF: decide native vs DM multipath (nvme_core.multipath kernel arg)
+pureStorage:
+  include: false
+  # One MachineConfig named 99-<role>-pure-storage per entry. Each role must
+  # match a MachineConfigPool's machineconfiguration.openshift.io/role
+  # selector (e.g. add "master" for compact clusters, or a custom pool).
+  # Infra nodes inherit the worker entry: machineConfigPoolInfra above selects
+  # both the worker and infra roles.
+  roles:
+    - worker
+  # Enable iscsid.service (needed for iSCSI, harmless for FC/NVMe).
+  enableIscsid: true
+  multipath:
+    pollingInterval: 10
+    findMultipaths: "yes"
+    # Required when the array runs Purity older than 6.5.5 / 6.6.4 (path
+    # priority detection change in multipath-tools 0.6.2–0.9.7).
+    # Adds detect_prio "no" to the PURE/FlashArray device stanza.
+    detectPrioNo: false
+    # Additional blacklist devnode regexes (the pxd and VMware virtual disk
+    # entries are always present).
+    extraBlacklistDevnodes: []
+    #   - "^sda$"

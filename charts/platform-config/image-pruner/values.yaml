@@ -1,0 +1,18 @@
+imagePruner:
+  include: false
+  schedule: "0 0 * * *"
+  suspend: false
+  keepTagRevisions: 3
+  keepYoungerThan: 3600000000000
+  # Duration in nanoseconds (3600000000000 = 60 minutes)
+  keepYoungerThanDuration: ""
+  # Human-readable duration (e.g., "60m", "24h") — takes precedence over keepYoungerThan
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

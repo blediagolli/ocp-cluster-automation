@@ -1,0 +1,138 @@
+# Whether this chart installs its operator, or only configures one that is
+# already there. Set per cluster in conf.yaml, which every operator
+# Application reads; false drops the Namespace, OperatorGroup and
+# Subscriptions and keeps the CRs.
+installOperators: true
+
+# All of this chart's values nest under the chart name, so a shared
+# operators.yaml can carry several operators without their `operator:`
+# blocks colliding. A per-operator file uses the identical shape.
+#
+# The templates reach them with `index .Values .Chart.Name`, so the chart
+# directory name and this top-level key must stay in step.
+portworx:
+  operator:
+    # --- facts about this operator, not settings ---
+    # Values only so that namespace.yaml, operatorgroup.yaml and
+    # subscription.yaml stay byte-identical across every chart under
+    # charts/operators/. Overriding them per cluster is not meaningful.
+    namespace: portworx
+    operatorGroup: portworx-operator
+    package: portworx-certified
+    sourceNamespace: openshift-marketplace
+    # The CSV supports AllNamespaces, so a global OperatorGroup is fine.
+    clusterScoped: true
+    skipNamespace: false
+    skipOperatorGroup: false
+    namespaceLabels: {}
+    namespaceAnnotations: {}
+
+    # --- the parts you actually set ---
+    # Read off the certified catalogue: portworx-certified publishes stable
+    # (default) and alpha, both currently at portworx-operator.v26.4.0.
+    channel: stable
+    source: certified-operators
+    installPlanApproval: Automatic
+    # Pin to a specific CSV instead of taking the channel head.
+    startingCSV: ""
+
+  # Namespace for the CRs below. Empty inherits operator.namespace.
+  namespace: ""
+  # Only consulted when namespace above differs from operator.namespace.
+  createNamespace: false
+
+  # -------------------------------------------------------------------------
+  # StorageCluster — core.libopenstorage.org/v1
+  # -------------------------------------------------------------------------
+  # This chart deploys PX-CSI: Portworx as a plain CSI driver in front of a
+  # Pure FlashArray. It is not Portworx Enterprise. Same operator, same CRD,
+  # different product — the `--oem px-csi` arg the template always sets is
+  # what picks it. So there is no kvdb, cloudStorage, storage, stork,
+  # autopilot or secretsProvider here: the array owns the data, Portworx only
+  # attaches it.
+  #
+  # Nodes that attach FlashArray volumes need the host prerequisites from
+  # platform-config/openshift-machine-config's `pureStorage` block (multipath,
+  # udev, iscsid) before this comes up. The driver does not configure them.
+  storageCluster:
+    include: false
+
+    # The Portworx cluster ID. Unlike every other CR in this repo, the name
+    # is not cosmetic: it is baked into the install-source URL's `c=` param
+    # and renaming an existing cluster orphans it. Generated at install time
+    # by the Portworx spec generator, hence the uuid-shaped default upstream.
+    name: ""
+
+    # Tells the operator it is on OpenShift (from the CSV's alm-examples).
+    isOpenShift: true
+
+    # The spec-generator URL this cluster came from. Not functional — the
+    # operator records it so support can see which options were chosen.
+    installSource: ""
+
+    # Extra args appended after --oem px-csi, which the template always sets.
+    miscArgs: ""
+
+    # The PX-CSI driver image. Required: there is no sane default to fall
+    # back to, and letting the operator pick would install Enterprise's.
+    image: portworx/px-pure-csi-driver:26.2.1
+    imagePullPolicy: Always
+
+    csi:
+      enabled: true
+
+    monitoring:
+      # Phones home to Pure. Off by default.
+      telemetry: false
+      # Publishes metrics for an existing Prometheus to scrape.
+      exportMetrics: true
+      # Has the operator deploy its *own* Prometheus. Leave false on a
+      # cluster that already runs user-workload monitoring.
+      prometheusEnabled: false
+
+    # FlashArray transport. ISCSI or FC — this has to match how the nodes are
+    # actually cabled, and it decides which `pureStorage` prerequisites they
+    # need (ISCSI is the one that wants iscsid).
+    pure:
+      sanType: ISCSI
+      # Restricts which subnet the nodes use to reach the array's iSCSI
+      # targets. Needed when nodes have interfaces on more than one network.
+      iscsiAllowedCIDR: ""
+
+    # Free-form extras, appended after the PURE_* vars above.
+    env: []
+    #   - name: PURE_FLASHARRAY_SAN_TYPE
+    #     value: ISCSI
+
+  # -------------------------------------------------------------------------
+  # px-pure-secret — FlashArray / FlashBlade backend credentials
+  # -------------------------------------------------------------------------
+  # Portworx reads a secret named px-pure-secret in its own namespace, with a
+  # single pure.json key, to find the arrays it provisions from. Only needed
+  # when the backend is Pure; local-disk clusters leave this disabled.
+  #
+  # No `inline` source on purpose, unlike quay's config bundle: the only thing
+  # in here is an array API token, and inline would mean committing it to a
+  # values file. Use externalSecret, or create the secret out of band and
+  # leave this at `existing`.
+  pureSecret:
+    include: false
+    source: existing   # existing | externalSecret
+    name: px-pure-secret
+    # One entry per array. endpoint is the management IP or FQDN; the token
+    # itself never appears here — it is fetched from the store below.
+    flashArrays: []
+    #   - endpoint: 10.0.0.10
+    #     tokenKey: api-token-array-1   # key under `path` in the store
+    #     labels: {}                    # optional topology labels
+    flashBlades: []
+    #   - endpoint: 10.0.0.20
+    #     tokenKey: api-token-blade-1
+    #     nfsEndpoint: 10.0.0.21
+    externalSecret:
+      refreshInterval: 1h
+      secretStoreRef:
+        name: vault
+        kind: ClusterSecretStore
+      # Vault path holding one property per tokenKey above.
+      path: ""

@@ -1,0 +1,44 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: PolicyGenerator
+metadata:
+  name: resource-quota
+placementBindingDefaults:
+  name: binding-resource-quota
+policyDefaults:
+  namespace: ${POLICY_NAMESPACE}
+  remediationAction: ${REMEDIATION}
+  severity: medium
+  # One ConfigurationPolicy holding every manifest, rather than one each. The
+  # policy is a single assertion, so a single compliance verdict is what you want.
+  consolidateManifests: true
+  evaluationInterval:
+    compliant: ${EVAL_COMPLIANT}
+    noncompliant: ${EVAL_NONCOMPLIANT}
+  standards:
+    - NIST SP 800-53
+  categories:
+    - SC System and Communications Protection
+  controls:
+    - SC-6 Resource Availability
+  # Tenant namespaces only, identified by the namespace-size label that
+  # charts/onboarding/namespace-config stamps on every namespace it creates.
+  #
+  # This used to be include "*" minus openshift-*/kube-*/default, which on the
+  # hub resolved to the operator namespaces -- hive, hypershift,
+  # multicluster-engine, cert-manager, keycloak, open-cluster-management-agent.
+  # None of those get a quota and none ever should, so the policy sat
+  # NonCompliant against sixteen namespaces for reasons nobody could act on.
+  # A control that is permanently red is a control people learn to ignore.
+  #
+  # Selecting on the label rather than on a name pattern also means a new
+  # operator namespace never silently enters scope.
+  namespaceSelector:
+    matchExpressions:
+      - key: namespace-size
+        operator: Exists
+  placement:
+    placementPath: placement.yaml
+policies:
+  - name: resource-quota
+    manifests:
+      - path: manifests/

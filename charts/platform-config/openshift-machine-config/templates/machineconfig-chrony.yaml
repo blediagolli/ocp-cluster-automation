@@ -1,0 +1,29 @@
+{{- if .Values.machineConfigChrony.include }}
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  labels:
+    machineconfiguration.openshift.io/role: {{ .Values.machineConfigChrony.role }}
+  name: {{ .Values.machineConfigChrony.name }}
+spec:
+  config:
+    ignition:
+      version: 3.2.0
+    storage:
+      files:
+        - contents:
+            source: data:text/plain;charset=utf-8;base64,{{ include "chrony.conf" . | b64enc }}
+          mode: 0644
+          overwrite: true
+          path: /etc/chrony.conf
+{{- end }}
+
+{{- define "chrony.conf" -}}
+{{- range .Values.machineConfigChrony.ntpServers }}
+server {{ . }} iburst
+{{- end }}
+driftfile /var/lib/chrony/drift
+makestep 1.0 3
+rtcsync
+logdir /var/log/chrony
+{{- end -}}

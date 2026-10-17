@@ -1,0 +1,7 @@
+apiVersion: v2
+name: cluster-observability
+description: cluster-observability — operator subscription and cluster Observability Operator UIPlugin instances
+version: 0.1.0
+annotations:
+  oca.io/target: spoke
+  oca.io/maturity: incubating

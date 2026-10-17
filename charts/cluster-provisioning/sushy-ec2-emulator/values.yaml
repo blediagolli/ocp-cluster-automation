@@ -1,0 +1,33 @@
+namespace: sushy-ec2
+
+image:
+  registry: image-registry.openshift-image-registry.svc:5000
+  tag: latest
+
+build:
+  enabled: true
+
+aws:
+  existingSecret: sushy-ec2-aws-creds
+
+bootAMI: ""
+ignitionURL: ""
+
+instances: {}
+# instances:
+#   i-0c7f5f12f9786b5f3:
+#     uuid: aws-none-prod-master-0
+#     role: master
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+gunicorn:
+  workers: 1
+  threads: 8
+  timeout: 600

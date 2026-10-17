@@ -1,0 +1,19 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.multiClusterHub.include }}
+apiVersion: operator.open-cluster-management.io/v1
+kind: MultiClusterHub
+metadata:
+  name: {{ $v.multiClusterHub.name }}
+  namespace: {{ $v.multiClusterHub.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  availabilityConfig: {{ $v.multiClusterHub.availabilityConfig }}
+  disableHubSelfManagement: {{ $v.multiClusterHub.disableHubSelfManagement }}
+  localClusterName: {{ $v.multiClusterHub.localClusterName }}
+  {{- with $v.multiClusterHub.overrides.components }}
+  overrides:
+    components:
+      {{- toYaml . | nindent 6 }}
+  {{- end }}
+{{- end }}

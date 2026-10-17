@@ -1,0 +1,21 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.aap.include }}
+apiVersion: aap.ansible.com/v1alpha1
+kind: AnsibleAutomationPlatform
+metadata:
+  name: {{ $v.aap.name }}
+  namespace: {{ $v.aap.namespace }}
+spec:
+  controller:
+    disabled: {{ not $v.aap.controller.enabled }}
+  hub:
+    disabled: {{ not $v.aap.hub.enabled }}
+  eda:
+    disabled: {{ not $v.aap.eda.enabled }}
+  lightspeed:
+    disabled: {{ not $v.aap.lightspeed.enabled }}
+  no_log: true
+  redis: {}
+  redis_mode: {{ $v.aap.redis.mode }}
+  route_tls_termination_mechanism: {{ $v.aap.routeTlsTermination | default "Edge" }}
+{{- end }}

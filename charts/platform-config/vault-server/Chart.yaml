@@ -1,0 +1,8 @@
+apiVersion: v2
+name: vault-server
+description: HashiCorp Vault server with integrated Raft storage and ExternalSecrets integration
+version: 0.1.0
+annotations:
+  # the estate's secret backend; every spoke's ESO reads from it
+  oca.io/target: hub
+  oca.io/maturity: incubating

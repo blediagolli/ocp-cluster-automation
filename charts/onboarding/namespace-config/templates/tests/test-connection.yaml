@@ -1,0 +1,139 @@
+{{- /*
+ArgoCD does not run Helm test hooks -- tests/e2e-test.sh is what actually
+exercises this chart against a cluster. This exists for `helm test` after a
+local `helm install`. It is not gated on quiesce, unlike application-gitops's
+copy: the quota and the LimitRange it asserts on both survive a quiesce, so
+the test stays meaningful for a quiesced team.
+
+The Pod runs with its own ServiceAccount rather than `default`, which had no
+permission to read anything it was asking for. It deliberately does not check
+`oc get namespace`: Namespace is cluster-scoped, so that single call would
+force a ClusterRole for a test. The Pod running at all proves its own
+namespace exists, and the quota and limits below are the part worth asserting.
+*/ -}}
+{{- include "onboarding.validate" . }}
+{{- $namespaces := include "onboarding.namespaces" . | fromYamlArray }}
+{{- if $namespaces }}
+{{- $home := (index $namespaces 0).name }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Release.Name }}-test
+  namespace: {{ $home }}
+  labels:
+    {{- include "onboarding.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-weight: "-1"
+    helm.sh/hook-delete-policy: before-hook-creation
+{{- range $ns := $namespaces }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $.Release.Name }}-test
+  namespace: {{ $ns.name }}
+  labels:
+    {{- include "onboarding.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-weight: "-1"
+    helm.sh/hook-delete-policy: before-hook-creation
+rules:
+  - apiGroups: [""]
+    resources: ["resourcequotas", "limitranges"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $.Release.Name }}-test
+  namespace: {{ $ns.name }}
+  labels:
+    {{- include "onboarding.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-weight: "-1"
+    helm.sh/hook-delete-policy: before-hook-creation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $.Release.Name }}-test
+subjects:
+  - kind: ServiceAccount
+    name: {{ $.Release.Name }}-test
+    namespace: {{ $home }}
+{{- end }}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  namespace: {{ $home }}
+  labels:
+    {{- include "onboarding.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  serviceAccountName: {{ .Release.Name }}-test
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: test
+      image: {{ .Values.cleanup.image }}
+      imagePullPolicy: {{ .Values.cleanup.imagePullPolicy }}
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: 10m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+      env:
+        - name: HOME
+          value: /tmp
+        - name: KUBECACHEDIR
+          value: /tmp/.kube/cache
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -eu
+          {{- range $ns := $namespaces }}
+          echo "--- Checking namespace {{ $ns.name }} ---"
+          {{- /* Only assert what this namespace is actually managed for. A
+                 namespace with resourceQuota or limitRange switched off is a
+                 deliberate state during a migration, not a failure. */}}
+          {{- if include "onboarding.manages" (list $ $ns "resourceQuota") }}
+          oc get resourcequota {{ $.Values.naming.resourceQuota }} -n {{ $ns.name }}
+          {{- else }}
+          echo "resourcequota not managed here (resourceQuota: false) - skipped"
+          {{- end }}
+          {{- if include "onboarding.manages" (list $ $ns "limitRange") }}
+          oc get limitrange {{ $.Values.naming.limitRange }} -n {{ $ns.name }}
+          {{- else }}
+          echo "limitrange not managed here (limitRange: false) - skipped"
+          {{- end }}
+          {{- end }}
+          echo "PASSED"
+  volumes:
+    - name: tmp
+      emptyDir: {}
+{{- end }}

@@ -1,0 +1,429 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.realm.include }}
+{{- /* Worked out in _realm-data.tpl; read realm-sync-configmap.yaml for the
+       files this script finds under /sync. */}}
+{{- $clients := include "keycloak.realmClients" . | fromYamlArray }}
+{{- $clientEnvMap := include "keycloak.realmClientEnv" . | fromYaml }}
+{{- $userOps := include "keycloak.realmUserOps" . | fromYamlArray }}
+{{- $saOps := include "keycloak.realmServiceAccountOps" . | fromYamlArray }}
+{{- $scopeAttach := include "keycloak.realmScopeAttach" . | fromYamlArray }}
+{{- $payload := dict "ifResourceExists" "OVERWRITE" "clients" $clients }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  {{- /* Jobs are immutable, so the name must change whenever anything the Job
+         actually does changes — the endpoint it talks to and the credential
+         wiring as well as the realm content, otherwise a fix to any of them
+         can never be rolled out over an existing Job.
+
+         Note what is deliberately absent: the credential *values*. They are
+         not known at template time and must never reach git, so rotating a
+         secret in Vault does not re-run this Job. See HANDOFF.md. */}}
+  {{- $jobHash := dict "clients" $payload "userOps" $userOps "saOps" $saOps "roles" $v.realm.roles "clientScopes" $v.realm.clientScopes "scopeAttach" $scopeAttach "unmanagedAttributes" $v.realm.unmanagedAttributes "sessions" $v.realm.sessions "clientEnv" $clientEnvMap "url" (include "keycloak.serviceUrl" .) }}
+  name: keycloak-realm-sync-{{ $jobHash | toJson | sha256sum | trunc 8 }}
+  namespace: {{ include "operator.crNamespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    {{- /* The hash above covers the realm content and the env wiring, but it
+           cannot cover the script body — that is rendered inline below, after
+           the name is already fixed. So a fix to the script alone produces the
+           same Job name, and ArgoCD tries to patch an existing Job's
+           spec.template, which is immutable:
+
+             Job.batch "keycloak-realm-sync-<hash>" is invalid:
+             spec.template: ... field is immutable
+
+           The Application then wedges in a Running sync, retrying forever, and
+           nothing in the error points at the script being the thing that
+           changed.
+
+           Force is not optional here. Replace on its own is `kubectl replace`,
+           which on a Job fails a second way — the rendered manifest has no
+           spec.selector and no pod-template labels, because the API server
+           generates both:
+
+             spec.selector: Required value
+             spec.template.metadata.labels: Invalid value: null:
+               `selector` does not match template `labels`
+
+           Force makes it `kubectl replace --force`, i.e. delete and recreate,
+           which is the only thing that actually works. Safe because the Job is
+           idempotent by design and carries ttlSecondsAfterFinished, so
+           re-running it is a no-op. */}}
+    argocd.argoproj.io/sync-options: Replace=true,Force=true
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      volumes:
+        - name: sync
+          configMap:
+            name: keycloak-realm-sync
+      containers:
+        - name: realm-sync
+          image: registry.redhat.io/openshift4/ose-cli:latest
+          volumeMounts:
+            - name: sync
+              mountPath: /sync
+              readOnly: true
+          env:
+            - name: KC_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $v.instance.name }}-initial-admin
+                  key: username
+            - name: KC_ADMIN_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $v.instance.name }}-initial-admin
+                  key: password
+            - name: CLIENT_ENV_MAP
+              value: {{ $clientEnvMap | toJson | quote }}
+            {{- range $name, $client := $v.realm.clients }}
+            {{- if and $client.include (not $client.publicClient) }}
+            - name: CLIENT_SECRET_{{ include "keycloak.envSuffix" $name }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "keycloak.realmSecretName" $ }}
+                  key: client-{{ $name }}
+            {{- end }}
+            {{- end }}
+            {{- range $v.realm.users }}
+            {{- if .passwordProperty }}
+            - name: USER_PASSWORD_{{ include "keycloak.envSuffix" .username }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "keycloak.realmSecretName" $ }}
+                  key: user-{{ .username }}
+            {{- end }}
+            {{- end }}
+          {{- /* The phases below run in this order because each depends on the
+                 one before it: roles and scopes have to exist before the
+                 import references them, the import has to have created the
+                 clients before scopes can be attached or service-account users
+                 resolved, and roles have to exist before users are granted
+                 them. Each prints its own `=== ... ===` banner, so a pod log
+                 says which phase failed.
+
+                 To read this as the shell sees it rather than as a template:
+                 make render CLUSTER=mgt/acm-hub CHART=keycloak */}}
+          command:
+            - /bin/bash
+            - -e
+            - -c
+            - |
+              KC_URL="{{ include "keycloak.serviceUrl" . }}"
+              REALM="{{ $v.realm.name }}"
+              umask 077
+
+              for i in $(seq 1 30); do
+                if curl -skf "$KC_URL/realms/master" > /dev/null 2>&1; then
+                  echo "Keycloak is ready"
+                  break
+                fi
+                echo "Waiting for Keycloak... ($i/30)"
+                sleep 10
+              done
+
+              TOKEN=$(curl -skf "$KC_URL/realms/master/protocol/openid-connect/token" \
+                -d "client_id=admin-cli" \
+                -d "username=$KC_ADMIN_USER" \
+                -d "password=$KC_ADMIN_PASS" \
+                -d "grant_type=password" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+              {{- with $v.realm.unmanagedAttributes }}
+              echo ""
+              echo "=== Setting unmanaged attribute policy to {{ . }} ==="
+              # Attributes that are not declared in the realm's user profile
+              # are silently discarded unless this policy allows them, which
+              # makes org_id and account_number vanish with no error anywhere.
+              curl -skf "$KC_URL/admin/realms/$REALM/users/profile" \
+                -H "Authorization: Bearer $TOKEN" > /tmp/profile.json
+              python3 /sync/user_profile.py /tmp/profile.json "{{ . }}" /tmp/profile-new.json
+              HTTP_CODE=$(curl -sk -o /dev/null -w "%{http_code}" -X PUT \
+                "$KC_URL/admin/realms/$REALM/users/profile" \
+                -H "Authorization: Bearer $TOKEN" \
+                -H "Content-Type: application/json" \
+                --data-binary @/tmp/profile-new.json)
+              rm -f /tmp/profile.json /tmp/profile-new.json
+              echo "user profile: HTTP $HTTP_CODE"
+              if [ "$HTTP_CODE" -ge 300 ]; then
+                echo "Failed to set unmanaged attribute policy"
+                exit 1
+              fi
+              {{- end }}
+
+              {{- if $v.realm.sessions }}
+              echo ""
+              echo "=== Applying realm session settings ==="
+              # Over the admin API and not through KeycloakRealmImport: the
+              # operator runs that import once and marks it Done, so a realm
+              # that already exists never sees a timeout changed later in git.
+              curl -skf "$KC_URL/admin/realms/$REALM" \
+                -H "Authorization: Bearer $TOKEN" > /tmp/realm.json
+              python3 /sync/realm_settings.py /tmp/realm.json /sync/sessions.json /tmp/realm-new.json
+              HTTP_CODE=$(curl -sk -o /dev/null -w "%{http_code}" -X PUT \
+                "$KC_URL/admin/realms/$REALM" \
+                -H "Authorization: Bearer $TOKEN" \
+                -H "Content-Type: application/json" \
+                --data-binary @/tmp/realm-new.json)
+              rm -f /tmp/realm.json /tmp/realm-new.json
+              echo "realm settings: HTTP $HTTP_CODE"
+              if [ "$HTTP_CODE" -ge 300 ]; then
+                echo "Failed to apply realm session settings"
+                exit 1
+              fi
+              {{- end }}
+
+              {{- if $v.realm.roles }}
+              echo ""
+              echo "=== Creating realm roles ==="
+              # Create-if-missing, never overwrite. A partialImport OVERWRITE
+              # on a role deletes and recreates it, and every user mapping to
+              # that role goes with it — so 409 Conflict is the success case
+              # for a role that already exists.
+              {{- range $role := $v.realm.roles }}
+              HTTP_CODE=$(curl -sk -o /dev/null -w "%{http_code}" -X POST \
+                "$KC_URL/admin/realms/$REALM/roles" \
+                -H "Authorization: Bearer $TOKEN" \
+                -H "Content-Type: application/json" \
+                --data-binary @/sync/role-{{ $role.name }}.json)
+              if [ "$HTTP_CODE" = "409" ]; then
+                echo "role {{ $role.name }}: already exists"
+              elif [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+                echo "role {{ $role.name }}: created"
+              else
+                echo "role {{ $role.name }}: HTTP $HTTP_CODE"
+                exit 1
+              fi
+              {{- end }}
+              {{- end }}
+
+              {{- if $v.realm.clientScopes }}
+              echo ""
+              echo "=== Creating client scopes ==="
+              # Must run before the partialImport below, which resolves a
+              # client's defaultClientScopes by name and drops the ones that
+              # do not exist without reporting it. Create-if-missing, so 409
+              # Conflict is the success case.
+              {{- range $scope, $spec := $v.realm.clientScopes }}
+              HTTP_CODE=$(curl -sk -o /dev/null -w "%{http_code}" -X POST \
+                "$KC_URL/admin/realms/$REALM/client-scopes" \
+                -H "Authorization: Bearer $TOKEN" \
+                -H "Content-Type: application/json" \
+                --data-binary @/sync/scope-{{ $scope }}.json)
+              if [ "$HTTP_CODE" = "409" ]; then
+                echo "client scope {{ $scope }}: already exists"
+              elif [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+                echo "client scope {{ $scope }}: created"
+              else
+                echo "client scope {{ $scope }}: HTTP $HTTP_CODE"
+                exit 1
+              fi
+              {{- end }}
+              {{- end }}
+
+              echo ""
+              python3 /sync/inject.py /sync/payload.json /tmp/payload.json
+
+              HTTP_CODE=$(curl -sk -o /tmp/result.json -w "%{http_code}" -X POST "$KC_URL/admin/realms/$REALM/partialImport" \
+                -H "Authorization: Bearer $TOKEN" \
+                -H "Content-Type: application/json" \
+                --data-binary @/tmp/payload.json)
+              rm -f /tmp/payload.json
+
+              echo "HTTP $HTTP_CODE: $(cat /tmp/result.json)"
+
+              if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+                echo "Client sync completed successfully"
+              else
+                echo "Client sync failed"
+                exit 1
+              fi
+
+              {{- if $scopeAttach }}
+              echo ""
+              echo "=== Attaching client scopes ==="
+              # Re-asserted rather than left to the partialImport above: a
+              # client created before its scope existed keeps the scope list
+              # it imported with, and nothing resyncs it. PUT is idempotent,
+              # so a client that already has the scope returns 204 too.
+              SCOPE_SYNC_FAILED=0
+              {{- range $a := $scopeAttach }}
+              SCOPE_ID=$(curl -skf "$KC_URL/admin/realms/$REALM/client-scopes" \
+                -H "Authorization: Bearer $TOKEN" \
+                | python3 -c "import sys,json; print(next((s['id'] for s in json.load(sys.stdin) if s['name']=='{{ $a.scope }}'),''))")
+              SCOPE_CLIENT_UUID=$(curl -skf "$KC_URL/admin/realms/$REALM/clients?clientId={{ $a.clientId }}" \
+                -H "Authorization: Bearer $TOKEN" | python3 -c "import sys,json; c=json.load(sys.stdin); print(c[0]['id'] if c else '')")
+              if [ -n "$SCOPE_ID" ] && [ -n "$SCOPE_CLIENT_UUID" ]; then
+                curl -sk -o /dev/null -w "{{ $a.clientId }} <- {{ $a.scope }} ({{ $a.kind }}): HTTP %{http_code}\n" -X PUT \
+                  "$KC_URL/admin/realms/$REALM/clients/$SCOPE_CLIENT_UUID/{{ $a.kind }}-client-scopes/$SCOPE_ID" \
+                  -H "Authorization: Bearer $TOKEN"
+              else
+                echo "Could not resolve client scope {{ $a.scope }} or client {{ $a.clientId }}"
+                SCOPE_SYNC_FAILED=1
+              fi
+              {{- end }}
+
+              # A missing scope is not cosmetic: the client can only request
+              # scopes assigned to it, so the token endpoint answers
+              # invalid_scope and the consumer never authenticates.
+              if [ "$SCOPE_SYNC_FAILED" -ne 0 ]; then
+                echo "Client scope sync incomplete"
+                exit 1
+              fi
+              echo "Client scope sync completed successfully"
+              {{- end }}
+
+              {{- if $userOps }}
+              echo ""
+              echo "=== Syncing users ==="
+              USER_SYNC_FAILED=0
+              {{- range $op := $userOps }}
+
+              USER_ID=$(curl -skf "$KC_URL/admin/realms/$REALM/users?username={{ $op.username }}&exact=true" \
+                -H "Authorization: Bearer $TOKEN" | python3 -c "import sys,json; u=json.load(sys.stdin); print(u[0]['id'] if u else '')")
+
+              # The realm import only ever runs on create, so a user added to
+              # values after the realm existed has to be created here.
+              if [ -z "$USER_ID" ]; then
+                curl -sk -o /dev/null -w "{{ $op.username }} create: HTTP %{http_code}\n" -X POST \
+                  "$KC_URL/admin/realms/$REALM/users" \
+                  -H "Authorization: Bearer $TOKEN" \
+                  -H "Content-Type: application/json" \
+                  --data-binary @/sync/user-{{ $op.username }}.json
+                USER_ID=$(curl -skf "$KC_URL/admin/realms/$REALM/users?username={{ $op.username }}&exact=true" \
+                  -H "Authorization: Bearer $TOKEN" | python3 -c "import sys,json; u=json.load(sys.stdin); print(u[0]['id'] if u else '')")
+              fi
+
+              if [ -n "$USER_ID" ]; then
+                {{- if $op.profile.attributes }}
+                # The create above carries attributes, but a user that already
+                # existed needs them applied separately. Merge rather than
+                # replace so attributes this chart does not own survive.
+                curl -skf "$KC_URL/admin/realms/$REALM/users/$USER_ID" \
+                  -H "Authorization: Bearer $TOKEN" > /tmp/user-cur.json
+                python3 /sync/merge_user.py /tmp/user-cur.json /sync/user-{{ $op.username }}.json /tmp/user-new.json
+                curl -sk -o /dev/null -w "{{ $op.username }} attributes: HTTP %{http_code}\n" -X PUT \
+                  "$KC_URL/admin/realms/$REALM/users/$USER_ID" \
+                  -H "Authorization: Bearer $TOKEN" \
+                  -H "Content-Type: application/json" \
+                  --data-binary @/tmp/user-new.json
+                rm -f /tmp/user-cur.json /tmp/user-new.json
+                {{- end }}
+                {{- with $op.envVar }}
+                python3 -c 'import json,os; json.dump({"type":"password","value":os.environ["{{ . }}"],"temporary":False}, open("/tmp/pw.json","w"))'
+                curl -sk -o /dev/null -w "{{ $op.username }} password: HTTP %{http_code}\n" -X PUT \
+                  "$KC_URL/admin/realms/$REALM/users/$USER_ID/reset-password" \
+                  -H "Authorization: Bearer $TOKEN" \
+                  -H "Content-Type: application/json" \
+                  --data-binary @/tmp/pw.json
+                rm -f /tmp/pw.json
+                {{- end }}
+                {{- range $op.realmRoles }}
+                ROLE=$(curl -skf "$KC_URL/admin/realms/$REALM/roles/{{ . }}" \
+                  -H "Authorization: Bearer $TOKEN" || true)
+                if [ -n "$ROLE" ]; then
+                  echo "$ROLE" | python3 -c 'import json,sys; r=json.load(sys.stdin); json.dump([{"id":r["id"],"name":r["name"]}], open("/tmp/role.json","w"))'
+                  curl -sk -o /dev/null -w "{{ $op.username }} role {{ . }}: HTTP %{http_code}\n" -X POST \
+                    "$KC_URL/admin/realms/$REALM/users/$USER_ID/role-mappings/realm" \
+                    -H "Authorization: Bearer $TOKEN" \
+                    -H "Content-Type: application/json" \
+                    --data-binary @/tmp/role.json
+                  rm -f /tmp/role.json
+                else
+                  echo "Realm role {{ . }} does not exist, cannot grant it to {{ $op.username }}"
+                  USER_SYNC_FAILED=1
+                fi
+                {{- end }}
+                {{- range $op.groups }}
+                GROUP_ID=$(curl -skf "$KC_URL/admin/realms/$REALM/groups?search={{ . }}&exact=true" \
+                  -H "Authorization: Bearer $TOKEN" | python3 -c "import sys,json; g=json.load(sys.stdin); print(g[0]['id'] if g else '')")
+                if [ -n "$GROUP_ID" ]; then
+                  curl -sk -o /dev/null -w "{{ $op.username }} -> {{ . }}: HTTP %{http_code}\n" -X PUT \
+                    "$KC_URL/admin/realms/$REALM/users/$USER_ID/groups/$GROUP_ID" \
+                    -H "Authorization: Bearer $TOKEN"
+                else
+                  echo "Group {{ . }} does not exist, cannot add {{ $op.username }} to it"
+                  USER_SYNC_FAILED=1
+                fi
+                {{- end }}
+              else
+                echo "User {{ $op.username }} could not be found or created"
+                USER_SYNC_FAILED=1
+              fi
+              {{- end }}
+
+              # Fail loudly rather than silently: group and role membership is
+              # what grants cluster-admin, so a half-applied user sync must not
+              # look like a success in ArgoCD.
+              if [ "$USER_SYNC_FAILED" -ne 0 ]; then
+                echo "User sync incomplete"
+                exit 1
+              fi
+              echo "User sync completed successfully"
+              {{- end }}
+
+              {{- if $saOps }}
+              echo ""
+              echo "=== Syncing service accounts ==="
+              SA_SYNC_FAILED=0
+              {{- range $op := $saOps }}
+
+              # partialImport creates the client but NOT its service-account
+              # user, so looking the user up by name finds nothing on a first
+              # sync even with serviceAccountsEnabled in the payload. Go in
+              # through the client instead: Keycloak's getServiceAccountUser
+              # calls enableServiceAccount when the user is missing, so this
+              # both finds it and materialises it.
+              SA_CLIENT_UUID=$(curl -skf "$KC_URL/admin/realms/$REALM/clients?clientId={{ $op.clientId }}" \
+                -H "Authorization: Bearer $TOKEN" | python3 -c "import sys,json; c=json.load(sys.stdin); print(c[0]['id'] if c else '')")
+              SA_ID=""
+              if [ -n "$SA_CLIENT_UUID" ]; then
+                SA_ID=$(curl -skf "$KC_URL/admin/realms/$REALM/clients/$SA_CLIENT_UUID/service-account-user" \
+                  -H "Authorization: Bearer $TOKEN" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))")
+              fi
+
+              if [ -n "$SA_ID" ]; then
+                {{- if $op.attributes }}
+                curl -skf "$KC_URL/admin/realms/$REALM/users/$SA_ID" \
+                  -H "Authorization: Bearer $TOKEN" > /tmp/sa-cur.json
+                python3 /sync/merge_user.py /tmp/sa-cur.json /sync/sa-{{ $op.clientId }}.json /tmp/sa-new.json
+                curl -sk -o /dev/null -w "{{ $op.username }} attributes: HTTP %{http_code}\n" -X PUT \
+                  "$KC_URL/admin/realms/$REALM/users/$SA_ID" \
+                  -H "Authorization: Bearer $TOKEN" \
+                  -H "Content-Type: application/json" \
+                  --data-binary @/tmp/sa-new.json
+                rm -f /tmp/sa-cur.json /tmp/sa-new.json
+                {{- end }}
+                {{- range $op.realmRoles }}
+                ROLE=$(curl -skf "$KC_URL/admin/realms/$REALM/roles/{{ . }}" \
+                  -H "Authorization: Bearer $TOKEN" || true)
+                if [ -n "$ROLE" ]; then
+                  echo "$ROLE" | python3 -c 'import json,sys; r=json.load(sys.stdin); json.dump([{"id":r["id"],"name":r["name"]}], open("/tmp/sa-role.json","w"))'
+                  curl -sk -o /dev/null -w "{{ $op.username }} role {{ . }}: HTTP %{http_code}\n" -X POST \
+                    "$KC_URL/admin/realms/$REALM/users/$SA_ID/role-mappings/realm" \
+                    -H "Authorization: Bearer $TOKEN" \
+                    -H "Content-Type: application/json" \
+                    --data-binary @/tmp/sa-role.json
+                  rm -f /tmp/sa-role.json
+                else
+                  echo "Realm role {{ . }} does not exist, cannot grant it to {{ $op.username }}"
+                  SA_SYNC_FAILED=1
+                fi
+                {{- end }}
+              else
+                echo "Could not resolve the service-account user for client {{ $op.clientId }} — is serviceAccountsEnabled set on it, and did the client sync above add it?"
+                SA_SYNC_FAILED=1
+              fi
+              {{- end }}
+
+              if [ "$SA_SYNC_FAILED" -ne 0 ]; then
+                echo "Service account sync incomplete"
+                exit 1
+              fi
+              echo "Service account sync completed successfully"
+              {{- end }}
+{{- end }}

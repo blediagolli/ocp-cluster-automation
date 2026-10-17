@@ -1,0 +1,167 @@
+# Whether this chart installs its operator, or only configures one that is
+# already there. Set per cluster in conf.yaml, which every operator
+# Application reads; false drops the Namespace, OperatorGroup and
+# Subscriptions and keeps the CRs. Replaces conf.yaml's deployOperators,
+# which used to switch a whole Application on and off.
+installOperators: true
+
+# All of this chart's values nest under the chart name, so a shared
+# operators.yaml can carry several operators without their `operator:`
+# blocks colliding. A per-operator file uses the identical shape, which is
+# what lets a block move between the two by cut-and-paste.
+#
+# The templates reach them with `index .Values .Chart.Name`, so the chart
+# directory name and this top-level key must stay in step.
+oadp:
+  operator:
+    # compliance note: no Subscription for this operator existed anywhere
+    # in the repo — the CRs below had nothing to reconcile them. Package and
+    # namespace are the upstream defaults. See HANDOFF.md.
+    # --- facts about this operator, not settings ---
+    # Values only so that namespace.yaml, operatorgroup.yaml and
+    # subscription.yaml stay byte-identical across every chart under
+    # charts/operators/. Overriding them per cluster is not meaningful.
+    namespace: openshift-adp
+    operatorGroup: openshift-adp
+    package: redhat-oadp-operator
+    sourceNamespace: openshift-marketplace
+    # Does not support the AllNamespaces install mode: a global OperatorGroup
+    # leaves the CSV Failed with UnsupportedOperatorGroup. Hence a dedicated
+    # namespace and a targetNamespaces OperatorGroup.
+    clusterScoped: false
+    skipNamespace: false
+    skipOperatorGroup: false
+    namespaceLabels: {}
+    namespaceAnnotations: {}
+
+    # --- the parts you actually set ---
+    channel: ""
+    source: redhat-operators
+    installPlanApproval: Automatic
+    # Pin to a specific CSV instead of taking the channel head.
+    startingCSV: ""
+
+  # Namespace for the CRs below. Empty inherits operator.namespace.
+  namespace: ""
+  # Only consulted when namespace above differs from operator.namespace.
+  createNamespace: false
+
+  # ---- from charts/operator-instances/oadp-config ----
+  oadp:
+    include: false
+    namespace: openshift-adp
+
+    # ---------------------------------------------------------------------------
+    # Velero configuration
+    # ---------------------------------------------------------------------------
+    velero:
+      defaultPlugins:
+        - openshift
+        - csi
+      # Available plugins: aws, gcs, azure, openshift, csi, kubevirt
+      customPlugins: []
+      # - name: custom-plugin
+      #   image: quay.io/example/velero-plugin:latest
+      featureFlags: []
+      # - EnableCSI
+      resources:
+        requests:
+          cpu: 500m
+          memory: 128Mi
+        limits:
+          cpu: "1"
+          memory: 512Mi
+
+    # ---------------------------------------------------------------------------
+    # Node agent (Restic/Kopia for file-system backups)
+    # ---------------------------------------------------------------------------
+    nodeAgent:
+      enable: false
+      uploaderType: kopia
+      # Options: restic, kopia
+      resources:
+        requests:
+          cpu: 500m
+          memory: 512Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+      tolerations: []
+      # - key: node-role.kubernetes.io/infra
+      #   operator: Exists
+      #   effect: NoSchedule
+      nodeSelector: {}
+
+    # ---------------------------------------------------------------------------
+    # Backup storage locations
+    # ---------------------------------------------------------------------------
+    backupLocations: []
+    # - name: default
+    #   provider: aws
+    #   default: true
+    #   bucket: my-backup-bucket
+    #   prefix: velero
+    #   region: us-east-1
+    #   credentialName: cloud-credentials
+    #   credentialKey: cloud
+    #   config: {}
+    #   # s3ForcePathStyle: "true"
+    #   # s3Url: "https://s3.example.com"
+
+    # ---------------------------------------------------------------------------
+    # Volume snapshot locations
+    # ---------------------------------------------------------------------------
+    snapshotLocations: []
+    # - name: default
+    #   provider: aws
+    #   region: us-east-1
+    #   config: {}
+
+  # ---- from charts/operator-instances/velero-config ----
+  velero:
+    include: false
+    namespace: openshift-adp
+    backupStorageLocation:
+      include: false
+      name: default
+      provider: aws
+      bucket: ""
+      prefix: velero
+      region: us-east-1
+      credentialSecretName: cloud-credentials
+      config: {}
+      # s3ForcePathStyle: "true"
+      # s3Url: "https://minio.example.com"
+    volumeSnapshotLocation:
+      include: false
+      name: default
+      provider: aws
+      region: us-east-1
+      config: {}
+    schedules:
+      - name: daily-full
+        include: false
+        schedule: "0 2 * * *"
+        ttl: 720h
+        includedNamespaces: []
+        excludedNamespaces:
+          - openshift-*
+          - kube-*
+        includeClusterResources: true
+        snapshotVolumes: true
+        storageLocation: default
+        volumeSnapshotLocations:
+          - default
+      - name: weekly-full
+        include: false
+        schedule: "0 3 * * 0"
+        ttl: 2160h
+        includedNamespaces: []
+        excludedNamespaces:
+          - openshift-*
+          - kube-*
+        includeClusterResources: true
+        snapshotVolumes: true
+        storageLocation: default
+        volumeSnapshotLocations:
+          - default

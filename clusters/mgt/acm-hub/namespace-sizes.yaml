@@ -1,0 +1,8 @@
+# Cluster-level overrides for this cluster.
+# Precedence: chart defaults < env/<env>/namespace-sizes.yaml < clusters/<env>/<cluster>/namespace-sizes.yaml
+#
+# Intentionally empty. This repository ships the structure, not the
+# configuration — fill in what your environment needs.
+#
+# See charts/onboarding/namespace-config/values.yaml for the default small/medium/large definitions.
+{}

@@ -1,0 +1,190 @@
+{{- /*
+Removes quotas and limits left behind by the pre-chart scheme: a `default`
+ResourceQuota/LimitRange from the old project-request template, and quotas
+named after the t-shirt size from before everything was consolidated onto
+team-quota/team-limits. A stale quota is not overwritten by ours -- Kubernetes
+enforces the most restrictive of every ResourceQuota in a namespace -- so one
+left behind silently caps the team below its tier.
+
+PostSync, not PreSync. These objects are namespaced into the tenant
+namespaces, and those namespaces are created by namespaces.yaml during the
+MAIN sync. On a team's first sync they do not exist, so a PreSync hook cannot
+be applied at all: ArgoCD fails the PreSync phase with
+`namespaces "team-x-dev" not found` and never reaches the phase that would
+have created them. Retrying cannot converge, because the thing it is waiting
+for is behind the phase that is failing. CreateNamespace=true in the
+ApplicationSet does not rescue this: it creates spec.destination.namespace and
+nothing else, and neither onboarding ApplicationSet sets one.
+
+The obvious fix -- make the Namespace a PreSync hook too -- is worse than the
+bug. A hook resource is not part of the Application's resource tree, so it is
+never pruned and never adopted: removing a namespace from team.namespaces
+would silently leave it running.
+
+PostSync was also chosen over a Sync-phase hook at a later sync-wave, which
+would have kept the original "clean before you apply" ordering inside one
+sync. A Sync hook that fails halts the sync at its wave, leaving namespaces
+created with no ResourceQuota and no default-deny NetworkPolicy -- open by
+default. PostSync fails only after everything has been applied. The ordering
+it gives up is not load-bearing: every object this deletes predates this
+chart, so removing them one phase later changes nothing.
+
+Turn cleanup.include off on a cluster once it has no pre-chart namespaces
+left. Otherwise this runs on every sync, forever, to delete nothing.
+
+Does not run while the team is quiesced. A quiesced namespace is meant to be
+inert -- the whole state is "nothing new happens here" -- and a hook that
+starts a Pod on every sync to delete objects that were already deleted on the
+sync before quiesce is the opposite of that.
+*/ -}}
+{{- include "onboarding.validate" . }}
+{{- if and .Values.cleanup.include (not (include "onboarding.quiescing" .)) }}
+{{- $namespaces := include "onboarding.namespaces" . | fromYamlArray }}
+{{- $tiers := keys .Values.namespaceSizes | sortAlpha }}
+{{- range $namespaces }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ns-cleanup
+  namespace: {{ .name }}
+  labels:
+    {{- include "onboarding.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: cleanup
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/hook-weight: "0"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ns-cleanup
+  namespace: {{ .name }}
+  labels:
+    {{- include "onboarding.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: cleanup
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/hook-weight: "0"
+rules:
+  # `get` is not decoration. `oc delete <kind> <name>` resolves the object
+  # before deleting it, and --ignore-not-found suppresses a 404, not a 403.
+  # With list+delete alone every command in the Job below exits non-zero with
+  # "cannot get resource", the Job fails, and the hook fails with it.
+  - apiGroups: [""]
+    resources: ["resourcequotas", "limitranges"]
+    verbs: ["get", "list", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ns-cleanup
+  namespace: {{ .name }}
+  labels:
+    {{- include "onboarding.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: cleanup
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/hook-weight: "0"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ns-cleanup
+subjects:
+  - kind: ServiceAccount
+    name: ns-cleanup
+    namespace: {{ .name }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ns-cleanup
+  namespace: {{ .name }}
+  labels:
+    {{- include "onboarding.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: cleanup
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    # Weight 1: the SA, Role and RoleBinding above are weight 0, and ArgoCD
+    # applies a phase one weight group at a time. Without this the Job can be
+    # created before the RoleBinding exists and fail on its first API call.
+    argocd.argoproj.io/hook-weight: "1"
+    # BeforeHookCreation, not HookSucceeded. HookSucceeded has ArgoCD delete
+    # the Job the moment it passes, which takes the logs with it and makes
+    # ttlSecondsAfterFinished dead config -- the TTL controller never gets the
+    # chance to fire. This way the Job survives the sync for inspection, the
+    # TTL reaps it, and the next sync replaces whatever is left. Re-applying a
+    # Job in place is not an option either: its pod template is immutable.
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 120
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        {{- include "onboarding.labels" $ | nindent 8 }}
+        app.kubernetes.io/component: cleanup
+    spec:
+      serviceAccountName: ns-cleanup
+      restartPolicy: Never
+      terminationGracePeriodSeconds: 0
+      # restricted-v2 compatible. runAsUser is deliberately not set: the SCC
+      # assigns one from the namespace's uid range, and pinning it here would
+      # make the pod unschedulable in any namespace with a different range.
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: cleanup
+          image: {{ $.Values.cleanup.image }}
+          imagePullPolicy: {{ $.Values.cleanup.imagePullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          {{- /* These are constrained from BELOW by the namespace's own
+                 LimitRange, which this same chart creates. A request under
+                 that tier's Container `min` is rejected by admission -- and
+                 rejected when the Job controller creates the POD, not when
+                 ArgoCD creates the Job, so the Application still reports
+                 Synced and Healthy while the hook silently never runs. See
+                 the limitRange gotcha in HANDOFF.md; validate-onboarding
+                 compares these against every tier. */}}
+          resources:
+            {{- toYaml $.Values.cleanup.resources | nindent 12 }}
+          env:
+            # oc writes a discovery cache under $HOME/.kube. With
+            # readOnlyRootFilesystem that is the one thing that breaks, and it
+            # breaks as a permission error on a path nobody expects to be
+            # involved. Point both at the writable emptyDir below.
+            - name: HOME
+              value: /tmp
+            - name: KUBECACHEDIR
+              value: /tmp/.kube/cache
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              # Tier names come from namespaceSizes rather than a hardcoded
+              # "small medium large", so adding a tier cannot silently leave
+              # its stale quotas behind.
+              for n in default {{ $tiers | join " " }}; do
+                oc delete resourcequota "$n" --ignore-not-found -n {{ .name }}
+                oc delete limitrange   "$n" --ignore-not-found -n {{ .name }}
+              done
+              echo "cleanup complete for {{ .name }}"
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}
+{{- end }}

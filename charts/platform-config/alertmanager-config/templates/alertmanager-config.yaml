@@ -1,0 +1,82 @@
+{{- if .Values.alertmanager.include }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alertmanager-main
+  namespace: {{ .Values.alertmanager.namespace }}
+type: Opaque
+stringData:
+  alertmanager.yaml: |
+    global:
+      resolve_timeout: 5m
+    route:
+      receiver: {{ .Values.alertmanager.route.receiver | quote }}
+      group_by:
+        {{- toYaml .Values.alertmanager.route.groupBy | nindent 8 }}
+      group_wait: {{ .Values.alertmanager.route.groupWait }}
+      group_interval: {{ .Values.alertmanager.route.groupInterval }}
+      repeat_interval: {{ .Values.alertmanager.route.repeatInterval }}
+      {{- if .Values.alertmanager.route.routes }}
+      routes:
+        {{- range .Values.alertmanager.route.routes }}
+        - matchers:
+            {{- range .matchers }}
+            - {{ .name }}={{ .value | quote }}
+            {{- end }}
+          receiver: {{ .receiver | quote }}
+          {{- if .repeatInterval }}
+          repeat_interval: {{ .repeatInterval }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- if .Values.alertmanager.inhibitRules }}
+    inhibit_rules:
+      {{- range .Values.alertmanager.inhibitRules }}
+      - source_matchers:
+          {{- range .sourceMatch }}
+          - {{ .name }}={{ .value | quote }}
+          {{- end }}
+        target_matchers:
+          {{- range .targetMatch }}
+          - {{ .name }}={{ .value | quote }}
+          {{- end }}
+        equal:
+          {{- toYaml .equal | nindent 10 }}
+      {{- end }}
+    {{- end }}
+    receivers:
+      {{- range .Values.alertmanager.receivers }}
+      - name: {{ .name | quote }}
+        {{- if .slackConfigs }}
+        slack_configs:
+          {{- range .slackConfigs }}
+          - api_url_file: /etc/alertmanager/secrets/{{ .apiURL.name }}/{{ .apiURL.key }}
+            channel: {{ .channel | quote }}
+            send_resolved: {{ .sendResolved | default true }}
+          {{- end }}
+        {{- end }}
+        {{- if .pagerDutyConfigs }}
+        pagerduty_configs:
+          {{- range .pagerDutyConfigs }}
+          - service_key_file: /etc/alertmanager/secrets/{{ .serviceKey.name }}/{{ .serviceKey.key }}
+          {{- end }}
+        {{- end }}
+        {{- if .emailConfigs }}
+        email_configs:
+          {{- range .emailConfigs }}
+          - to: {{ .to | quote }}
+            from: {{ .from | quote }}
+            smarthost: {{ .smarthost | quote }}
+            auth_username: {{ .authUsername | quote }}
+            require_tls: {{ .requireTLS | default true }}
+          {{- end }}
+        {{- end }}
+        {{- if .webhookConfigs }}
+        webhook_configs:
+          {{- range .webhookConfigs }}
+          - url: {{ .url | quote }}
+            send_resolved: {{ .sendResolved | default true }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+{{- end }}

@@ -1,0 +1,8 @@
+apiVersion: v2
+name: advanced-cluster-management
+description: advanced-cluster-management — operator subscription and aCM MultiClusterHub instance
+version: 0.1.0
+annotations:
+  # the MultiClusterHub is what makes a cluster the hub
+  oca.io/target: hub
+  oca.io/maturity: incubating

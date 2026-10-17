@@ -1,0 +1,24 @@
+cluster:
+  registry: ""
+
+catalogSource:
+  certifiedOperators:
+    include: false
+    name: local-certified-operators
+    namespace: openshift-marketplace
+    displayName: Local Certified Operator Catalog
+    imageRepository: redhat/certified-operator
+    imageTag: v4.14
+    publisher: grpc
+    sourceType: grpc
+    registryPollInterval: 1440m
+  communityOperators:
+    include: false
+    name: local-community-operators
+    namespace: openshift-marketplace
+    displayName: Local Community Operator Catalog
+    imageRepository: redhat/community-operator
+    imageTag: v4.14
+    publisher: grpc
+    sourceType: grpc
+    registryPollInterval: 1440m

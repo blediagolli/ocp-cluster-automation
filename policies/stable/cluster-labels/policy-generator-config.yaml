@@ -1,0 +1,30 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: PolicyGenerator
+metadata:
+  name: cluster-labels
+placementBindingDefaults:
+  name: binding-cluster-labels
+policyDefaults:
+  namespace: ${POLICY_NAMESPACE}
+  # Pinned to enforce rather than taking ${REMEDIATION}. Policy.spec.remediationAction
+  # overrides whatever the child ConfigurationPolicy asks for, so leaving this as
+  # inform would silently neuter the labeller and leave every Placement selecting
+  # nothing. See manifests/cluster-labels.yaml for why this policy writes at all.
+  remediationAction: enforce
+  severity: medium
+  consolidateManifests: true
+  evaluationInterval:
+    compliant: ${EVAL_COMPLIANT}
+    noncompliant: ${EVAL_NONCOMPLIANT}
+  standards:
+    - NIST SP 800-53
+  categories:
+    - CM Configuration Management
+  controls:
+    - CM-8 System Component Inventory
+  placement:
+    placementPath: placement.yaml
+policies:
+  - name: cluster-labels
+    manifests:
+      - path: manifests/

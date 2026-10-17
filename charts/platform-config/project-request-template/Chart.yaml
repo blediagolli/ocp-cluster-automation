@@ -1,0 +1,7 @@
+apiVersion: v2
+name: project-request-template
+description: OpenShift project request template with default namespace resources
+version: 0.1.1
+annotations:
+  oca.io/target: spoke
+  oca.io/maturity: incubating

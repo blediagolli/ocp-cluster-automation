@@ -1,0 +1,7 @@
+apiVersion: v2
+name: cert-manager
+description: cert-manager — operator subscription and cert-manager ClusterIssuers and Certificates
+version: 0.1.0
+annotations:
+  oca.io/target: spoke
+  oca.io/maturity: incubating

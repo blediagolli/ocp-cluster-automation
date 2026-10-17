@@ -1,0 +1,20 @@
+apiVersion: v2
+name: openshift-apiserver
+description: OpenShift API server configuration
+version: 0.1.0
+annotations:
+  oca.io/target: spoke
+  # Re-proven on acm-hub 2026-10-13. It had been demoted when sno-dev was
+  # destroyed on 2026-10-12 and this chart had nowhere it was running.
+  #
+  # What was actually verified: api.<domain>:6443 presents
+  # `O=Let's Encrypt, CN=YE1` / `CN=api.<domain>` rather than the installer's
+  # `CN=kube-apiserver-lb-signer`, the kube-apiserver operator finished rolling
+  # all three masters, and `local-cluster` stayed Available throughout — the
+  # last one because ACM reaches the hub through an in-cluster ServiceAccount,
+  # so a change to the external name should not touch it, and "should not" is
+  # worth confirming on the API server specifically.
+  #
+  # api-int.<domain> keeps the internal signer: a named certificate is
+  # SNI-scoped to the external name, so in-cluster clients are unaffected.
+  oca.io/maturity: incubating

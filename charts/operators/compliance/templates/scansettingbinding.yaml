@@ -1,0 +1,23 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.scanSettingBinding.include }}
+{{- /* Wave 1: creating a binding is what actually starts a scan, and it
+       names both the ScanSetting and any TailoredProfile from wave 0. */}}
+apiVersion: compliance.openshift.io/v1alpha1
+kind: ScanSettingBinding
+metadata:
+  name: {{ $v.scanSettingBinding.name }}
+  namespace: {{ include "operator.crNamespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+profiles:
+  {{- range $v.scanSettingBinding.profiles }}
+  - name: {{ .name }}
+    kind: {{ .kind }}
+    apiGroup: {{ .apiGroup }}
+  {{- end }}
+settingsRef:
+  name: {{ $v.scanSetting.name }}
+  kind: ScanSetting
+  apiGroup: compliance.openshift.io/v1alpha1
+{{- end }}

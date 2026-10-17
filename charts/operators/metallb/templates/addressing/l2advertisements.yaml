@@ -1,0 +1,18 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.l2Advertisements.include }}
+{{- range $v.l2Advertisements.advertisements }}
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: {{ .name }}
+  namespace: {{ $v.metallb.namespace }}
+spec:
+  {{- if .ipAddressPools }}
+  ipAddressPools:
+    {{- range .ipAddressPools }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+---
+{{- end }}
+{{- end }}

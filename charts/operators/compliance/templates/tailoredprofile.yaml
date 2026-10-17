@@ -1,0 +1,44 @@
+{{- $v := index .Values .Chart.Name }}
+{{- /* Wave 0, same as the ScanSetting: a ScanSettingBinding that names a
+       TailoredProfile which does not exist yet is admitted and then sits
+       there with an error, so the profile goes in the wave before the
+       binding that references it. */}}
+{{- range $v.tailoredProfiles }}
+{{- if .include }}
+---
+apiVersion: compliance.openshift.io/v1alpha1
+kind: TailoredProfile
+metadata:
+  name: {{ .name }}
+  namespace: {{ include "operator.crNamespace" $ }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  title: {{ .title }}
+  description: {{ .description | quote }}
+  extends: {{ .extends }}
+  {{- if .enableRules }}
+  enableRules:
+    {{- range .enableRules }}
+    - name: {{ .name }}
+      rationale: {{ .rationale | quote }}
+    {{- end }}
+  {{- end }}
+  {{- if .disableRules }}
+  disableRules:
+    {{- range .disableRules }}
+    - name: {{ .name }}
+      rationale: {{ .rationale | quote }}
+    {{- end }}
+  {{- end }}
+  {{- if .setValues }}
+  setValues:
+    {{- range .setValues }}
+    - name: {{ .name }}
+      rationale: {{ .rationale | quote }}
+      value: {{ .value | quote }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}

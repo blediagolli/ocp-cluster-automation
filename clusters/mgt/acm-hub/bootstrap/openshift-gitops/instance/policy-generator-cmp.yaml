@@ -1,0 +1,64 @@
+# ConfigManagementPlugin config for the PolicyGenerator CMP sidecar declared in
+# argocd.yaml (spec.repo.sidecarContainers). The sidecar mounts this file at
+# /home/argocd/cmp-server/config/plugin.yaml.
+#
+# DUPLICATED in charts/operators/openshift-gitops/templates/policy-generator-cmp.yaml,
+# which is the live owner on the hub today. This hand-applied copy is first-install
+# only -- what a brand-new hub gets before any ArgoCD exists to sync the chart.
+# The two plugin.yaml bodies must stay identical; `make validate-cmp-parity` checks
+# that they are.
+#
+# Why a CMP at all: PolicyGenerator is a kustomize *exec plugin*, not a CRD and not
+# a Helm feature. It cannot run inside a Helm render, and stock kustomize refuses to
+# load it without --enable-alpha-plugins. So Argo has to shell out to a kustomize that
+# has the plugin binary on disk — that is this sidecar.
+#
+# There is deliberately no `discover` section: the plugin is name-only, used by the
+# Applications that ask for it by name. Discovery would be actively harmful here --
+# platform-root declares no source type, so any glob broad enough to cover the two
+# policy directories that are plain kustomize (policy-framework, cluster-config-maps)
+# would also match the root Application's kustomization.yaml and route the whole
+# repo through this sidecar.
+#
+# The token substitution is deliberately `sed` and not a template engine. ACM hub
+# templates ({{hub ... hub}}) live inside these manifests and must reach the hub
+# verbatim; anything that evaluates {{ }} would eat them.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: policy-generator-cmp-plugin
+  namespace: openshift-gitops
+data:
+  plugin.yaml: |
+    apiVersion: argoproj.io/v1alpha1
+    kind: ConfigManagementPlugin
+    metadata:
+      # Must match spec.source.plugin.name in the hub-acm-policies ApplicationSet.
+      # Do NOT add spec.version — that registers the plugin as `policy-generator-<version>`
+      # and the ApplicationSet reference stops resolving.
+      name: policy-generator
+    spec:
+      generate:
+        command: [/bin/sh, -c]
+        args:
+          - |
+            set -eu
+            # Argo prefixes plugin.env with ARGOCD_ENV_; older versions did not. Read both.
+            # Defaults here are the repo's contract: policies attest, they never write.
+            NS="${ARGOCD_ENV_POLICY_NAMESPACE:-${POLICY_NAMESPACE:-open-cluster-management-policies}}"
+            REM="${ARGOCD_ENV_REMEDIATION:-${REMEDIATION:-inform}}"
+            EC="${ARGOCD_ENV_EVAL_COMPLIANT:-${EVAL_COMPLIANT:-10m}}"
+            EN="${ARGOCD_ENV_EVAL_NONCOMPLIANT:-${EVAL_NONCOMPLIANT:-30s}}"
+            # envsubst is not in the argocd image, and would be wrong anyway: it would also
+            # expand the $base / $cm style variables that ACM hub templates use. Substitute
+            # exactly these four tokens and nothing else.
+            find . -type f -name '*.yaml' -exec sed -i \
+              -e "s|\${POLICY_NAMESPACE}|${NS}|g" \
+              -e "s|\${REMEDIATION}|${REM}|g" \
+              -e "s|\${EVAL_COMPLIANT}|${EC}|g" \
+              -e "s|\${EVAL_NONCOMPLIANT}|${EN}|g" \
+              {} +
+            # LoadRestrictionsNone because cluster-config-maps reads the shared
+            # policy-values/ tree at the repo root; kustomize otherwise refuses to
+            # load files from outside the directory it was pointed at.
+            kustomize build --enable-alpha-plugins --load-restrictor LoadRestrictionsNone .

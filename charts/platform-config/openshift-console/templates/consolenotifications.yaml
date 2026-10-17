@@ -1,0 +1,29 @@
+{{- /*
+  Banners are their own cluster-scoped CRD, not a field on the Console CR --
+  one object per banner, named, so a cluster can carry a standing "this is
+  dev" banner and a temporary maintenance notice at the same time and remove
+  either one on its own.
+*/}}
+{{- range .Values.consoleNotifications }}
+{{- if .include }}
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleNotification
+metadata:
+  name: {{ .name }}
+spec:
+  text: {{ .text | quote }}
+  location: {{ .location }}
+  {{- if .color }}
+  color: {{ .color | quote }}
+  {{- end }}
+  {{- if .backgroundColor }}
+  backgroundColor: {{ .backgroundColor | quote }}
+  {{- end }}
+  {{- if .link }}
+  link:
+    href: {{ .link.href | quote }}
+    text: {{ .link.text | quote }}
+  {{- end }}
+{{- end }}
+{{- end }}

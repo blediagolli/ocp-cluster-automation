@@ -1,0 +1,42 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.apiCert.include }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: api-cert
+  namespace: {{ $v.apiCert.namespace }}
+spec:
+  secretName: api-cert-tls
+  privateKey:
+    algorithm: ECDSA
+    size: 384
+  duration: {{ $v.apiCert.duration }}
+  renewBefore: {{ $v.apiCert.renewBefore }}
+  issuerRef:
+    name: {{ $v.apiCert.issuerName }}
+    kind: ClusterIssuer
+    group: cert-manager.io
+  usages:
+    - server auth
+---
+{{- end }}
+{{- if $v.ingressCert.include }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ingress-cert
+  namespace: {{ $v.ingressCert.namespace }}
+spec:
+  secretName: ingress-cert-tls
+  privateKey:
+    algorithm: ECDSA
+    size: 384
+  duration: {{ $v.ingressCert.duration }}
+  renewBefore: {{ $v.ingressCert.renewBefore }}
+  issuerRef:
+    name: {{ $v.ingressCert.issuerName }}
+    kind: ClusterIssuer
+    group: cert-manager.io
+  usages:
+    - server auth
+{{- end }}

@@ -1,0 +1,7 @@
+apiVersion: v2
+name: oadp
+description: oadp — operator subscription and oADP DataProtectionApplication configuration for Velero
+version: 0.1.0
+annotations:
+  oca.io/target: spoke
+  oca.io/maturity: incubating

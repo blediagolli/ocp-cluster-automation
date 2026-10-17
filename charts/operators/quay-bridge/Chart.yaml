@@ -1,0 +1,8 @@
+apiVersion: v2
+name: quay-bridge
+description: quay-bridge — operator subscription
+version: 0.1.0
+annotations:
+  oca.io/target: spoke
+  oca.io/maturity: incubating
+  oca.io/operand-from: quay/templates/quay-bridge.yaml

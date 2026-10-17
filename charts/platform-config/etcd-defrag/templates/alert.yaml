@@ -1,0 +1,35 @@
+{{- if and .Values.etcdDefrag.include .Values.etcdDefrag.alert.include }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: etcd-defrag-alerts
+  namespace: {{ .Values.etcdDefrag.namespace }}
+spec:
+  groups:
+    - name: etcd-defrag.rules
+      rules:
+        - alert: EtcdDefragJobFailed
+          expr: kube_job_status_failed{namespace="{{ .Values.etcdDefrag.namespace }}", job_name=~"etcd-defrag-.*"} > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "etcd defrag CronJob failed"
+            description: "The etcd-defrag CronJob has a failed execution. Check job logs for details."
+        - alert: EtcdDefragNotRunRecently
+          expr: time() - kube_cronjob_status_last_successful_time{namespace="{{ .Values.etcdDefrag.namespace }}", cronjob="etcd-defrag"} > {{ mul .Values.etcdDefrag.alert.noSuccessThresholdHours 3600 }}
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "etcd defrag has not succeeded in {{ .Values.etcdDefrag.alert.noSuccessThresholdHours }} hours"
+            description: "The etcd-defrag CronJob has not completed successfully within the expected window."
+        - alert: EtcdHighFragmentation
+          expr: (etcd_mvcc_db_total_size_in_bytes - etcd_mvcc_db_total_size_in_use_in_bytes) / etcd_mvcc_db_total_size_in_bytes * 100 > {{ .Values.etcdDefrag.fragmentationThreshold }}
+          for: 1h
+          labels:
+            severity: info
+          annotations:
+            summary: "etcd fragmentation above {{ .Values.etcdDefrag.fragmentationThreshold }}% on {{ "{{" }} $labels.instance {{ "}}" }}"
+            description: "etcd database fragmentation has exceeded the configured threshold. The next scheduled defrag should address this."
+{{- end }}

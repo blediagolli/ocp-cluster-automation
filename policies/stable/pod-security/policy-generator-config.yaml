@@ -1,0 +1,38 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: PolicyGenerator
+metadata:
+  name: pod-security
+placementBindingDefaults:
+  name: binding-pod-security
+policyDefaults:
+  namespace: ${POLICY_NAMESPACE}
+  remediationAction: ${REMEDIATION}
+  severity: high
+  # One ConfigurationPolicy holding every manifest, rather than one each. The
+  # policy is a single assertion, so a single compliance verdict is what you want.
+  consolidateManifests: true
+  evaluationInterval:
+    compliant: ${EVAL_COMPLIANT}
+    noncompliant: ${EVAL_NONCOMPLIANT}
+  standards:
+    - NIST SP 800-53
+  categories:
+    - CM Configuration Management
+  controls:
+    - CM-2 Baseline Configuration
+  # Tenant namespaces only. The platform's own namespaces are managed by the
+  # cluster operators, not by project-request-template, and asserting a tenant
+  # baseline against them would produce permanent, unactionable non-compliance.
+  namespaceSelector:
+    include:
+      - "*"
+    exclude:
+      - openshift-*
+      - kube-*
+      - default
+  placement:
+    placementPath: placement.yaml
+policies:
+  - name: pod-security
+    manifests:
+      - path: manifests/

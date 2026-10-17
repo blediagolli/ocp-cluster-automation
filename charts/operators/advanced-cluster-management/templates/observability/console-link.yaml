@@ -1,0 +1,15 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.observabilityConsoleLink.include }}
+{{- $href := $v.observabilityConsoleLink.href | default (printf "https://grafana-open-cluster-management-observability.%s" .Values.cluster.baseDomain) }}
+apiVersion: console.openshift.io/v1
+kind: ConsoleLink
+metadata:
+  name: {{ $v.observabilityConsoleLink.name }}
+spec:
+  applicationMenu:
+    section: {{ $v.observabilityConsoleLink.section }}
+    imageURL: {{ $v.observabilityConsoleLink.imageURL | quote }}
+  href: {{ $href | quote }}
+  location: {{ $v.observabilityConsoleLink.location }}
+  text: {{ $v.observabilityConsoleLink.text | quote }}
+{{- end }}

@@ -1,0 +1,53 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.securedCluster.include }}
+apiVersion: platform.stackrox.io/v1alpha1
+kind: SecuredCluster
+metadata:
+  name: {{ $v.securedCluster.name }}
+  namespace: {{ $v.securedCluster.namespace }}
+spec:
+  clusterName: {{ .Values.cluster.name }}
+  centralEndpoint: {{ $v.securedCluster.centralEndpoint | default (printf "central-stackrox.%s:443" .Values.cluster.baseDomain) }}
+  auditLogs:
+    collection: {{ $v.securedCluster.auditLogs.collection }}
+  admissionControl:
+    listenOnCreates: {{ $v.securedCluster.admissionControl.listenOnCreates }}
+    listenOnUpdates: {{ $v.securedCluster.admissionControl.listenOnUpdates }}
+    listenOnEvents: {{ $v.securedCluster.admissionControl.listenOnEvents }}
+    contactImageScanners: {{ $v.securedCluster.admissionControl.contactImageScanners }}
+    {{- if $v.securedCluster.admissionControl.failurePolicy }}
+    failurePolicy: {{ $v.securedCluster.admissionControl.failurePolicy }}
+    {{- end }}
+  perNode:
+    collector:
+      collection: {{ $v.securedCluster.perNode.collector.collection }}
+      imageFlavor: {{ $v.securedCluster.perNode.collector.imageFlavor }}
+    taintToleration: {{ $v.securedCluster.perNode.taintToleration }}
+  {{- if $v.securedCluster.scannerV4.scannerComponent }}
+  scannerV4:
+    scannerComponent: {{ $v.securedCluster.scannerV4.scannerComponent }}
+  {{- end }}
+  {{- if $v.securedCluster.network.policies }}
+  network:
+    policies: {{ $v.securedCluster.network.policies }}
+  {{- end }}
+  {{- if $v.securedCluster.customize.envVars }}
+  customize:
+    envVars:
+      {{- toYaml $v.securedCluster.customize.envVars | nindent 6 }}
+  {{- end }}
+  {{- if $v.securedCluster.vmScanning }}
+  vmScanning:
+    enabled: true
+  {{- end }}
+  {{- if $v.securedCluster.sensor }}
+  sensor:
+    {{- if $v.securedCluster.sensor.resources }}
+    resources:
+      {{- toYaml $v.securedCluster.sensor.resources | nindent 6 }}
+    {{- end }}
+  {{- end }}
+  monitoring:
+    openshift:
+      enabled: {{ $v.securedCluster.monitoring.openshift.enabled }}
+{{- end }}

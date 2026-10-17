@@ -1,0 +1,57 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: cluster-provisioning
+  namespace: openshift-gitops
+spec:
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: git@github.com:YOUR_ORG/ocp-cluster-automation.git
+              revision: main
+              files:
+                - path: "clusters/**/conf.yaml"
+          - list:
+              elementsYaml: "{{ if .deployProvision }}[{}]{{ else }}[]{{ end }}"
+  template:
+    metadata:
+      name: 'provision-{{.cluster.environment}}-{{.cluster.name}}'
+      labels:
+        environment: '{{.cluster.environment}}'
+        cluster: '{{.cluster.name}}'
+        type: provisioning
+    spec:
+      project: platform
+      ignoreDifferences:
+        - group: hive.openshift.io
+          kind: ClusterDeployment
+          jsonPointers:
+            - /spec/installed
+      source:
+        repoURL: git@github.com:YOUR_ORG/ocp-cluster-automation.git
+        targetRevision: main
+        path: charts/cluster-provisioning/openshift-provisioning
+        helm:
+          # Pinned so the release name does not inherit the Application name
+          # above. Helm caps a release name at 53 characters, and a cluster
+          # named after its full DNS name pushes that name past the limit,
+          # which fails the render before anything reaches the cluster.
+          releaseName: openshift-provisioning
+          ignoreMissingValueFiles: true
+          valueFiles:
+            - '/env/{{.cluster.environment}}/provision.yaml'
+            - '/{{.path.path}}/provision.yaml'
+      destination:
+        server: 'https://kubernetes.default.svc'
+      syncPolicy:
+        automated:
+          selfHeal: true
+        syncOptions:
+          - preserveResourcesOnDeletion=true
+          - RespectIgnoreDifferences=true

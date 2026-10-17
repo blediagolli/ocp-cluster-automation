@@ -1,0 +1,22 @@
+{{- $v := index .Values .Chart.Name }}
+{{- range $v.thanosQueriers }}
+{{- if .include }}
+---
+apiVersion: monitoring.rhobs/v1alpha1
+kind: ThanosQuerier
+metadata:
+  name: {{ .name }}
+  namespace: {{ .namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  {{- with .selector }}
+  selector:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .namespaceSelector }}
+  namespaceSelector:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- end }}

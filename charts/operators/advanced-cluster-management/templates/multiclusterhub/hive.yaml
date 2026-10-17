@@ -1,0 +1,31 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.hiveConfig.include }}
+# HiveConfig's CRD arrives with MultiClusterHub, so it is absent on a first
+# sync. See gitops-cluster.yaml for why the sync-wave alone does not cover
+# that and SkipDryRunOnMissingResource is needed.
+apiVersion: hive.openshift.io/v1
+kind: HiveConfig
+metadata:
+  name: hive
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  logLevel: {{ $v.hiveConfig.logLevel }}
+  targetNamespace: {{ $v.hiveConfig.targetNamespace }}
+  featureGates:
+    custom:
+      enabled:
+        {{- toYaml $v.hiveConfig.featureGates | nindent 8 }}
+---
+apiVersion: metal3.io/v1alpha1
+kind: Provisioning
+metadata:
+  name: provisioning-configuration
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  provisioningNetwork: {{ $v.hiveConfig.provisioning.provisioningNetwork }}
+  watchAllNamespaces: {{ $v.hiveConfig.provisioning.watchAllNamespaces }}
+{{- end }}

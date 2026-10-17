@@ -1,0 +1,42 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.multiClusterObservability.include }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: observability-setup
+  namespace: {{ $v.multiClusterObservability.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: observability-setup
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get"]
+  - apiGroups: ["objectbucket.io"]
+    resources: ["objectbucketclaims"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: observability-setup
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: observability-setup
+subjects:
+  - kind: ServiceAccount
+    name: observability-setup
+    namespace: {{ $v.multiClusterObservability.namespace }}
+{{- end }}

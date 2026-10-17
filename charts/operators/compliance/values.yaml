@@ -1,0 +1,140 @@
+# Whether this chart installs its operator, or only configures one that is
+# already there. Set per cluster in conf.yaml, which every operator
+# Application reads; false drops the Namespace, OperatorGroup and
+# Subscriptions and keeps the CRs. Replaces conf.yaml's deployOperators,
+# which used to switch a whole Application on and off.
+installOperators: true
+
+# All of this chart's values nest under the chart name, so a shared
+# operators.yaml can carry several operators without their `operator:`
+# blocks colliding. A per-operator file uses the identical shape, which is
+# what lets a block move between the two by cut-and-paste.
+compliance:
+  # OLM installation of compliance-operator. There is no operator.include:
+  # listing this chart in conf.yaml's operatorCharts is the opt-in, and a chart
+  # that is deployed but does not install its operator would be an empty
+  # Application. The CRs below keep their own include: false defaults, so
+  # adding the chart installs the operator and nothing else until you ask for
+  # a scan.
+  operator:
+    # --- facts about compliance-operator, not settings ---
+    # These are values only so that namespace.yaml, operatorgroup.yaml and
+    # subscription.yaml stay byte-identical across every chart under
+    # charts/operators/. Overriding them per cluster is not meaningful.
+    namespace: openshift-compliance
+    operatorGroup: openshift-compliance
+    package: compliance-operator
+    sourceNamespace: openshift-marketplace
+    # compliance-operator does not support the AllNamespaces install mode: a
+    # global OperatorGroup leaves the CSV Failed with UnsupportedOperatorGroup.
+    # So it gets a dedicated namespace and an OwnNamespace OperatorGroup, which
+    # is why clusterScoped is false and neither skip flag is set.
+    clusterScoped: false
+    skipNamespace: false
+    skipOperatorGroup: false
+    namespaceLabels: {}
+    namespaceAnnotations: {}
+
+    # --- the parts you actually set ---
+    # No default: the catalog's old release-0.1 channel still resolves to
+    # v0.1.61 while 'stable' is v1.10.x, and a Subscription on the wrong
+    # channel installs silently and stays years behind. The template requires
+    # an explicit one.
+    channel: ""
+    source: redhat-operators
+    installPlanApproval: Automatic
+    # Pin to a specific CSV instead of taking the channel head.
+    startingCSV: ""
+
+  # Namespace for the CRs below. Empty inherits operator.namespace, which is
+  # correct whenever the operator is installed beside the CRs it reconciles —
+  # the case here.
+  namespace: ""
+  # Only consulted when namespace above differs from operator.namespace; the
+  # install namespace is always created by this chart unless skipNamespace.
+  createNamespace: false
+
+  # How scans run: which MachineConfigPools, on what schedule, where the raw
+  # results land. Inert on its own — nothing is scanned until a
+  # ScanSettingBinding pairs this with profiles.
+  scanSetting:
+    include: false
+    name: default
+    # Letting the operator write its own MachineConfigs rolls the nodes.
+    autoApplyRemediations: false
+    rawResultStorage:
+      pvAccessModes:
+        - ReadWriteOnce
+      rotation: 3
+      size: 1Gi
+      # The result PVC's pod has to be schedulable wherever the scan ran,
+      # including tainted control-plane nodes.
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        - effect: NoExecute
+          key: node.kubernetes.io/not-ready
+          operator: Exists
+          tolerationSeconds: 300
+        - effect: NoExecute
+          key: node.kubernetes.io/unreachable
+          operator: Exists
+          tolerationSeconds: 300
+    roles:
+      - master
+      - worker
+    scanTolerations:
+      - operator: Exists
+    schedule: "0 1 * * *"
+    showNotApplicable: false
+    strictNodeScan: true
+
+  # Pairs the ScanSetting above with compliance profiles. This is what starts
+  # scanning.
+  scanSettingBinding:
+    include: false
+    name: stig
+    profiles:
+      - name: ocp4-stig
+        kind: Profile
+        apiGroup: compliance.openshift.io/v1alpha1
+      - name: ocp4-stig-node
+        kind: Profile
+        apiGroup: compliance.openshift.io/v1alpha1
+      - name: rhcos4-stig
+        kind: Profile
+        apiGroup: compliance.openshift.io/v1alpha1
+      # Additional profiles available:
+      # - name: ocp4-cis
+      #   kind: Profile
+      #   apiGroup: compliance.openshift.io/v1alpha1
+      # - name: ocp4-cis-node
+      #   kind: Profile
+      #   apiGroup: compliance.openshift.io/v1alpha1
+      # - name: ocp4-pci-dss
+      #   kind: Profile
+      #   apiGroup: compliance.openshift.io/v1alpha1
+      # Use kind: TailoredProfile to reference one of the profiles below:
+      # - name: custom-stig
+      #   kind: TailoredProfile
+      #   apiGroup: compliance.openshift.io/v1alpha1
+
+  # A built-in profile with site-specific rules disabled or re-valued. Rendered
+  # in wave 0, before the binding that may reference it.
+  tailoredProfiles: []
+  # - include: true
+  #   name: custom-stig
+  #   title: Custom STIG Profile
+  #   description: STIG profile with site-specific exclusions
+  #   extends: ocp4-stig
+  #   disableRules:
+  #     - name: ocp4-scheduler-no-bind-address
+  #       rationale: Not applicable in our environment
+  #     - name: ocp4-api-server-encryption-provider-cipher
+  #       rationale: Using default encryption — etcd encryption not required
+  #   enableRules: []
+  #   setValues:
+  #     - name: ocp4-var-openshift-audit-profile
+  #       rationale: Audit profile must be WriteRequestBodies per policy
+  #       value: WriteRequestBodies

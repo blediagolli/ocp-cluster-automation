@@ -1,0 +1,258 @@
+{{- if .Values.etcdDefrag.include }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: etcd-defrag
+  namespace: {{ .Values.etcdDefrag.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: etcd-defrag
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: etcd-defrag
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: etcd-defrag
+subjects:
+  - kind: ServiceAccount
+    name: etcd-defrag
+    namespace: {{ .Values.etcdDefrag.namespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: etcd-defrag-script
+  namespace: {{ .Values.etcdDefrag.namespace }}
+data:
+  defrag.sh: |
+    #!/bin/bash
+    set -euo pipefail
+
+    # This script uses `oc exec` into an existing etcd pod to run etcdctl.
+    # The etcd pod already has the correct certs, env vars, and etcdctl
+    # binary configured — no hostPath mounts or image discovery needed.
+    # Compatible with OCP 4.19, 4.20, 4.21, and 4.22.
+
+    THRESHOLD={{ .Values.etcdDefrag.fragmentationThreshold }}
+    NAMESPACE="openshift-etcd"
+
+    echo "=== etcd defragmentation starting ==="
+    echo "Fragmentation threshold: ${THRESHOLD}%"
+    echo ""
+
+    # --- Find an etcd pod to exec into ---
+    ETCD_POD=$(oc get pods -n ${NAMESPACE} -l app=etcd \
+      --field-selector=status.phase=Running \
+      -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+
+    if [ -z "${ETCD_POD}" ]; then
+      echo "ERROR: No running etcd pod found in ${NAMESPACE}"
+      exit 1
+    fi
+    echo "Using etcd pod: ${ETCD_POD}"
+
+    # Discover the pod's configured endpoint (needed for commands that
+    # don't use --cluster). Unset ETCDCTL_ENDPOINTS in all calls to
+    # avoid the etcd 3.6+ fatal conflict when --endpoints/--cluster
+    # flags are also present.
+    ETCD_EP=$(oc exec -n ${NAMESPACE} ${ETCD_POD} -c etcd -- printenv ETCDCTL_ENDPOINTS 2>/dev/null || echo "https://localhost:2379")
+    echo "Default endpoint: ${ETCD_EP}"
+
+    # Helper: run etcdctl inside the etcd pod with ETCDCTL_ENDPOINTS unset
+    run_etcdctl() {
+      oc exec -n ${NAMESPACE} ${ETCD_POD} -c etcd -- env -u ETCDCTL_ENDPOINTS etcdctl "$@"
+    }
+
+    # --- Version info ---
+    ETCD_VERSION=$(run_etcdctl --endpoints="${ETCD_EP}" version 2>/dev/null | head -1 || echo "unknown")
+    echo "etcdctl: ${ETCD_VERSION}"
+    echo ""
+
+    # --- Pre-defrag health check ---
+    echo "--- Pre-defrag cluster health ---"
+    if ! run_etcdctl --endpoints="${ETCD_EP}" endpoint health --cluster; then
+      echo "ERROR: Cluster is not healthy. Aborting defrag."
+      exit 1
+    fi
+    echo ""
+
+    # --- Member discovery ---
+    MEMBERS=$(run_etcdctl --endpoints="${ETCD_EP}" member list -w json)
+    MEMBER_COUNT=$(echo "${MEMBERS}" | python3 -c "import sys,json; print(len(json.load(sys.stdin)['members']))")
+    echo "Cluster has ${MEMBER_COUNT} members"
+
+    CLUSTER_STATUS=$(run_etcdctl --endpoints="${ETCD_EP}" endpoint status -w json --cluster)
+    LEADER_ID=$(echo "${CLUSTER_STATUS}" | \
+      python3 -c "
+    import sys,json
+    data = json.load(sys.stdin)
+    s = data[0].get('Status', data[0].get('status', {}))
+    print(s.get('leader', s.get('Leader', 0)))")
+
+    ENDPOINTS=$(echo "${MEMBERS}" | \
+      python3 -c "
+    import sys,json
+    data = json.load(sys.stdin)
+    members = data.get('members', data.get('Members', []))
+    leader_id = ${LEADER_ID}
+    for m in members:
+        mid = m.get('ID', m.get('id', 0))
+        urls = m.get('clientURLs', m.get('client_urls', []))
+        role = 'LEADER' if mid == leader_id else 'FOLLOWER'
+        print(urls[0], mid, role)
+    ")
+
+    LEADER_EP=""
+    FOLLOWER_EPS=()
+
+    while IFS=' ' read -r ep id role; do
+      if [ "${role}" = "LEADER" ]; then
+        LEADER_EP="${ep}"
+      else
+        FOLLOWER_EPS+=("${ep}")
+      fi
+    done <<< "${ENDPOINTS}"
+
+    echo "Leader: ${LEADER_EP}"
+    echo "Followers: ${FOLLOWER_EPS[*]:-none (single-node)}"
+    echo ""
+
+    # --- DB quota info (OCP 4.20+ supports configurable quota 8-32 GiB) ---
+    DB_QUOTA=$(echo "${CLUSTER_STATUS}" | python3 -c "
+    import sys,json
+    try:
+      data = json.load(sys.stdin)
+      q = data[0].get('Status', data[0].get('status', {})).get('dbQuota', 0)
+      print(q if q else 0)
+    except: print(0)" 2>/dev/null || echo "0")
+    if [ "${DB_QUOTA}" -gt 0 ] 2>/dev/null; then
+      echo "DB quota: $(( DB_QUOTA / 1024 / 1024 ))MB"
+      echo ""
+    fi
+
+    # --- Defrag function ---
+    DEFRAG_COUNT=0
+    SKIP_COUNT=0
+
+    defrag_member() {
+      local ep=$1
+      local role=$2
+
+      STATUS=$(run_etcdctl --endpoints="${ep}" endpoint status -w json)
+      DB_SIZE=$(echo "${STATUS}" | python3 -c "
+    import sys,json
+    d = json.load(sys.stdin)[0]
+    s = d.get('Status', d.get('status', {}))
+    print(s.get('dbSize', s.get('db_size', 0)))")
+      DB_IN_USE=$(echo "${STATUS}" | python3 -c "
+    import sys,json
+    d = json.load(sys.stdin)[0]
+    s = d.get('Status', d.get('status', {}))
+    print(s.get('dbSizeInUse', s.get('db_size_in_use', 0)))")
+
+      if [ "${DB_SIZE}" -eq 0 ]; then
+        echo "[${role}] ${ep}: DB size is 0, skipping"
+        SKIP_COUNT=$((SKIP_COUNT + 1))
+        return 0
+      fi
+
+      FRAG_BYTES=$((DB_SIZE - DB_IN_USE))
+      FRAG_PCT=$((FRAG_BYTES * 100 / DB_SIZE))
+
+      echo "[${role}] ${ep}: dbSize=$(( DB_SIZE / 1024 / 1024 ))MB, inUse=$(( DB_IN_USE / 1024 / 1024 ))MB, fragmentation=${FRAG_PCT}%"
+
+      if [ "${THRESHOLD}" -gt 0 ] && [ "${FRAG_PCT}" -lt "${THRESHOLD}" ]; then
+        echo "[${role}] ${ep}: Fragmentation ${FRAG_PCT}% is below threshold ${THRESHOLD}%, skipping"
+        SKIP_COUNT=$((SKIP_COUNT + 1))
+        return 0
+      fi
+
+      echo "[${role}] ${ep}: Defragmenting..."
+      if run_etcdctl --endpoints="${ep}" defrag; then
+        echo "[${role}] ${ep}: Defrag complete"
+        DEFRAG_COUNT=$((DEFRAG_COUNT + 1))
+      else
+        echo "ERROR: Defrag failed on ${ep}"
+        return 1
+      fi
+
+      sleep 5
+
+      if ! run_etcdctl --endpoints="${ep}" endpoint health; then
+        echo "ERROR: Member ${ep} is not healthy after defrag"
+        return 1
+      fi
+
+      POST_STATUS=$(run_etcdctl --endpoints="${ep}" endpoint status -w json)
+      POST_DB=$(echo "${POST_STATUS}" | python3 -c "
+    import sys,json
+    d = json.load(sys.stdin)[0]
+    s = d.get('Status', d.get('status', {}))
+    print(s.get('dbSize', s.get('db_size', 0)))")
+      echo "[${role}] ${ep}: Post-defrag dbSize=$(( POST_DB / 1024 / 1024 ))MB (reclaimed $(( (DB_SIZE - POST_DB) / 1024 / 1024 ))MB)"
+      echo ""
+    }
+
+    # --- Execute defrag: followers first, leader last ---
+    for ep in "${FOLLOWER_EPS[@]}"; do
+      defrag_member "${ep}" "FOLLOWER"
+    done
+
+    if [ -n "${LEADER_EP}" ]; then
+      defrag_member "${LEADER_EP}" "LEADER"
+    fi
+
+    # --- Final health check ---
+    echo "--- Post-defrag cluster health ---"
+    run_etcdctl --endpoints="${ETCD_EP}" endpoint health --cluster
+    echo ""
+    echo "=== etcd defragmentation complete ==="
+    echo "Members defragged: ${DEFRAG_COUNT}, skipped: ${SKIP_COUNT}"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etcd-defrag
+  namespace: {{ .Values.etcdDefrag.namespace }}
+spec:
+  schedule: {{ .Values.etcdDefrag.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ .Values.etcdDefrag.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.etcdDefrag.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: {{ .Values.etcdDefrag.activeDeadlineSeconds }}
+      template:
+        spec:
+          serviceAccountName: etcd-defrag
+          restartPolicy: OnFailure
+          hostNetwork: true
+          containers:
+            - name: etcd-defrag
+              image: {{ .Values.etcdDefrag.image }}
+              command:
+                - /bin/bash
+                - /scripts/defrag.sh
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                  readOnly: true
+          volumes:
+            - name: scripts
+              configMap:
+                name: etcd-defrag-script
+                defaultMode: 0755
+{{- end }}

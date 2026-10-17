@@ -1,0 +1,62 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.kyverno.include }}
+apiVersion: security.nirmata.io/v1alpha1
+kind: EnterpriseKyverno
+metadata:
+  name: {{ $v.kyverno.name }}
+  namespace: {{ $v.kyverno.namespace }}
+spec:
+  antiAffinity:
+    enable: {{ $v.kyverno.antiAffinity.enable }}
+  config:
+    annotations: {}
+    existingConfig: {{ $v.kyverno.config.existingConfig | quote }}
+    generateSuccessEvents: {{ $v.kyverno.config.generateSuccessEvents }}
+    metricsConfig:
+      annotations: {}
+      namespaces:
+        exclude: []
+        include: []
+    resourceFilters:
+      {{- toYaml $v.kyverno.config.resourceFilters | nindent 6 }}
+  createSelfSignedCert: {{ $v.kyverno.createSelfSignedCert }}
+  dnsPolicy: {{ $v.kyverno.dnsPolicy }}
+  envVars: {}
+  envVarsInit: {}
+  excludeKyvernoNamespace: {{ $v.kyverno.excludeKyvernoNamespace }}
+  extraArgs:
+    {{- toYaml $v.kyverno.extraArgs | nindent 4 }}
+  hostNetwork: {{ $v.kyverno.hostNetwork }}
+  image:
+    pullPolicy: {{ $v.kyverno.image.pullPolicy }}
+    repository: {{ $v.kyverno.image.repository }}
+    tag: {{ $v.kyverno.image.tag }}
+    pullSecrets:
+      create: {{ $v.kyverno.image.pullSecrets.create }}
+      name: {{ $v.kyverno.image.pullSecrets.name }}
+      registry: {{ $v.kyverno.image.pullSecrets.registry }}
+  installCRDs: {{ $v.kyverno.installCRDs }}
+  kyvernoOperatorImage: {{ $v.kyverno.kyvernoOperatorImage }}
+  kyvernoOperatorImageTag: {{ $v.kyverno.kyvernoOperatorImageTag }}
+  livenessProbe:
+    failureThreshold: {{ $v.kyverno.livenessProbe.failureThreshold }}
+    httpGet:
+      path: {{ $v.kyverno.livenessProbe.httpGet.path }}
+      port: {{ $v.kyverno.livenessProbe.httpGet.port }}
+      scheme: {{ $v.kyverno.livenessProbe.httpGet.scheme }}
+    initialDelaySeconds: {{ $v.kyverno.livenessProbe.initialDelaySeconds }}
+    periodSeconds: {{ $v.kyverno.livenessProbe.periodSeconds }}
+    successThreshold: {{ $v.kyverno.livenessProbe.successThreshold }}
+    timeoutSeconds: {{ $v.kyverno.livenessProbe.timeoutSeconds }}
+  metricsService:
+    create: {{ $v.kyverno.metricsService.create }}
+    port: {{ $v.kyverno.metricsService.port }}
+    type: {{ $v.kyverno.metricsService.type }}
+  networkPolicy:
+    enabled: {{ $v.kyverno.networkPolicy.enabled }}
+    ingressFrom: []
+  nodeSelector: {}
+  podAffinity: {}
+  podAnnotations: {}
+  podAntiAffinity: {}
+{{- end }}

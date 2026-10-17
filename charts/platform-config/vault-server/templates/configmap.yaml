@@ -1,0 +1,59 @@
+{{- if .Values.vault.include }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-config
+  namespace: {{ .Values.vault.namespace }}
+  labels:
+    app.kubernetes.io/name: vault
+    app.kubernetes.io/instance: vault
+data:
+  vault.hcl: |
+    ui = true
+    disable_mlock = true
+
+    listener "tcp" {
+      address         = "0.0.0.0:8200"
+      cluster_address = "0.0.0.0:8201"
+      tls_disable     = 1
+    }
+
+    storage "raft" {
+      path = "/vault/data"
+      {{- range $i := until (int .Values.vault.replicas) }}
+      retry_join {
+        leader_api_addr = "http://vault-{{ $i }}.vault-internal.{{ $.Values.vault.namespace }}.svc:8200"
+      }
+      {{- end }}
+    }
+
+    service_registration "kubernetes" {}
+    {{- if eq .Values.vault.seal.type "transit" }}
+    {{- $t := .Values.vault.seal.transit }}
+    {{- if not $t.address }}
+    {{- fail "vault.seal.transit.address is required when vault.seal.type is \"transit\" — set it to the provider Vault's address (the hub Vault; a Vault cannot seal against itself)" }}
+    {{- end }}
+
+    # Auto-unseal against the provider Vault's transit engine. The token comes
+    # from VAULT_TOKEN, sourced from the Secret named in values — it has to
+    # exist before Vault starts, so it cannot come from an ExternalSecret
+    # backed by this Vault.
+    seal "transit" {
+      address         = "{{ $t.address }}"
+      key_name        = "{{ $t.keyName }}"
+      mount_path      = "{{ $t.mountPath }}"
+      disable_renewal = "false"
+      {{- if $t.tlsSkipVerify }}
+      tls_skip_verify = "true"
+      {{- end }}
+    }
+    {{- end }}
+
+    {{- if .Values.vault.audit.enabled }}
+
+    telemetry {
+      disable_hostname = true
+      prometheus_retention_time = "12h"
+    }
+    {{- end }}
+{{- end }}

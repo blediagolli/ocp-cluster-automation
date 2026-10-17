@@ -1,0 +1,101 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: onboarding-namespaces
+  namespace: openshift-gitops
+spec:
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: git@github.com:YOUR_ORG/ocp-cluster-automation.git
+              revision: main
+              files:
+                - path: "clusters/**/conf.yaml"
+          # clusterRegistered yields [] for a cluster ArgoCD cannot reach, so
+          # no Application is generated and there is no unresolvable
+          # destination to fail the whole ApplicationSet. See cluster-operators.
+          #
+          # `.teams` is tested as well as clusterRegistered. The key is present
+          # but empty on a cluster with no teams yet, and `null | toJson` is
+          # the string "null", which elementsYaml rejects as not-a-list --
+          # failing the generator for every OTHER cluster too, since one
+          # ApplicationSet produces them all. The `and` makes that case [].
+          #
+          # This cannot gate on whether a team actually owns namespaces in
+          # this cluster's environment: that lives in teams/<team>.yaml, which
+          # the generator never reads -- it only sees the team names in
+          # conf.yaml. A team listed on a cluster whose environment it has no
+          # namespaces for still gets an Application, and the chart renders a
+          # notice saying so rather than silently reporting Synced with
+          # nothing in it.
+          #
+          # `namespaceConfig: false` on a team entry drops it from THIS
+          # ApplicationSet only, leaving its application-gitops half alone.
+          # The two used to be inseparable: one entry in `teams:` produced
+          # both Applications, so a team that needed namespaces also got a
+          # whole ArgoCD instance it never asked for.
+          #
+          # Absent means true, so every entry written before this existed
+          # keeps both halves. The test is `ne ... "false"` rather than a
+          # plain `if`, because a QUOTED "false" is a non-empty string and
+          # therefore truthy -- it would switch the chart on while reading as
+          # off. There is nowhere to `fail` from inside elementsYaml, so the
+          # spelling is accepted and honoured instead of silently inverted.
+          #
+          # NOTE this does not retire a team. Flipping it to false deletes
+          # the Application, and preserveResourcesOnDeletion above then
+          # strands every namespace it owned. Retiring is team.quiesce: true
+          # in teams/<team>.yaml -- let it sync, confirm, and only then stop
+          # generating the Application here. Deleting the namespaces for good
+          # is a manual step after that; see the chart's HANDOFF.md.
+          - list:
+              elementsYaml: "{{ if and .clusterRegistered .teams }}{{ $out := list }}{{ range .teams }}{{ if ne (dig \"namespaceConfig\" true . | toString) \"false\" }}{{ $out = append $out . }}{{ end }}{{ end }}{{ $out | toJson }}{{ else }}[]{{ end }}"
+  template:
+    metadata:
+      name: 'onboarding-ns-{{.cluster.environment}}-{{.cluster.name}}-{{.team}}'
+      labels:
+        environment: '{{.cluster.environment}}'
+        cluster: '{{.cluster.name}}'
+        type: onboarding-namespaces
+    spec:
+      project: platform
+      source:
+        repoURL: git@github.com:YOUR_ORG/ocp-cluster-automation.git
+        targetRevision: main
+        path: charts/onboarding/namespace-config
+        helm:
+          # Pinned so the release name does not inherit the Application name
+          # above. Helm caps a release name at 53 characters, and a cluster
+          # named after its full DNS name pushes that name past the limit,
+          # which fails the render before anything reaches the cluster. The
+          # team stays in because every team renders this same chart.
+          releaseName: 'namespace-config-{{.team}}'
+          ignoreMissingValueFiles: true
+          valueFiles:
+            - '/teams/{{.team}}.yaml'
+            - '/env/{{.cluster.environment}}/conf.yaml'
+            - '/env/{{.cluster.environment}}/namespace-sizes.yaml'
+            - '/env/{{.cluster.environment}}/teams/{{.team}}.yaml'
+            - '/{{.path.path}}/conf.yaml'
+            - '/{{.path.path}}/namespace-sizes.yaml'
+            - '/{{.path.path}}/teams/{{.team}}.yaml'
+      destination:
+        server: '{{ or .cluster.address (printf "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/%s" .cluster.name) }}'
+      syncPolicy:
+        automated:
+          selfHeal: true
+          prune: true
+        syncOptions:
+          - CreateNamespace=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 30s
+            maxDuration: 10m
+            factor: 2

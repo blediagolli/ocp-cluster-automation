@@ -1,0 +1,562 @@
+# Whether this chart installs its operator, or only configures one that is
+# already there. Set per cluster in conf.yaml, which every operator
+# Application reads; false drops the Namespace, OperatorGroup and
+# Subscriptions and keeps the CRs. Replaces conf.yaml's deployOperators,
+# which used to switch a whole Application on and off.
+installOperators: true
+
+# All of this chart's values nest under the chart name, so a shared
+# operators.yaml can carry several operators without their `operator:`
+# blocks colliding. A per-operator file uses the identical shape, which is
+# what lets a block move between the two by cut-and-paste.
+#
+# The templates reach them with `index .Values .Chart.Name`, so the chart
+# directory name and this top-level key must stay in step.
+cost-management-service:
+  operator:
+    # --- facts about this operator, not settings ---
+    # Values only so that namespace.yaml, operatorgroup.yaml and
+    # subscription.yaml stay byte-identical across every chart under
+    # charts/operators/. Overriding them per cluster is not meaningful.
+    namespace: cost-onprem
+    operatorGroup: cost-management-service
+    package: koku-service-operator
+    sourceNamespace: openshift-marketplace
+    clusterScoped: true
+    skipNamespace: false
+    skipOperatorGroup: false
+    namespaceLabels: {}
+    namespaceAnnotations: {}
+
+    # --- the parts you actually set ---
+    channel: beta
+    source: koku-service-operator-catalog
+    installPlanApproval: Automatic
+    # Pin to a specific CSV instead of taking the channel head.
+    startingCSV: ""
+
+  # The catalog operator.source resolves against. This is the only operator in
+  # the repo that is not in a built-in catalog, so this block is not part of
+  # the shared chart skeleton — it lives here and nowhere else.
+  #
+  # Beta: the image tag comes from Red Hat per customer, and the one below is
+  # the documentation's example, built for OpenShift 4.22 specifically. Check
+  # it before enabling.
+  catalogSource:
+    include: false
+    name: koku-service-operator-catalog
+    namespace: openshift-marketplace
+    sourceType: grpc
+    image: quay.io/project-koku/koku-service-operator-catalog:v0.0.1
+    displayName: Cost Management
+    publisher: Red Hat
+    securityContextConfig: restricted
+    # updateStrategy:
+    #   registryPollInterval: 30m
+
+  # Namespace for the CRs below. Empty inherits operator.namespace.
+  namespace: ""
+  # Only consulted when namespace above differs from operator.namespace.
+  createNamespace: false
+
+  # Everything nests under one key on purpose. Every operator-instances chart is
+  # rendered against the same env/<env>/ and clusters/<...>/operator-instances.yaml,
+  # so top-level keys are a namespace shared with every other chart — "postgres"
+  # already belongs to the keycloak chart.
+  #
+  # The sub-keys below mirror CostManagementServiceConfig's own spec layout
+  # wherever they can, so a field here maps to the same path in the CR.
+  costManagementService:
+    include: false
+    # Also the CR name. The UI Route and the default oauth client Secret name are
+    # both derived from it.
+    name: cost-onprem
+    namespace: cost-onprem
+    # False, like the rest of this directory: operator-deployment creates
+    # cost-onprem, because the operator itself has to be installed into the same
+    # namespace as the CR (see that chart's values for why). One Application owns
+    # the namespace. Flip this to true only if the operator is installed
+    # elsewhere, and then expect the operator not to see the CR.
+    createNamespace: false
+
+    # Both empty means the operator's Discovery phase works them out. Set only to
+    # override; cluster.* from conf.yaml is used as the fallback.
+    clusterDomain: ""
+    storageClass: ""
+
+    # Resource sizing tier. Applies to UI containers only; everything else uses
+    # per-component resources. Empty leaves the operator's default.
+    profile: ""
+
+    monitoring:
+      enabled: true
+
+    # Resource Optimization. Beta ships without it and the operator skips Kruize
+    # entirely when false. Turning it on needs two more databases, another
+    # bucket, and the ros/kruize images below.
+    ros:
+      enabled: false
+
+    auth:
+      keycloak:
+        # Prefer the in-cluster Service URL: Envoy fetches JWKS from here and
+        # routing that through the OpenShift router makes auth depend on the
+        # ingress path being healthy. Empty defaults to the keycloak chart's
+        # Service, which is "<name>-service" and port 8080 on the httpEnabled
+        # path this repo uses.
+        url: ""
+        # The iss Envoy validates. RHBK with a configured hostname issues tokens
+        # carrying the public Route URL as iss even when the client fetched them
+        # over the Service — so this must be the Route, and leaving it empty
+        # while url is a Service address rejects every token. Empty defaults to
+        # https://sso.<clusterDomain>.
+        issuerURL: ""
+        # Keycloak's cost management default, and NOT the "sso" realm the rest of
+        # this repo uses. Must match the realm the cost-management clients are in.
+        realm: kubernetes
+        # Must match the oidc-audience-mapper on those clients.
+        audiences:
+          - cost-management-operator
+          - cost-management-ui
+        tls:
+          # Secret with key ca.crt, used to verify Keycloak's TLS. Needed even
+          # when the Route has a publicly trusted certificate: the operator
+          # passes this to the UI's oauth2-proxy as --provider-ca-file, and
+          # oauth2-proxy builds its trust pool from that file *instead of* the
+          # system roots, not in addition to them. Leave it empty and the proxy
+          # falls back to the operator's service-CA ConfigMap, which cannot
+          # verify a Route — it crash-loops on OIDC discovery with
+          # "x509: certificate signed by unknown authority". The router CA is
+          # what is wanted here, and caSync below copies it.
+          caCertSecretName: cost-keycloak-ca
+          # Last resort for a Keycloak whose CA is genuinely unobtainable.
+          insecureSkipVerify: false
+
+    # External PostgreSQL via CloudNativePG. spec.database.deploy stays false:
+    # the operator's own bundled Postgres is documented in the CRD as "dev/CI
+    # only — not for production".
+    postgres:
+      include: true
+      name: cost-postgres
+      instances: 1
+      imageName: ghcr.io/cloudnative-pg/postgresql:16.4
+      storageSize: 200Gi
+      storageClass: ""
+      # Owner of the databases, and the role the bootstrap Job authenticates as
+      # for everything except role creation. Not a secret, so it is templated.
+      username: cost_admin
+      # Used only when include is false.
+      host: ""
+      port: 5432
+      sslMode: require
+      secretName: cost-db-credentials
+      # Created by the bootstrap Job as the superuser, in every database. Koku's
+      # Django migration does CREATE EXTENSION pg_stat_statements and dies with
+      # "Must be superuser to create this extension" — it runs as the koku role.
+      # Pre-creating it makes the migration's own statement a no-op.
+      extensions:
+        - pg_stat_statements
+      # Must list anything in extensions that needs preloading at server start.
+      # pg_stat_statements does; CREATE EXTENSION fails without it regardless of
+      # privileges. Empty omits the stanza and leaves CNPG's own default.
+      sharedPreloadLibraries:
+        - pg_stat_statements
+      # NOT configurable in the CR — the operator has no database-name field and
+      # uses these internally. Taken from the beta doc; if the operator logs a
+      # connection failure naming a different database, correct them here.
+      databases:
+        - costonprem_koku
+        - costonprem_rbac
+      rosDatabases:
+        - costonprem_ros
+        - costonprem_kruize
+      # Per-component roles the CRD requires on the Secret. The bootstrap Job
+      # creates each one and grants it the matching database.
+      roles:
+        - user: koku_user
+          database: costonprem_koku
+          userKey: koku-user
+          passwordProperty: db-koku-password
+        - user: rbac_user
+          database: costonprem_rbac
+          userKey: rbac-user
+          passwordProperty: db-rbac-password
+      rosRoles:
+        - user: ros_user
+          database: costonprem_ros
+          userKey: ros-user
+          passwordProperty: db-ros-password
+        - user: kruize_user
+          database: costonprem_kruize
+          userKey: kruize-user
+          passwordProperty: db-kruize-password
+      # Where the database passwords come from. See
+      # docs/cluster-configuration/secrets.md for the three modes.
+      #
+      # `properties` is derived here, not configured: the fetched keys are one
+      # per role above plus the owner, and the roles themselves depend on
+      # ros.enabled. Setting it has no effect; passwordProperty on each role is
+      # the knob. Same for the Secret's key names, which the CRD fixes.
+      secret:
+        source: existing
+        refreshInterval: 1h
+        secretStoreRef:
+          name: vault
+          kind: ClusterSecretStore
+        # Required when source is externalSecret. Needs the owner password plus
+        # one property per role above. ESO fails the whole Secret if any one is
+        # missing — seed them all before switching.
+        path: ""
+        # Backend property for the owner password. The per-role ones are each
+        # role's passwordProperty.
+        passwordProperty: db-password
+        # Under source: inline, every key listed here is interpolated into the
+        # Secret. Keys are underscored — password, koku_password, rbac_password,
+        # and ros_password/kruize_password when ros.enabled — matching the
+        # fetched key names, not the Secret's hyphenated ones.
+        data:
+          password: ""
+          koku_password: ""
+          rbac_password: ""
+
+    # Operator-managed Valkey (spec.cache.deploy: true). The CRD marks the
+    # bundled cache dev/CI-only too, but it holds no durable state, so the
+    # trade is worth it. Set deploy false and fill in host/auth to use an
+    # external Redis instead.
+    cache:
+      deploy: true
+      persistenceSize: 5Gi
+      # Subject of the nonroot-v2 RoleBinding in cache-scc-binding.yaml, which
+      # only renders when deploy is true. The operator leaves serviceAccountName
+      # unset on the Valkey pod, so it runs as the namespace default; see that
+      # file for why the grant is needed and why it is nonroot-v2.
+      serviceAccountName: default
+      # All used only when deploy is false.
+      host: ""
+      port: 6379
+      auth:
+        enabled: false
+        # Secret with key redis-password (optionally redis-username).
+        secretName: ""
+
+    # Kafka via AMQ Streams. bootstrapServers is required by the CRD and the
+    # operator does not create the topic.
+    kafka:
+      include: true
+      name: cost-kafka
+      # Must be one the installed AMQ Streams actually ships. Read the real list
+      # from the cluster operator Deployment's kafka-images annotation — 3.2.1-14
+      # has only 4.1.0 and 4.2.0. An unsupported version leaves the Kafka CR
+      # NotReady with the reason only in the operator log.
+      version: 4.1.0
+      replicas: 1
+      storageSize: 50Gi
+      storageClass: ""
+      # Used only when include is false.
+      bootstrapServers: ""
+      topics:
+        - name: platform.upload.announce
+          partitions: 3
+          replicas: 1
+
+    objectStorage:
+      # One ObjectBucketClaim, not several. The operator's Discovery phase
+      # resolves the endpoint, bucket and credentials from the OBC and NooBaa,
+      # and spec.objectStorage.buckets.ingress inherits buckets.koku when empty —
+      # so a single OBC sidesteps NooBaa scoping its credentials to one bucket.
+      include: true
+      storageClassName: openshift-storage.noobaa.io
+      bucketName: koku-bucket
+      rosBucketName: ros-bucket
+      # Where the operator looks for noobaa-admin. Only openshift-storage (ODF)
+      # and noobaa (standalone) are accepted.
+      noobaaNamespace: openshift-storage
+      # All of these override Discovery. Leave empty unless using external S3.
+      endpoint: ""
+      port: 443
+      useSSL: true
+      # Secret with keys access-key and secret-key. Empty lets Discovery find or
+      # create it.
+      secretName: ""
+      # Secret with key ca.crt. Needed when the S3 endpoint uses a private CA —
+      # which covers NooBaa over HTTPS, so on the bundled path this is always
+      # required. Populated by caSync below; point it at your own Secret and
+      # drop that copy for an external S3 endpoint.
+      caCertSecretName: cost-storage-ca
+      insecureSkipVerify: false
+      # Only consulted on the external-S3 path; Discovery handles the bundled
+      # one, so none of this renders while objectStorage.include is true.
+      secret:
+        source: existing
+        refreshInterval: 1h
+        secretStoreRef:
+          name: vault
+          kind: ClusterSecretStore
+        path: ""
+        # Key names are fixed by the CRD — not the AWS_* spelling an OBC uses.
+        properties:
+          - secretKey: access-key
+            property: s3-access-key-id
+          - secretKey: secret-key
+            property: s3-secret-access-key
+        data:
+          access-key: ""
+          secret-key: ""
+
+    # Copies cluster CA bundles into Secrets. Two fields above take a Secret
+    # with key ca.crt, and in both cases the CA already exists on the cluster but
+    # is published only as a ConfigMap. Nothing declarative here can bridge that:
+    # the chart cannot read cluster state and ESO's kubernetes provider reads
+    # Secrets only. Hence a PreSync hook Job — see ca-sync-job.yaml.
+    caSync:
+      include: true
+      image: registry.redhat.io/openshift4/ose-cli:latest
+      # One entry per Secret. sourceNamespace empty means this chart's namespace;
+      # anything else adds a ClusterRole to the hook, so keep the list short.
+      copies:
+        # objectStorage.caCertSecretName. NooBaa's S3 Service presents an
+        # OpenShift service-serving cert, and the service-ca operator injects
+        # the CA that signs it into every namespace as this ConfigMap.
+        - secretName: cost-storage-ca
+          sourceNamespace: ""
+          sourceConfigMap: openshift-service-ca.crt
+          sourceKey: service-ca.crt
+        # auth.keycloak.tls.caCertSecretName. Different CA, because this one
+        # verifies the Keycloak *Route*, not a Service — the router's certificate
+        # is unrelated to the service CA. default-ingress-cert is the cluster's
+        # own record of what signs that Route, so this is correct whether the
+        # ingress cert is self-signed or, as on this cluster, ACME-issued.
+        - secretName: cost-keycloak-ca
+          sourceNamespace: openshift-config-managed
+          sourceConfigMap: default-ingress-cert
+          sourceKey: ca-bundle.crt
+
+    # The Route the API gateway is published on — "<host>/api". NOT the UI, and
+    # NOT what the Keycloak redirectUris must match: the operator publishes a
+    # second Route for the UI whose host the CRD does not expose, and that is
+    # the one oauth2-proxy's callback uses. Worth setting anyway so the API URL
+    # does not move. Empty lets the operator default it.
+    gatewayRoute:
+      host: ""
+
+    ui:
+      # Empty defaults to "<name>-ui-oauth-client", which is also the operator's
+      # own default. Keys are client-id and client-secret with HYPHENS — the
+      # Metrics Operator spells the same two values with underscores.
+      oauthClientSecretName: ""
+      # The oauth2-proxy client. Not a secret and known at render time, so it is
+      # templated rather than fetched — the same split postgres.username uses.
+      # Must match a clientId in the keycloak chart's realm.
+      clientId: cost-management-ui
+      replicaCount: 1
+      secret:
+        source: existing
+        refreshInterval: 1h
+        secretStoreRef:
+          name: vault
+          kind: ClusterSecretStore
+        # Required when source is externalSecret. Point it at the same path the
+        # keycloak chart's realm reads from, so the client secret the realm
+        # applies and the one the UI presents are the same value.
+        path: ""
+        properties:
+          - secretKey: client_secret
+            property: client-cost-management-ui
+        data:
+          client_secret: ""
+
+    # The cost model: what a core-hour, a GB-month and a node are worth. An API
+    # object and not a Kubernetes one — CostManagementServiceConfig has no field
+    # for it, so none of this can go in costmanagementserviceconfig.yaml.
+    #
+    # It matters more than it looks. Without a cost model koku still ingests and
+    # still summarises; every row just prices at zero. The utilisation charts fill
+    # in normally and the cost column reads $0.00, which looks like broken
+    # ingestion rather than missing configuration.
+    #
+    # Applied by a PostSync hook Job (cost-model-sync-job.yaml) that POSTs or PUTs
+    # it through the gateway, re-running on every sync. That means an edit made in
+    # the cost management UI is reverted at the next sync: this file is the source
+    # of truth, deliberately.
+    costModel:
+      include: false
+      # Empty defaults to costManagementService.name. Note that renaming is not a
+      # rename: the sync matches an existing model by name, which is the only
+      # stable handle the API offers short of storing a UUID in git, so changing
+      # this leaves the old model in place and creates a second one.
+      name: ""
+      description: "Managed by GitOps — changes made in the UI are reverted on the next sync"
+      # OCP is the only source type anything in this repo registers. The API also
+      # takes AWS/Azure/GCP, and for those a markup-only model with no rates
+      # validates; for OCP it does not.
+      sourceType: OCP
+      # Sources to attach, by the name they carry in the UI — for a cluster
+      # reporting through cost-management-metrics that is its source.name, which
+      # defaults to cluster.name. Names and not UUIDs because the provider UUID is
+      # minted when the source first registers and is not knowable at render time;
+      # the Job resolves each one through /sources/ when it runs.
+      #
+      # A name that does not resolve is a hard failure after sourceWaitSeconds —
+      # a cost model attached to nothing prices nothing, and failing quietly here
+      # would be indistinguishable from the zero-cost symptom above.
+      sourceNames: []
+      # Must be enabled in koku. Every rate below is priced in it: the API rejects
+      # a cost model whose rate units differ from its currency, so the Job stamps
+      # this onto each tier rather than offering a per-rate unit to get wrong.
+      currency: USD
+      # Flat uplift on top of everything else. percent is the only unit the API
+      # accepts, and value is a percentage, so "10" is +10%.
+      markup:
+        value: "0"
+        unit: percent
+      # How cost that belongs to no single project is spread across projects.
+      # These are the API's own defaults, restated so they are visible rather than
+      # implied.
+      distributionInfo:
+        # cpu or memory. Nothing else is accepted.
+        distributionType: cpu
+        # Spread the cost of the platform namespaces (openshift-*, kube-*) over
+        # the projects that run on them.
+        platformCost: true
+        # Spread unallocated worker capacity — the gap between what nodes cost and
+        # what pods requested — rather than leaving it unattributed.
+        workerCost: true
+        networkUnattributed: false
+        storageUnattributed: false
+        gpuUnallocated: false
+      # One entry per priced metric. metric must be a name from
+      # GET /api/cost-management/v1/metrics/, and costType is Infrastructure or
+      # Supplementary — that endpoint gives each metric's default_cost_type, which
+      # is the sane choice unless there is a reason otherwise.
+      #
+      # Quote every value. Unquoted it becomes a YAML float and reaches the API as
+      # whatever the round trip through float64 produced.
+      #
+      #   rates:
+      #     - metric: cpu_core_usage_per_hour
+      #       costType: Supplementary
+      #       description: "CPU, by actual usage"
+      #       tiered:
+      #         - value: "0.007"
+      #     - metric: node_cost_per_month
+      #       costType: Infrastructure
+      #       tiered:
+      #         # usageStart/usageEnd define a tier boundary in the metric's own
+      #         # unit. Tiers must not overlap and must not leave gaps; omit both
+      #         # for a single flat rate, which is what most models want.
+      #         - value: "120.00"
+      #
+      # Empty is allowed and is not the same as no cost model: a model with no
+      # rates still carries markup and distribution, and still prices at zero.
+      rates: []
+      # Identity the Job applies the cost model as. koku wants cost_model write,
+      # and on-prem ENHANCED_ORG_ADMIN is false, so being an org admin is not by
+      # itself enough — the RBAC service has to resolve the username to
+      # cost-management:*:*. The metrics operator's service account already does
+      # and its secret already lives in Vault, so it is reused rather than minting
+      # a second client that would need its own Vault property and its own
+      # org-admin grant. Point this elsewhere if the client side is not deployed
+      # on this cluster.
+      auth:
+        clientId: cost-management-metrics-operator
+        # Empty derives <auth.keycloak.url>/realms/<auth.keycloak.realm>/protocol/
+        # openid-connect/token, i.e. the in-cluster Service, not the Route. The
+        # token still carries the Route as iss, which is what Envoy validates.
+        tokenUrl: ""
+        # Secret the Job reads client_secret from, created by the ExternalSecret
+        # below. Separate from the metrics operator's own copy because that one
+        # lives in another namespace and a Secret cannot be mounted across one.
+        secretName: cost-model-sync-credentials
+        secret:
+          source: existing
+          refreshInterval: 1h
+          secretStoreRef:
+            name: vault
+            kind: ClusterSecretStore
+          # Required when source is externalSecret. The realm's own path, so the
+          # secret the keycloak chart applies to the client and the one this Job
+          # presents back are the same value.
+          path: ""
+          properties:
+            - secretKey: client_secret
+              property: client-cost-management-metrics-operator
+          data:
+            client_secret: ""
+      # Empty uses the gateway Service over plain HTTP inside the cluster, which
+      # keeps this off the ingress path entirely. Set it to the Route origin only
+      # if the gateway has to be reached from outside.
+      apiUrl: ""
+      # Only consulted when apiUrl or auth.tokenUrl is overridden to an HTTPS
+      # endpoint whose CA the Job's image does not trust. The in-cluster defaults
+      # are plain HTTP and never reach this.
+      insecureSkipVerify: false
+      # How long to wait for every name in sourceNames to appear. On a cluster
+      # being built for the first time the source does not exist until the metrics
+      # operator has run a source check, which is source.checkCycle minutes away,
+      # so some waiting is unavoidable — but keep this short rather than generous.
+      # The Job is a PostSync hook, so the whole ArgoCD sync stays open for as long
+      # as it runs, and a sync that is retrying is pinned to the revision it
+      # started on: a fix pushed to git cannot land until the operation ends. Three
+      # minutes here plus the ApplicationSet's five retries covers roughly half an
+      # hour of waiting while keeping each individual attempt cheap to abandon.
+      sourceWaitSeconds: 180
+      image: registry.redhat.io/openshift4/ose-cli:latest
+
+    # Image pins from the operator's own alm-examples. Short-sha and floating
+    # tags are what Red Hat published; they are not digests and will move.
+    # Each maps to the matching spec.<component>.image.
+    images:
+      koku:
+        repository: quay.io/project-koku/koku
+        tag: 422f758
+      ingress:
+        repository: quay.io/iop/ingress
+        tag: sha-6dde23d
+      rbac:
+        repository: quay.io/project-koku/insights-rbac
+        tag: 34e25ed
+      ros:
+        repository: quay.io/redhat-services-prod/insights-management-tenant/insights-ocp-resource-optimization/ros-ocp-backend
+        tag: ae8c990
+      kruize:
+        repository: quay.io/redhat-services-prod/kruize-autotune-tenant/autotune
+        tag: d1f0140
+      ui:
+        repository: quay.io/insights-onprem/koku-ui-onprem
+        tag: d64d393ede6ab625e53c63202a6bcdb6fa48e718
+      oauthProxy:
+        repository: registry.redhat.io/rhceph/oauth2-proxy-rhel9
+        tag: v7.6.0
+      envoy:
+        repository: registry.redhat.io/openshift-service-mesh/proxyv2-rhel9
+        tag: "2.6"
+      # Valkey, for the cache the operator deploys itself. Required whenever
+      # cache.deploy is true — the operator defaults no workload image and fails
+      # the whole reconcile with "set repository and tag on spec.cache.image",
+      # which reads like a user error but is just an unset field. Taken from the
+      # upstream community sample at tag v0.0.1; alm-examples has deploy: false
+      # and so does not carry it.
+      cache:
+        repository: quay.io/sclorg/valkey-8-c10s
+        tag: "c10s"
+
+    replicas:
+      envoy: 2
+      api: 1
+      masu: 1
+      listener: 2
+      rbacApi: 1
+      rbacWorker: 1
+      rosProcessor: 1
+      kruize: 1
+      celery:
+        costModel: 1
+        default: 1
+        ocp: 2
+        priority: 1
+        summary: 2
+
+  # Supplied by the cluster's conf.yaml, same as every other chart here.
+  cluster:
+    baseDomain: ""
+    storageClass: ""

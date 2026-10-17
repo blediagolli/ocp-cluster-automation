@@ -1,0 +1,91 @@
+# Whether this chart installs its operator, or only configures one that is
+# already there. Set per cluster in conf.yaml, which every operator
+# Application reads; false drops the Namespace, OperatorGroup and
+# Subscriptions and keeps the CRs. Replaces conf.yaml's deployOperators,
+# which used to switch a whole Application on and off.
+installOperators: true
+
+# All of this chart's values nest under the chart name, so a shared
+# operators.yaml can carry several operators without their `operator:`
+# blocks colliding. A per-operator file uses the identical shape, which is
+# what lets a block move between the two by cut-and-paste.
+#
+# The templates reach them with `index .Values .Chart.Name`, so the chart
+# directory name and this top-level key must stay in step.
+external-secrets:
+  operator:
+    # --- facts about this operator, not settings ---
+    # Values only so that namespace.yaml, operatorgroup.yaml and
+    # subscription.yaml stay byte-identical across every chart under
+    # charts/operators/. Overriding them per cluster is not meaningful.
+    namespace: external-secrets-operator
+    operatorGroup: external-secrets-operator
+    package: openshift-external-secrets-operator
+    sourceNamespace: openshift-marketplace
+    clusterScoped: true
+    skipNamespace: false
+    skipOperatorGroup: false
+    namespaceLabels: {}
+    namespaceAnnotations: {}
+
+    # --- the parts you actually set ---
+    channel: stable-v1
+    source: redhat-operators
+    installPlanApproval: Automatic
+    # Pin to a specific CSV instead of taking the channel head.
+    startingCSV: ""
+
+  # Namespace for the CRs below. Empty inherits operator.namespace.
+  namespace: ""
+  # Only consulted when namespace above differs from operator.namespace.
+  createNamespace: false
+
+  cluster:
+    name: ""
+    baseDomain: ""
+
+  # Deploys the ESO operand (the controller that reconciles SecretStore and
+  # ExternalSecret resources). Required once per cluster — without it nothing
+  # else in this chart, or any ExternalSecret elsewhere, will ever reconcile.
+  externalSecretsConfig:
+    include: false
+    logLevel: 1
+    # Empty means watch all namespaces.
+    operatingNamespace: ""
+    nodeSelector: {}
+    tolerations: []
+    resources: {}
+
+  secretStoreRef:
+    name: vault
+    kind: ClusterSecretStore
+
+  # Secrets with no chart of their own. Each entry is a spec in the shared
+  # shape — see docs/cluster-configuration/secrets.md — so `source` picks where the
+  # value comes from and the same entry works on a cluster with no backend.
+  #
+  # `include: false` switches an entry off entirely; that is different from
+  # source: existing, which means the Secret exists and is someone else's job.
+  secrets: []
+  # secrets:
+  #   - include: true
+  #     name: my-tls-cert
+  #     namespace: openshift-ingress
+  #     type: kubernetes.io/tls
+  #     source: externalSecret
+  #     refreshInterval: 1h
+  #     path: secret/data/clusters/my-cluster/ingress-cert
+  #     properties:
+  #       - secretKey: tls.crt
+  #         property: tls.crt
+  #       - secretKey: tls.key
+  #         property: tls.key
+  #
+  #   # Same secret on a cluster with no secrets manager.
+  #   - include: true
+  #     name: oidc-client-secret
+  #     namespace: openshift-config
+  #     type: Opaque
+  #     source: inline
+  #     data:
+  #       clientSecret: ""

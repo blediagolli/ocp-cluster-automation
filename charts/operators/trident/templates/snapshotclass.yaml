@@ -1,0 +1,11 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.snapshotClass.include }}
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: {{ $v.snapshotClass.name }}
+  annotations:
+    snapshot.storage.kubernetes.io/is-default-class: "true"
+driver: csi.trident.netapp.io
+deletionPolicy: Delete
+{{- end }}

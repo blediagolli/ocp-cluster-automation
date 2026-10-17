@@ -1,0 +1,153 @@
+{{- /*
+Baseline network isolation for every tenant namespace, plus a hook for
+team-specific rules.
+
+Why this is here at all, given project-request-template already defines the
+same five policies: that chart is wired as the cluster's
+projectRequestTemplate (project.config.openshift.io/cluster), which the API
+server expands only for the *project request* endpoint -- `oc new-project` and
+the console's Create Project button. A plain `kind: Namespace`, which is what
+namespaces.yaml creates, never touches that path. Before this file existed,
+namespaces provisioned through GitOps had no NetworkPolicies at all, which is
+what policies/stable/network-isolation has been reporting.
+
+The five baseline bodies below must stay identical to
+charts/platform-config/project-request-template/templates/template.yaml:41-115.
+Two provisioning paths that isolate namespaces differently are worse than one
+that isolates them badly, because only one of them is ever tested. Change one,
+change the other.
+
+Switching any of these off is a deliberate hole. default-deny-ingress is the
+one that matters -- without it the other four are decoration, since the
+namespace is already open.
+*/ -}}
+{{- include "onboarding.validate" . }}
+{{- $namespaces := include "onboarding.namespaces" . | fromYamlArray }}
+{{- range $ns := $namespaces }}
+{{- if $.Values.networkPolicy.baseline }}
+{{- if $.Values.networkPolicy.defaultDenyIngress }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: {{ $ns.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    {{- include "onboarding.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+{{- end }}
+{{- if $.Values.networkPolicy.allowSameNamespace }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-same-namespace
+  namespace: {{ $ns.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    {{- include "onboarding.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector: {}
+  ingress:
+  - from:
+    - podSelector: {}
+  policyTypes:
+  - Ingress
+{{- end }}
+{{- if $.Values.networkPolicy.allowFromOpenShiftIngress }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-openshift-ingress
+  namespace: {{ $ns.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    {{- include "onboarding.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector: {}
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          network.openshift.io/policy-group: ingress
+  policyTypes:
+  - Ingress
+{{- end }}
+{{- if $.Values.networkPolicy.allowFromOpenShiftMonitoring }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-openshift-monitoring
+  namespace: {{ $ns.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    {{- include "onboarding.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector: {}
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          network.openshift.io/policy-group: monitoring
+  policyTypes:
+  - Ingress
+{{- end }}
+{{- if $.Values.networkPolicy.allowFromKubeApiserver }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-kube-apiserver
+  namespace: {{ $ns.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    {{- include "onboarding.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector: {}
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          network.openshift.io/policy-group: host-network
+  policyTypes:
+  - Ingress
+{{- end }}
+{{- end }}
+{{- /*
+Team-specific rules. Each entry is a NetworkPolicy spec, rendered verbatim into
+every namespace the team owns on this cluster. Use it for the ingress a team
+genuinely needs -- from a shared monitoring namespace, say -- rather than
+switching a baseline policy off.
+*/ -}}
+{{- range $custom := $.Values.networkPolicy.custom }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $custom.name }}
+  namespace: {{ $ns.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    {{- include "onboarding.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: network-policy
+spec:
+  {{- toYaml $custom.spec | nindent 2 }}
+{{- end }}
+{{- end }}

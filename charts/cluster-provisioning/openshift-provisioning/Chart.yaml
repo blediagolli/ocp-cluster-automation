@@ -1,0 +1,13 @@
+apiVersion: v2
+name: openshift-provisioning
+version: "2.0.0"
+kubeVersion: ">= 1.9.0"
+description: RHACM cluster provisioning — supports AWS, Azure, GCP, vSphere, bare metal, and platform none
+annotations:
+  # Hive ClusterDeployment, hub-only by construction
+  oca.io/target: hub
+  oca.io/maturity: incubating
+  # Bumped from sno-prod@2026-10-12 when the GCP path completed its first
+  # live install. The annotation holds one cluster, so it names the most
+  # recent proof rather than every platform that has ever worked — the
+  # Azure path added alongside it has not been run and says so in azure.md.

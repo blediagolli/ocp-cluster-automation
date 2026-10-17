@@ -1,0 +1,44 @@
+{{- $v := index .Values .Chart.Name }}
+{{- range $v.monitoringStacks }}
+{{- if .include }}
+---
+apiVersion: monitoring.rhobs/v1alpha1
+kind: MonitoringStack
+metadata:
+  name: {{ .name }}
+  namespace: {{ .namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  {{- with .retention }}
+  retention: {{ . }}
+  {{- end }}
+  {{- with .logLevel }}
+  logLevel: {{ . }}
+  {{- end }}
+  {{- with .namespaceSelector }}
+  namespaceSelector:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .resourceSelector }}
+  resourceSelector:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .resources }}
+  resources:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .prometheusConfig }}
+  prometheusConfig:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .alertmanagerConfig }}
+  alertmanagerConfig:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .tolerations }}
+  tolerations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- end }}

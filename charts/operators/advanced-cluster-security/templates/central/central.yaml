@@ -1,0 +1,84 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.central.include }}
+apiVersion: platform.stackrox.io/v1alpha1
+kind: Central
+metadata:
+  name: {{ $v.central.name }}
+  namespace: {{ $v.central.namespace }}
+spec:
+  central:
+    resources:
+      requests:
+        cpu: {{ $v.central.resources.requests.cpu }}
+        memory: {{ $v.central.resources.requests.memory }}
+      limits:
+        cpu: {{ $v.central.resources.limits.cpu }}
+        memory: {{ $v.central.resources.limits.memory }}
+    exposure:
+      route:
+        enabled: {{ $v.central.exposure.route.enabled }}
+      loadBalancer:
+        enabled: {{ $v.central.exposure.loadBalancer.enabled }}
+        port: {{ $v.central.exposure.loadBalancer.port }}
+      nodePort:
+        enabled: {{ $v.central.exposure.nodePort.enabled }}
+    persistence:
+      persistentVolumeClaim:
+        claimName: {{ $v.central.persistence.claimName }}
+    db:
+      isEnabled: {{ $v.central.db.isEnabled }}
+      persistence:
+        persistentVolumeClaim:
+          claimName: {{ $v.central.db.persistence.claimName }}
+      resources:
+        requests:
+          cpu: {{ $v.central.db.resources.requests.cpu }}
+          memory: {{ $v.central.db.resources.requests.memory }}
+        limits:
+          cpu: {{ $v.central.db.resources.limits.cpu }}
+          memory: {{ $v.central.db.resources.limits.memory }}
+    {{- if $v.defaultTLS.include }}
+    defaultTLSSecret:
+      name: {{ $v.defaultTLS.secretName }}
+    {{- end }}
+    telemetry:
+      enabled: {{ $v.central.telemetry.enabled }}
+    {{- if $v.oidc.include }}
+    declarativeConfiguration:
+      secrets:
+        - name: acs-oidc-auth-provider
+    {{- end }}
+  monitoring:
+    openshift:
+      enabled: {{ $v.central.monitoring.openshift.enabled }}
+  egress:
+    connectivityPolicy: {{ $v.central.egress.connectivityPolicy }}
+  scanner:
+    scannerComponent: {{ $v.central.scanner.scannerComponent }}
+    analyzer:
+      scaling:
+        autoScaling: {{ $v.central.scanner.analyzer.scaling.autoScaling }}
+        minReplicas: {{ $v.central.scanner.analyzer.scaling.minReplicas }}
+        maxReplicas: {{ $v.central.scanner.analyzer.scaling.maxReplicas }}
+        replicas: {{ $v.central.scanner.analyzer.scaling.replicas }}
+    monitoring:
+      exposeEndpoint: {{ $v.central.scanner.monitoring.exposeEndpoint }}
+  scannerV4:
+    scannerComponent: {{ $v.central.scannerV4.scannerComponent }}
+    db:
+      persistence:
+        persistentVolumeClaim:
+          claimName: {{ $v.central.scannerV4.db.claimName }}
+    indexer:
+      scaling:
+        autoScaling: {{ $v.central.scannerV4.indexer.scaling.autoScaling }}
+        minReplicas: {{ $v.central.scannerV4.indexer.scaling.minReplicas }}
+        maxReplicas: {{ $v.central.scannerV4.indexer.scaling.maxReplicas }}
+        replicas: {{ $v.central.scannerV4.indexer.scaling.replicas }}
+    matcher:
+      scaling:
+        autoScaling: {{ $v.central.scannerV4.matcher.scaling.autoScaling }}
+        minReplicas: {{ $v.central.scannerV4.matcher.scaling.minReplicas }}
+        maxReplicas: {{ $v.central.scannerV4.matcher.scaling.maxReplicas }}
+        replicas: {{ $v.central.scannerV4.matcher.scaling.replicas }}
+{{- end }}

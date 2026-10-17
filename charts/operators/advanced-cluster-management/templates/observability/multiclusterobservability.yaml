@@ -1,0 +1,32 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.multiClusterObservability.include }}
+apiVersion: observability.open-cluster-management.io/v1beta2
+kind: MultiClusterObservability
+metadata:
+  name: {{ $v.multiClusterObservability.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  enableDownsampling: {{ $v.multiClusterObservability.enableDownsampling }}
+  observabilityAddonSpec:
+    enableMetrics: true
+    interval: {{ int $v.multiClusterObservability.observabilityAddonSpec.interval }}
+    # int64, not the bare value. Helm parses values.yaml numbers as float64, and
+    # anything past ~1e6 then renders in scientific notation — the 1073741824
+    # default came out as `1.073741824e+09`, which the API server rejects as a
+    # float for an integer field. The two fields either side are small enough to
+    # be unaffected today; they are wrapped anyway so a larger value later
+    # cannot reintroduce this.
+    scrapeSizeLimitBytes: {{ int64 $v.multiClusterObservability.observabilityAddonSpec.scrapeSizeLimitBytes }}
+    workers: {{ int $v.multiClusterObservability.observabilityAddonSpec.workers }}
+  storageConfig:
+    alertmanagerStorageSize: {{ $v.multiClusterObservability.alertmanagerStorageSize }}
+    metricObjectStorage:
+      key: {{ $v.objectStorage.key }}
+      name: {{ $v.objectStorage.secretName }}
+    storageClass: {{ .Values.cluster.storageClass }}
+    compactStorageSize: {{ $v.multiClusterObservability.compactStorageSize }}
+    receiveStorageSize: {{ $v.multiClusterObservability.receiveStorageSize }}
+    ruleStorageSize: {{ $v.multiClusterObservability.ruleStorageSize }}
+    storeStorageSize: {{ $v.multiClusterObservability.storeStorageSize }}
+{{- end }}

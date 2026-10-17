@@ -1,0 +1,119 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.realm.include }}
+apiVersion: k8s.keycloak.org/v2alpha1
+kind: KeycloakRealmImport
+metadata:
+  name: {{ $v.realm.name }}
+  namespace: {{ include "operator.crNamespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    {{- /* Same missing-CRD problem as the Keycloak CR: rhbk-operator
+           registers keycloakrealmimports alongside keycloaks, so neither
+           kind resolves at comparison time on a first install. */}}
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  keycloakCRName: {{ $v.instance.name }}
+  realm:
+    id: {{ $v.realm.name }}
+    realm: {{ $v.realm.name }}
+    enabled: true
+    {{- with $v.realm.groups }}
+    groups:
+      {{- range . }}
+      - name: {{ .name }}
+      {{- end }}
+    {{- end }}
+    {{- with $v.realm.roles }}
+    roles:
+      realm:
+        {{- range . }}
+        - name: {{ .name }}
+          {{- with .description }}
+          description: {{ . | quote }}
+          {{- end }}
+        {{- end }}
+    {{- end }}
+    {{- with $v.realm.clientScopes }}
+    clientScopes:
+      {{- range $name, $scope := . }}
+      - name: {{ $name }}
+        protocol: {{ $scope.protocol | default "openid-connect" }}
+        {{- with $scope.description }}
+        description: {{ . | quote }}
+        {{- end }}
+        {{- with $scope.attributes }}
+        attributes:
+          {{- range $k, $v := . }}
+          {{ $k }}: {{ $v | quote }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+    {{- with $v.realm.users }}
+    users:
+      {{- range . }}
+      - username: {{ .username }}
+        enabled: true
+        {{- with .email }}
+        email: {{ . }}
+        emailVerified: true
+        {{- end }}
+        {{- with .firstName }}
+        firstName: {{ . }}
+        {{- end }}
+        {{- with .lastName }}
+        lastName: {{ . }}
+        {{- end }}
+        {{- /* No credentials here. This CR is plain YAML in git with no secret
+               reference, so passwords are set afterwards by the realm-sync Job
+               from the Vault-backed Secret. */}}
+        realmRoles:
+          {{- include "keycloak.userRealmRoles" (dict "user" . "root" $) | nindent 10 }}
+        {{- with .groups }}
+        groups:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- /* Keycloak wants every attribute value as a list, and drops the
+               lot unless realm.unmanagedAttributes permits them. */}}
+        {{- with .attributes }}
+        attributes:
+          {{- range $k, $v := . }}
+          {{ $k }}:
+            - {{ $v | quote }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+    clients:
+      {{- range $name, $client := $v.realm.clients }}
+      {{- if $client.include }}
+      - clientId: {{ $client.clientId }}
+        enabled: true
+        protocol: openid-connect
+        clientAuthenticatorType: client-secret
+        {{- /* secret deliberately omitted — set by the realm-sync Job from Vault */}}
+        publicClient: {{ $client.publicClient }}
+        standardFlowEnabled: {{ $client.standardFlowEnabled }}
+        directAccessGrantsEnabled: {{ $client.directAccessGrantsEnabled }}
+        {{- with $client.serviceAccountsEnabled }}
+        serviceAccountsEnabled: {{ . }}
+        {{- end }}
+        redirectUris:
+          {{- toYaml $client.redirectUris | nindent 10 }}
+        webOrigins:
+          {{- toYaml $client.webOrigins | nindent 10 }}
+        {{- with $client.defaultClientScopes }}
+        defaultClientScopes:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with $client.optionalClientScopes }}
+        optionalClientScopes:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with $client.protocolMappers }}
+        protocolMappers:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- end }}
+      {{- end }}
+{{- end }}

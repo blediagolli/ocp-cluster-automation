@@ -1,0 +1,17 @@
+imageRegistry:
+  include: false
+  replicas: 1
+  managementState: Managed
+  rolloutStrategy: RollingUpdate
+  defaultRoute: false
+  storage:
+    type: pvc
+    pvc:
+      claim: image-registry-storage
+    s3:
+      bucket: ""
+      region: ""
+      encrypt: true
+      # keyID: ""
+      # regionEndpoint: ""
+      # virtualHostedStyle: false

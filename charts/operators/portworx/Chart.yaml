@@ -1,0 +1,7 @@
+apiVersion: v2
+name: portworx
+description: Portworx operator and a PX-CSI StorageCluster for Pure FlashArray
+version: 0.1.0
+annotations:
+  oca.io/target: spoke
+  oca.io/maturity: incubating

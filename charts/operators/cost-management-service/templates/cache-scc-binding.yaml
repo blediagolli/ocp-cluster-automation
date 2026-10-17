@@ -1,0 +1,50 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if and $v.costManagementService.include $v.costManagementService.cache.deploy }}
+{{- $cms := $v.costManagementService }}
+{{- /* The Valkey Deployment the operator creates when cache.deploy is true
+       sets podSecurityContext.fsGroup: 1000 — a plain Kubernetes assumption.
+       OpenShift allocates each namespace its own supplemental-group range
+       (1000910000/10000 on acm-hub), 1000 is not in it, and restricted-v2
+       enforces MustRunAs against that range, so every create is rejected:
+
+         pods "cost-onprem-valkey-...-" is forbidden: unable to validate
+         against any security context constraint: ... restricted-v2:
+         .spec.securityContext.fsGroup: Invalid value: [1000]: 1000 is not
+         an allowed group
+
+       The Deployment belongs to the operator, so the field cannot be patched
+       from here, and there is no CR field for it.
+
+       nonroot-v2 rather than anyuid: its fsGroup is RunAsAny, which is the
+       single thing needed, while runAsUser stays MustRunAsNonRoot,
+       capabilities are still all dropped and privilege escalation is still
+       forbidden. The Valkey pod already complies with every one of those — no
+       pinned uid, drop: [ALL], readOnlyRootFilesystem, runAsNonRoot — so
+       fsGroup is its only deviation and the grant permits nothing it is not
+       already doing. anyuid would additionally let anything using this
+       ServiceAccount run as root.
+
+       Widening the namespace's openshift.io/sa.scc.supplemental-groups
+       annotation would also work, and was tried first. It is not portable:
+       the range is allocated per namespace per cluster, so it cannot be
+       expressed in a chart that has to render anywhere, and listing 1000
+       ahead of the allocated range would re-chown the existing Postgres and
+       Kafka volumes on their next restart. */}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $cms.name }}-cache-scc
+  namespace: {{ $cms.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-15"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:nonroot-v2
+subjects:
+  # The operator leaves serviceAccountName unset on the Valkey pod, so it runs
+  # as the namespace default. Overridable in case that changes upstream.
+  - kind: ServiceAccount
+    name: {{ $cms.cache.serviceAccountName }}
+    namespace: {{ $cms.namespace }}
+{{- end }}

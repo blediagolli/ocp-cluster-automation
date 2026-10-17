@@ -1,0 +1,37 @@
+{{- /* Gated on installOperators, from conf.yaml: false means the operator
+       is installed by something other than this repo — an ACM policy, or by
+       hand — and this chart contributes only the CRs. Without it, migrating
+       a cluster that set deployOperators: false would install operators on it
+       that were never there. */}}
+{{- if .Values.installOperators }}
+{{- /* Wave -29, between the namespace and the Subscription: OLM rejects a
+       Subscription whose namespace has no OperatorGroup.
+
+       clusterScoped picks the install mode. Operators that do not support
+       AllNamespaces are left Failed with UnsupportedOperatorGroup by a global
+       OperatorGroup, so they get a dedicated namespace and a targetNamespaces
+       one instead. Operators that live in openshift-operators set both skip
+       flags — that namespace and its global OperatorGroup already exist.
+
+       Identical in every chart under charts/operators/. Do not edit one
+       copy. */}}
+{{- $v := index .Values .Chart.Name }}
+{{- if not $v.operator.skipOperatorGroup }}
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: {{ $v.operator.operatorGroup }}
+  namespace: {{ $v.operator.namespace }}
+  labels:
+    operator: {{ .Chart.Name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-29"
+{{- if $v.operator.clusterScoped }}
+spec: {}
+{{- else }}
+spec:
+  targetNamespaces:
+    - {{ $v.operator.namespace }}
+{{- end }}
+{{- end }}
+{{- end }}

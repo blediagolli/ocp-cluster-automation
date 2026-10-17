@@ -1,0 +1,10 @@
+apiVersion: v2
+name: acm-managed-cluster
+description: ACM managed cluster import with addons and auto-import
+version: 1.0.0
+annotations:
+  # Registers a cluster that was deployed outside ACM. The subject is the
+  # spoke, not the hub — cluster-import happens to apply the objects hub-side,
+  # but that is a property of the ApplicationSet, not of the chart.
+  oca.io/target: spoke
+  oca.io/maturity: incubating

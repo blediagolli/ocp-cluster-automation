@@ -1,0 +1,50 @@
+{{- if .Values.console.include }}
+{{- /*
+  Branding and the developer catalog live on the *operator* Console CR
+  (operator.openshift.io/v1). The config one (config.openshift.io/v1) that this
+  template used to write has exactly one settable field in its whole spec --
+  authentication.logoutRedirect -- and the API server prunes everything else
+  without complaint. That is why the mistake was invisible: the sync reported
+  "all tasks run", the console never changed, and the Application sat
+  permanently OutOfSync diffing its own pruned object.
+*/}}
+{{- $branding := .Values.console.branding }}
+{{- $catalog := .Values.console.developerCatalog }}
+{{- $hasBranding := or $branding.customProductName $branding.customLogoFile.name }}
+{{- $hasDevCatalog := or $catalog.categories $catalog.types.enabled $catalog.types.disabled }}
+apiVersion: operator.openshift.io/v1
+kind: Console
+metadata:
+  name: cluster
+{{- if not (or $hasBranding $hasDevCatalog) }}
+spec: {}
+{{- else }}
+spec:
+  customization:
+    {{- if $branding.customProductName }}
+    customProductName: {{ $branding.customProductName | quote }}
+    {{- end }}
+    {{- if $branding.customLogoFile.name }}
+    customLogoFile:
+      name: {{ $branding.customLogoFile.name }}
+      key: {{ $branding.customLogoFile.key }}
+    {{- end }}
+    {{- if $hasDevCatalog }}
+    developerCatalog:
+      {{- if $catalog.categories }}
+      categories:
+        {{- toYaml $catalog.categories | nindent 8 }}
+      {{- end }}
+      types:
+        state: {{ $catalog.types.state }}
+        {{- if $catalog.types.enabled }}
+        enabled:
+          {{- toYaml $catalog.types.enabled | nindent 10 }}
+        {{- end }}
+        {{- if $catalog.types.disabled }}
+        disabled:
+          {{- toYaml $catalog.types.disabled | nindent 10 }}
+        {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}

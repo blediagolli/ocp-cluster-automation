@@ -1,0 +1,110 @@
+# Whether this chart installs its operator, or only configures one that is
+# already there. Set per cluster in conf.yaml, which every operator
+# Application reads; false drops the Namespace, OperatorGroup and
+# Subscriptions and keeps the CRs. Replaces conf.yaml's deployOperators,
+# which used to switch a whole Application on and off.
+installOperators: true
+
+# All of this chart's values nest under the chart name, so a shared
+# operators.yaml can carry several operators without their `operator:`
+# blocks colliding. A per-operator file uses the identical shape, which is
+# what lets a block move between the two by cut-and-paste.
+#
+# The templates reach them with `index .Values .Chart.Name`, so the chart
+# directory name and this top-level key must stay in step.
+cluster-observability:
+  operator:
+    # --- facts about this operator, not settings ---
+    # Values only so that namespace.yaml, operatorgroup.yaml and
+    # subscription.yaml stay byte-identical across every chart under
+    # charts/operators/. Overriding them per cluster is not meaningful.
+    namespace: openshift-operators
+    operatorGroup: ""
+    package: cluster-observability-operator
+    sourceNamespace: openshift-marketplace
+    # Installed into openshift-operators, which already exists and already
+    # has a global OperatorGroup, so this chart creates neither.
+    clusterScoped: false
+    skipNamespace: true
+    skipOperatorGroup: true
+    namespaceLabels: {}
+    namespaceAnnotations: {}
+
+    # --- the parts you actually set ---
+    channel: stable
+    source: redhat-operators
+    installPlanApproval: Automatic
+    # Pin to a specific CSV instead of taking the channel head.
+    startingCSV: ""
+
+  # Namespace for the CRs below. Empty inherits operator.namespace.
+  namespace: ""
+  # Only consulted when namespace above differs from operator.namespace.
+  createNamespace: false
+
+  uiPlugins:
+    dashboards:
+      include: false
+    troubleshootingPanel:
+      include: false
+    distributedTracing:
+      include: false
+      timeout: ""
+    logging:
+      include: false
+      lokiStack:
+        name: logging-lokistack
+      logsLimit: 0
+      timeout: ""
+      schema: ""
+    monitoring:
+      include: false
+      acm:
+        enabled: false
+        alertmanager:
+          url: ""
+        thanosQuerier:
+          url: ""
+      clusterHealthAnalyzer:
+        enabled: false
+      perses:
+        enabled: false
+
+  monitoringStacks: []
+  # - include: true
+  #   name: my-stack
+  #   namespace: my-namespace
+  #   createNamespace: true
+  #   retention: 24h
+  #   logLevel: ""
+  #   namespaceSelector:
+  #     matchLabels: {}
+  #   resourceSelector:
+  #     matchLabels: {}
+  #   resources:
+  #     requests:
+  #       cpu: 500m
+  #       memory: 512Mi
+  #     limits:
+  #       cpu: "1"
+  #       memory: 1Gi
+  #   prometheusConfig:
+  #     replicas: 1
+  #     scrapeInterval: 30s
+  #     persistentVolumeClaim:
+  #       storageClassName: ""
+  #       resources:
+  #         requests:
+  #           storage: 50Gi
+  #     remoteWrite: []
+  #   alertmanagerConfig: {}
+  #   tolerations: []
+
+  thanosQueriers: []
+  # - include: true
+  #   name: my-querier
+  #   namespace: my-namespace
+  #   selector:
+  #     matchLabels: {}
+  #   namespaceSelector:
+  #     matchLabels: {}

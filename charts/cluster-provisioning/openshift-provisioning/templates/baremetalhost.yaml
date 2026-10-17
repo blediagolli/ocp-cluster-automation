@@ -1,0 +1,30 @@
+{{- if and .Values.provision.include (eq (include "cluster.isAgent" .) "true") }}
+{{- $platformCfg := index .Values .Values.cluster.platform }}
+{{- range $platformCfg.hosts }}
+---
+apiVersion: metal3.io/v1alpha1
+kind: BareMetalHost
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.cluster.name }}
+  labels:
+    {{- if $.Values.vsphereControlPlane.enabled }}
+    infraenvs.agent-install.openshift.io: {{ $.Values.cluster.name }}-workers
+    {{- else }}
+    infraenvs.agent-install.openshift.io: {{ $.Values.cluster.name }}
+    {{- end }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+    inspect.metal3.io: disabled
+    bmac.agent-install.openshift.io/hostname: {{ .name | quote }}
+    bmac.agent-install.openshift.io/role: {{ .role | quote }}
+spec:
+  online: true
+  bootMACAddress: {{ .bootMACAddress }}
+  automatedCleaningMode: {{ .automatedCleaningMode | default "metadata" }}
+  bmc:
+    address: {{ .bmcAddress }}
+    credentialsName: {{ .name }}-bmc-credentials
+    disableCertificateVerification: {{ .bmcInsecure | default true }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,67 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.velero.include }}
+{{- if $v.velero.backupStorageLocation.include }}
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  name: {{ $v.velero.backupStorageLocation.name }}
+  namespace: {{ $v.velero.namespace }}
+spec:
+  provider: {{ $v.velero.backupStorageLocation.provider }}
+  objectStorage:
+    bucket: {{ $v.velero.backupStorageLocation.bucket }}
+    prefix: {{ $v.velero.backupStorageLocation.prefix }}
+  credential:
+    name: {{ $v.velero.backupStorageLocation.credentialSecretName }}
+    key: cloud
+  config:
+    region: {{ $v.velero.backupStorageLocation.region }}
+    {{- range $key, $val := $v.velero.backupStorageLocation.config }}
+    {{ $key }}: {{ $val | quote }}
+    {{- end }}
+{{- end }}
+---
+{{- if $v.velero.volumeSnapshotLocation.include }}
+apiVersion: velero.io/v1
+kind: VolumeSnapshotLocation
+metadata:
+  name: {{ $v.velero.volumeSnapshotLocation.name }}
+  namespace: {{ $v.velero.namespace }}
+spec:
+  provider: {{ $v.velero.volumeSnapshotLocation.provider }}
+  config:
+    region: {{ $v.velero.volumeSnapshotLocation.region }}
+    {{- range $key, $val := $v.velero.volumeSnapshotLocation.config }}
+    {{ $key }}: {{ $val | quote }}
+    {{- end }}
+{{- end }}
+{{- range $v.velero.schedules }}
+{{- if .include }}
+---
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: {{ .name }}
+  namespace: {{ $v.velero.namespace }}
+spec:
+  schedule: {{ .schedule | quote }}
+  template:
+    ttl: {{ .ttl }}
+    {{- if .includedNamespaces }}
+    includedNamespaces:
+      {{- toYaml .includedNamespaces | nindent 6 }}
+    {{- end }}
+    {{- if .excludedNamespaces }}
+    excludedNamespaces:
+      {{- toYaml .excludedNamespaces | nindent 6 }}
+    {{- end }}
+    includeClusterResources: {{ .includeClusterResources | default true }}
+    snapshotVolumes: {{ .snapshotVolumes | default true }}
+    storageLocation: {{ .storageLocation }}
+    {{- if .volumeSnapshotLocations }}
+    volumeSnapshotLocations:
+      {{- toYaml .volumeSnapshotLocations | nindent 6 }}
+    {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

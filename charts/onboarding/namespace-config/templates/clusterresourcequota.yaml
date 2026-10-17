@@ -1,0 +1,71 @@
+{{- /*
+One ClusterResourceQuota per team per cluster: a ceiling on what the team can
+consume ACROSS all of its namespaces here.
+
+The per-namespace ResourceQuotas cannot express that. A tier is a per-namespace
+figure, so a team with five `small` namespaces has five times `small` and
+nothing in git says what its total is allowed to be -- the only way to cap the
+team was to shrink every tier, which caps the wrong thing.
+
+Both objects are enforced, independently, and the most restrictive wins. This
+is a ceiling over the tiers, not a replacement for them: set it above the sum
+of the namespace quotas and it never binds, set it below and the namespaces
+stop reaching their tier. The second is a legitimate choice -- it is how you
+oversubscribe -- which is why nothing here checks the arithmetic. What it is
+not is quiet: the rejection names the ClusterResourceQuota, not the namespace's
+own quota, so the message points at this object.
+
+Off by default. Switching it ON for a team already running near the sum of its
+tiers rejects the next pod it schedules, and the team sees that before anyone
+reads the commit.
+
+Unaffected by quiesce, the same way the namespaces and their quotas are: a
+quiesced team keeps its data and therefore keeps its storage, and the cap on
+what it holds should not lift the moment its access is withdrawn.
+*/ -}}
+{{- include "onboarding.validate" . }}
+{{- if include "onboarding.clusterQuotaEnabled" . }}
+---
+apiVersion: quota.openshift.io/v1
+kind: ClusterResourceQuota
+metadata:
+  {{- /* Cluster-scoped, so the name has to carry the team: `team-quota` is
+         unique per namespace, this one has to be unique per cluster, and two
+         teams whose charts both rendered `cluster-quota` would silently share
+         one object -- each Application overwriting the other's limits on
+         every sync, both reporting Synced. */}}
+  name: {{ printf "%s-%s" .Values.team.name .Values.naming.clusterResourceQuota }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    {{- include "onboarding.labels" . | nindent 4 }}
+    app.kubernetes.io/component: cluster-quota
+spec:
+  {{- /* BOTH labels, deliberately. application-gitops stamps these same
+         onboarding.labels onto the <team>-gitops namespace, so part-of on its
+         own also selects the team's ArgoCD instance -- its controller,
+         repo-server, Redis and every sync it runs -- and charges the team's
+         own tooling against the quota meant for its workloads. The component
+         label is the only thing separating the two, and it is asserted in
+         scripts/validate-onboarding.sh for that reason.
+
+         Not overridable. A selector widened from a values file is a selector
+         that can reach another team's namespaces, and a ClusterResourceQuota
+         that counts namespaces its own Application does not own is a cap
+         nobody can explain from git. */}}
+  selector:
+    labels:
+      matchLabels:
+        app.kubernetes.io/part-of: {{ .Values.team.name }}
+        app.kubernetes.io/component: tenant-namespace
+  quota:
+    hard:
+      {{- include "onboarding.clusterQuotaHard" . | nindent 6 }}
+    {{- with .Values.clusterResourceQuota.scopes }}
+    {{- /* A list, so an override REPLACES it rather than merging -- restate
+           every scope you still want, the same trap limitRange.types was
+           reshaped to avoid. */}}
+    scopes:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+{{- end }}

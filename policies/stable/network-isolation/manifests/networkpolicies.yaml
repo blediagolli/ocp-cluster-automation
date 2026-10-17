@@ -1,0 +1,47 @@
+# Attests the default-deny baseline in tenant namespaces.
+#
+# These three specs are copied from
+# charts/platform-config/project-request-template/templates/template.yaml and
+# must stay identical to it. musthave compares the fields it names, so a drift in
+# either file turns into a false non-compliance rather than a caught one. That
+# chart creates five NetworkPolicies; only the three that constitute the
+# isolation baseline are attested here -- allow-same-namespace and
+# allow-from-kube-apiserver are conveniences, not boundary controls.
+#
+# Written by: charts/platform-config/project-request-template.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-openshift-ingress
+spec:
+  podSelector: {}
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              network.openshift.io/policy-group: ingress
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-openshift-monitoring
+spec:
+  podSelector: {}
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              network.openshift.io/policy-group: monitoring
+  policyTypes:
+    - Ingress

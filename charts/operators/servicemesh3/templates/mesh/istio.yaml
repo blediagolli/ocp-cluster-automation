@@ -1,0 +1,21 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.istio.include }}
+apiVersion: sailoperator.io/v1
+kind: Istio
+metadata:
+  name: {{ $v.istio.name }}
+spec:
+  version: {{ $v.istio.version }}
+  namespace: {{ $v.istio.namespace }}
+  profile: {{ $v.istio.profile }}
+  updateStrategy:
+    type: InPlace
+  values:
+    global:
+      platform: openshift
+    pilot:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+{{- end }}

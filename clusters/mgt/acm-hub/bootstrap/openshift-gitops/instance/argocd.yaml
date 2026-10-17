@@ -1,0 +1,225 @@
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: openshift-gitops
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  applicationSet:
+    resources:
+      limits:
+        cpu: "2"
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+    webhookServer:
+      ingress:
+        enabled: false
+      route:
+        enabled: false
+  controller:
+    processors: {}
+    resources:
+      limits:
+        cpu: "2"
+        memory: 6Gi
+      requests:
+        cpu: 250m
+        memory: 1Gi
+    sharding: {}
+  grafana:
+    enabled: false
+    ingress:
+      enabled: false
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 250m
+        memory: 128Mi
+    route:
+      enabled: false
+  ha:
+    enabled: false
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 250m
+        memory: 128Mi
+  imageUpdater:
+    enabled: false
+  initialSSHKnownHosts: {}
+  monitoring:
+    enabled: false
+  networkPolicy: {}
+  notifications:
+    enabled: false
+  prometheus:
+    enabled: false
+    ingress:
+      enabled: false
+    route:
+      enabled: false
+  rbac:
+    defaultPolicy: role:admin
+    policy: |
+      g, system:cluster-admins, role:admin
+      g, cluster-admins, role:admin
+    scopes: '[groups, preferred_username]'
+  redis:
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 250m
+        memory: 128Mi
+  repo:
+    # PolicyGenerator CMP. The plugin is a kustomize exec plugin shipped inside the ACM
+    # subscription image, so the binary is copied out by an init container and mounted
+    # into a sidecar that runs the render. Plugin config lives in policy-generator-cmp.yaml.
+    #
+    # THIS BLOCK IS DUPLICATED in charts/operators/openshift-gitops (values key
+    # argocd.policyGenerator), which is the live owner on the hub today --
+    # openshift-gitops.argocd.include is true in clusters/mgt/acm-hub/operators.yaml.
+    # This file is first-install only: it is what a brand-new hub gets before any
+    # ArgoCD exists to sync the chart. Keep the two identical -- if this copy drifts,
+    # the next cluster bootstraps a repo-server the chart then has to correct, and if
+    # the chart copy drifts, policy Applications fail with ComparisonError.
+    # `make validate-cmp-parity` checks this.
+    #
+    # Both images are digest-pinned because this file is applied by hand
+    # (`oc apply -k clusters/mgt/acm-hub/bootstrap/`), not rendered by Helm, so there is
+    # no lookup available. Refresh them after an ACM or GitOps upgrade with:
+    #   oc get deploy -n open-cluster-management multicluster-operators-hub-subscription \
+    #     -o jsonpath='{.spec.template.spec.containers[0].image}'
+    #   oc get deploy -n openshift-gitops openshift-gitops-repo-server \
+    #     -o jsonpath='{.spec.template.spec.containers[0].image}'
+    # The sidecar must track the repo-server image: it runs that image's argocd-cmp-server.
+    env:
+      - name: KUSTOMIZE_PLUGIN_HOME
+        value: /etc/kustomize/plugin
+    initContainers:
+      # The binary's path inside the ACM image varies by ACM version, so search the known
+      # locations rather than pinning one. Output is mounted at /policy-generator-tmp so it
+      # cannot shadow any of the source paths being searched.
+      - name: policy-generator-install
+        image: registry.redhat.io/rhacm2/multicluster-operators-subscription-rhel9@sha256:d7641848278a3e3e77b863a56ae9c5753c5211cd0c331441ab93ccf7a47127b0
+        command: [/bin/sh, -c]
+        args:
+          - |
+            set -e
+            for src in \
+              /etc/kustomize/plugin/policy.open-cluster-management.io/v1/policygenerator/PolicyGenerator \
+              /policy-generator/PolicyGenerator \
+              /policy-generator/PolicyGenerator-rhel8 \
+              /policy-generator/PolicyGenerator-not-fips-compliant; do
+              if [ -f "$src" ]; then
+                cp "$src" /policy-generator-tmp/PolicyGenerator
+                chmod +x /policy-generator-tmp/PolicyGenerator
+                exit 0
+              fi
+            done
+            echo "PolicyGenerator binary not found in ACM image" >&2
+            exit 1
+        volumeMounts:
+          - name: policy-generator
+            mountPath: /policy-generator-tmp
+    sidecarContainers:
+      # var-files and plugins are the repo-server's operator-provided shared volumes; the
+      # CMP protocol requires both. cmp-tmp exists because the sidecar's root filesystem
+      # gives it nowhere else to unpack a working copy of the repo.
+      - name: policy-generator
+        image: registry.redhat.io/openshift-gitops-1/argocd-rhel9@sha256:17e904f4722c8de639278a97aad598a878fa1fd284b68f0740b6e3d6b8643e25
+        command: [/var/run/argocd/argocd-cmp-server]
+        securityContext:
+          runAsNonRoot: true
+        env:
+          - name: KUSTOMIZE_PLUGIN_HOME
+            value: /etc/kustomize/plugin
+        volumeMounts:
+          - name: var-files
+            mountPath: /var/run/argocd
+          - name: plugins
+            mountPath: /home/argocd/cmp-server/plugins
+          - name: policy-generator-cmp-config
+            mountPath: /home/argocd/cmp-server/config/plugin.yaml
+            subPath: plugin.yaml
+          - name: cmp-tmp
+            mountPath: /tmp
+          - name: policy-generator
+            mountPath: /etc/kustomize/plugin/policy.open-cluster-management.io/v1/policygenerator
+        # The sidecar, not the repo-server, runs the actual render. Unbounded it competes
+        # with the repo-server and renders time out when the ApplicationSet fans out.
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 250m
+            memory: 256Mi
+    volumeMounts:
+      # Also mounted into the repo-server itself so a plain `kustomize build` from the
+      # repo-server (not via the CMP) resolves the plugin identically.
+      - name: policy-generator
+        mountPath: /etc/kustomize/plugin/policy.open-cluster-management.io/v1/policygenerator
+    volumes:
+      - name: policy-generator
+        emptyDir: {}
+      - name: policy-generator-cmp-config
+        configMap:
+          name: policy-generator-cmp-plugin
+      - name: cmp-tmp
+        emptyDir: {}
+    resources:
+      limits:
+        cpu: "1"
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+  resourceExclusions: |
+    - apiGroups:
+      - tekton.dev
+      clusters:
+      - '*'
+      kinds:
+      - TaskRun
+      - PipelineRun
+  server:
+    autoscale:
+      enabled: false
+    grpc:
+      ingress:
+        enabled: false
+    ingress:
+      enabled: false
+    resources:
+      limits:
+        cpu: "1"
+        memory: 1Gi
+      requests:
+        cpu: 125m
+        memory: 128Mi
+    route:
+      enabled: true
+    service:
+      type: ""
+  sso:
+    dex:
+      openShiftOAuth: true
+      resources:
+        limits:
+          cpu: 500m
+          memory: 256Mi
+        requests:
+          cpu: 250m
+          memory: 128Mi
+    provider: dex
+  tls:
+    ca: {}

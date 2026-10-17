@@ -1,0 +1,10 @@
+apiVersion: v2
+name: ansible-automation-platform
+description: ansible-automation-platform — operator subscription and ansible Automation Platform instance
+version: 0.1.0
+annotations:
+  # The hub runs one as part of the management plane, but nothing consumes it
+  # across clusters the way spokes read the hub's Vault or point oauth at its
+  # Keycloak — two managed clusters already run their own.
+  oca.io/target: spoke
+  oca.io/maturity: incubating

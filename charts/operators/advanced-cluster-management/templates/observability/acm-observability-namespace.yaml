@@ -1,0 +1,11 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.multiClusterObservability.createNamespace }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $v.multiClusterObservability.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  labels:
+    openshift.io/cluster-monitoring: "true"
+{{- end }}

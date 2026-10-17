@@ -1,0 +1,281 @@
+{{- if and .Values.ingress.controller.include .Values.ingress.controller.manageDefault }}
+{{- $c := .Values.ingress.controller }}
+{{- $d := $c.default }}
+{{- $eps := $d.endpointPublishingStrategy | default "" }}
+{{- $strategies := list "" "LoadBalancerService" "HostNetwork" "NodePortService" "Private" }}
+{{- if not (has $eps $strategies) }}
+  {{- fail (printf "openshift-ingress: endpointPublishingStrategy must be one of %s; empty leaves the installer's choice untouched. Got %q" (join ", " (rest $strategies)) $eps) }}
+{{- end }}
+{{- $lb := $d.loadBalancer }}
+{{- $pp := $lb.providerParameters }}
+{{- $providers := list "" "AWS" "GCP" "IBM" "OpenStack" }}
+{{- if not (has $pp.type $providers) }}
+  {{- fail (printf "openshift-ingress: loadBalancer.providerParameters.type must be one of %s. Got %q" (join ", " (rest $providers)) $pp.type) }}
+{{- end }}
+{{- if and $pp.type (ne $eps "LoadBalancerService") }}
+  {{- fail (printf "openshift-ingress: loadBalancer.providerParameters.type is %q but endpointPublishingStrategy is %q. Provider parameters only apply to LoadBalancerService." $pp.type $eps) }}
+{{- end }}
+{{- if and (eq $pp.type "AWS") (not (has $pp.aws.type (list "NLB" "Classic"))) }}
+  {{- fail (printf "openshift-ingress: loadBalancer.providerParameters.aws.type must be NLB or Classic. Got %q" $pp.aws.type) }}
+{{- end }}
+{{- $log := $c.logging }}
+{{- if $log.enabled }}
+  {{- $dests := list "Container" "Syslog" }}
+  {{- if not (has $log.destination.type $dests) }}
+    {{- fail (printf "openshift-ingress: logging.destination.type must be one of %s. Got %q" (join ", " $dests) $log.destination.type) }}
+  {{- end }}
+  {{- /*
+    Syslog with no address renders a destination the operator cannot ship to,
+    and it degrades the IngressController rather than falling back to the
+    container sidecar.
+  */}}
+  {{- if and (eq $log.destination.type "Syslog") (not $log.destination.syslog.address) }}
+    {{- fail "openshift-ingress: logging.destination.type is Syslog but logging.destination.syslog.address is empty. Syslog needs a collector address reachable from the router pods." }}
+  {{- end }}
+  {{- /*
+    Same reasoning as providerParameters above: parameters set against the
+    wrong destination are silently dropped from the render, which reads as the
+    chart ignoring them. Refuse instead.
+  */}}
+  {{- if and (eq $log.destination.type "Container") (or $log.destination.syslog.address $log.destination.syslog.facility (gt (int $log.destination.syslog.maxLength) 0)) }}
+    {{- fail "openshift-ingress: logging.destination.syslog.* is set but logging.destination.type is Container. Those parameters only apply to Syslog." }}
+  {{- end }}
+  {{- if and (eq $log.destination.type "Syslog") (gt (int $log.destination.container.maxLength) 0) }}
+    {{- fail "openshift-ingress: logging.destination.container.maxLength is set but logging.destination.type is Syslog. Use logging.destination.syslog.maxLength instead — its ceiling is 4096, not 8192." }}
+  {{- end }}
+  {{- /*
+    Both maxLength fields are rejected at admission outside their range, so
+    catching them here turns a Degraded IngressController into a failed render.
+    The ranges genuinely differ between the two destinations.
+  */}}
+  {{- $cml := int $log.destination.container.maxLength }}
+  {{- if and (gt $cml 0) (or (lt $cml 480) (gt $cml 8192)) }}
+    {{- fail (printf "openshift-ingress: logging.destination.container.maxLength must be between 480 and 8192, or 0 for the default of 1024. Got %d" $cml) }}
+  {{- end }}
+  {{- $sml := int $log.destination.syslog.maxLength }}
+  {{- if and (gt $sml 0) (or (lt $sml 480) (gt $sml 4096)) }}
+    {{- fail (printf "openshift-ingress: logging.destination.syslog.maxLength must be between 480 and 4096, or 0 for the default of 1024. Got %d" $sml) }}
+  {{- end }}
+  {{- $policies := list "" "Log" "Ignore" }}
+  {{- if not (has $log.logEmptyRequests $policies) }}
+    {{- fail (printf "openshift-ingress: logging.logEmptyRequests must be Log or Ignore; empty leaves the API default of Log. Got %q" $log.logEmptyRequests) }}
+  {{- end }}
+{{- end }}
+{{- /*
+  Every field below is individually optional, so it is possible to ask for the
+  default IngressController and then set nothing in it. That would render a
+  bare `spec:` — YAML null — and applying null over the live spec is a good way
+  to lose it. Refuse instead: adopting this object without an opinion about it
+  is never what was meant.
+*/}}
+{{- if not (or (gt (int $d.replicas) 0) $eps $d.placement $c.defaultCertificate.enabled $c.tlsSecurityProfile.enabled $c.hsts.enabled $c.logging.enabled) }}
+  {{- fail "openshift-ingress: manageDefault is true but nothing under ingress.controller is set, which would apply an empty spec over the live IngressController. Set at least one of: default.replicas, default.endpointPublishingStrategy, default.placement, defaultCertificate.enabled, tlsSecurityProfile.enabled, hsts.enabled, logging.enabled." }}
+{{- end }}
+apiVersion: operator.openshift.io/v1
+kind: IngressController
+metadata:
+  name: default
+  namespace: openshift-ingress-operator
+  {{- if $c.http2.enabled }}
+  annotations:
+    ingress.operator.openshift.io/default-enable-http2: "true"
+  {{- end }}
+spec:
+  {{- if gt (int $d.replicas) 0 }}
+  replicas: {{ $d.replicas }}
+  {{- end }}
+
+  {{- /*
+    Omitted entirely when endpointPublishingStrategy is empty. The API
+    documents this field as not updatable, so on a cluster whose default
+    IngressController already exists — which is every real cluster, the
+    installer creates it — writing a value that differs from the live one
+    does not switch anything over. It leaves the resource permanently
+    OutOfSync with selfHeal re-applying a change the operator will not act on.
+  */}}
+  {{- if $eps }}
+  endpointPublishingStrategy:
+    type: {{ $eps }}
+    {{- if eq $eps "LoadBalancerService" }}
+    loadBalancer:
+      scope: {{ $lb.scope }}
+      {{- if $lb.dnsManagementPolicy }}
+      dnsManagementPolicy: {{ $lb.dnsManagementPolicy }}
+      {{- end }}
+      {{- if $lb.allowedSourceRanges }}
+      allowedSourceRanges:
+        {{- toYaml $lb.allowedSourceRanges | nindent 8 }}
+      {{- end }}
+      {{- if $pp.type }}
+      providerParameters:
+        type: {{ $pp.type }}
+        {{- if eq $pp.type "AWS" }}
+        aws:
+          type: {{ $pp.aws.type }}
+          {{- if eq $pp.aws.type "NLB" }}
+          {{- $nlb := $pp.aws.networkLoadBalancer }}
+          {{- if or $nlb.eipAllocations $nlb.subnets.ids $nlb.subnets.names }}
+          networkLoadBalancer:
+            {{- if $nlb.eipAllocations }}
+            eipAllocations:
+              {{- toYaml $nlb.eipAllocations | nindent 14 }}
+            {{- end }}
+            {{- if or $nlb.subnets.ids $nlb.subnets.names }}
+            subnets:
+              {{- if $nlb.subnets.ids }}
+              ids:
+                {{- toYaml $nlb.subnets.ids | nindent 16 }}
+              {{- end }}
+              {{- if $nlb.subnets.names }}
+              names:
+                {{- toYaml $nlb.subnets.names | nindent 16 }}
+              {{- end }}
+            {{- end }}
+          {{- end }}
+          {{- else }}
+          {{- $clb := $pp.aws.classicLoadBalancer }}
+          {{- if or $clb.connectionIdleTimeout $clb.subnets.ids $clb.subnets.names }}
+          classicLoadBalancer:
+            {{- if $clb.connectionIdleTimeout }}
+            connectionIdleTimeout: {{ $clb.connectionIdleTimeout }}
+            {{- end }}
+            {{- if or $clb.subnets.ids $clb.subnets.names }}
+            subnets:
+              {{- if $clb.subnets.ids }}
+              ids:
+                {{- toYaml $clb.subnets.ids | nindent 16 }}
+              {{- end }}
+              {{- if $clb.subnets.names }}
+              names:
+                {{- toYaml $clb.subnets.names | nindent 16 }}
+              {{- end }}
+            {{- end }}
+          {{- end }}
+          {{- end }}
+        {{- else if eq $pp.type "GCP" }}
+        {{- if $pp.gcp.clientAccess }}
+        gcp:
+          clientAccess: {{ $pp.gcp.clientAccess }}
+        {{- end }}
+        {{- else if eq $pp.type "IBM" }}
+        {{- if $pp.ibm.protocol }}
+        ibm:
+          protocol: {{ $pp.ibm.protocol }}
+        {{- end }}
+        {{- else if eq $pp.type "OpenStack" }}
+        {{- if $pp.openstack.floatingIP }}
+        openstack:
+          floatingIP: {{ $pp.openstack.floatingIP }}
+        {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- else if eq $eps "HostNetwork" }}
+    {{- $hn := $d.hostNetwork }}
+    {{- if or $hn.protocol (gt (int $hn.httpPort) 0) (gt (int $hn.httpsPort) 0) (gt (int $hn.statsPort) 0) }}
+    hostNetwork:
+      {{- if $hn.protocol }}
+      protocol: {{ $hn.protocol }}
+      {{- end }}
+      {{- if gt (int $hn.httpPort) 0 }}
+      httpPort: {{ $hn.httpPort }}
+      {{- end }}
+      {{- if gt (int $hn.httpsPort) 0 }}
+      httpsPort: {{ $hn.httpsPort }}
+      {{- end }}
+      {{- if gt (int $hn.statsPort) 0 }}
+      statsPort: {{ $hn.statsPort }}
+      {{- end }}
+    {{- end }}
+    {{- else if eq $eps "NodePortService" }}
+    {{- if $d.nodePort.protocol }}
+    nodePort:
+      protocol: {{ $d.nodePort.protocol }}
+    {{- end }}
+    {{- else if eq $eps "Private" }}
+    {{- if $d.private.protocol }}
+    private:
+      protocol: {{ $d.private.protocol }}
+    {{- end }}
+    {{- end }}
+  {{- end }}
+
+  {{- /*
+    Unlike the strategy, this one *is* mutable, which makes it the field that
+    actually takes ingress down: point it at a label no node carries and the
+    router pods are rescheduled to nowhere. Empty renders no nodePlacement at
+    all, which lets them schedule wherever they fit — the right default for a
+    compact cluster with no infra nodes.
+  */}}
+  {{- if $d.placement }}
+  nodePlacement:
+    nodeSelector:
+      matchLabels:
+        {{ $d.placement }}: ""
+    {{- if $d.tolerations }}
+    tolerations:
+      {{- toYaml $d.tolerations | nindent 6 }}
+    {{- end }}
+  {{- end }}
+
+  {{- if $c.defaultCertificate.enabled }}
+  defaultCertificate:
+    name: {{ $c.defaultCertificate.name }}
+  {{- end }}
+
+  {{- if $c.tlsSecurityProfile.enabled }}
+  tlsSecurityProfile:
+    type: {{ $c.tlsSecurityProfile.type }}
+    {{- if eq $c.tlsSecurityProfile.type "Custom" }}
+    custom:
+      ciphers:
+        {{- toYaml $c.tlsSecurityProfile.custom.ciphers | nindent 8 }}
+      minTLSVersion: {{ $c.tlsSecurityProfile.custom.minTLSVersion }}
+    {{- end }}
+  {{- end }}
+
+  {{- if $c.hsts.enabled }}
+  httpHeaders:
+    actions:
+      response:
+        - name: Strict-Transport-Security
+          action:
+            type: Set
+            set:
+              value: {{ $c.hsts.value | quote }}
+  {{- end }}
+
+  {{- /*
+    httpLogFormat and logEmptyRequests are siblings of destination, not fields
+    inside it. Nesting them under destination is the easy mistake and the API
+    rejects it outright, so the shape below is the whole point of this block.
+  */}}
+  {{- if $c.logging.enabled }}
+  logging:
+    access:
+      destination:
+        type: {{ $log.destination.type }}
+        {{- if eq $log.destination.type "Container" }}
+        {{- if gt (int $log.destination.container.maxLength) 0 }}
+        container:
+          maxLength: {{ int $log.destination.container.maxLength }}
+        {{- end }}
+        {{- end }}
+        {{- if eq $log.destination.type "Syslog" }}
+        syslog:
+          address: {{ $log.destination.syslog.address }}
+          port: {{ int $log.destination.syslog.port }}
+          {{- if $log.destination.syslog.facility }}
+          facility: {{ $log.destination.syslog.facility }}
+          {{- end }}
+          {{- if gt (int $log.destination.syslog.maxLength) 0 }}
+          maxLength: {{ int $log.destination.syslog.maxLength }}
+          {{- end }}
+        {{- end }}
+      {{- if $log.httpLogFormat }}
+      httpLogFormat: {{ $log.httpLogFormat | quote }}
+      {{- end }}
+      {{- if $log.logEmptyRequests }}
+      logEmptyRequests: {{ $log.logEmptyRequests }}
+      {{- end }}
+  {{- end }}
+{{- end }}

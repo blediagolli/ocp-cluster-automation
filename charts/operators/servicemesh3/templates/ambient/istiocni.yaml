@@ -1,0 +1,15 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.istioCNI.include }}
+apiVersion: sailoperator.io/v1
+kind: IstioCNI
+metadata:
+  name: {{ $v.istioCNI.name }}
+spec:
+  version: {{ $v.istioCNI.version }}
+  profile: {{ $v.istioCNI.profile }}
+  namespace: {{ $v.istioCNI.namespace }}
+  values:
+    cni:
+      ambient:
+        reconcileIptablesOnStartup: true
+{{- end }}

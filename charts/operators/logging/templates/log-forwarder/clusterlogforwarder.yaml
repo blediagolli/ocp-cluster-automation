@@ -1,0 +1,31 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.clusterLogForwarder.include }}
+apiVersion: observability.openshift.io/v1
+kind: ClusterLogForwarder
+metadata:
+  name: {{ $v.clusterLogForwarder.name }}
+  namespace: {{ $v.clusterLogForwarder.namespace }}
+spec:
+  serviceAccount:
+    name: collector
+  outputs:
+    - name: default-lokistack
+      type: lokiStack
+      lokiStack:
+        target:
+          name: {{ $v.lokiStack.name }}
+          namespace: {{ $v.lokiStack.namespace }}
+        authentication:
+          token:
+            from: serviceAccount
+  pipelines:
+    - name: default-logstore
+      inputRefs:
+        - infrastructure
+        - application
+        {{- if $v.clusterLogForwarder.collectAuditLogs }}
+        - audit
+        {{- end }}
+      outputRefs:
+        - default-lokistack
+{{- end }}

@@ -1,0 +1,49 @@
+{{- /* Gated on installOperators, from conf.yaml: false means the operator
+       is installed by something other than this repo — an ACM policy, or by
+       hand — and this chart contributes only the CRs. Without it, migrating
+       a cluster that set deployOperators: false would install operators on it
+       that were never there. */}}
+{{- if .Values.installOperators }}
+{{- /* Wave -28: additional operators this capability needs, installed into
+       the same namespace as operator.package above.
+
+       They get a Subscription and nothing else. A namespace already exists —
+       namespace.yaml made it — and so does an OperatorGroup, which is the
+       point: OLM fails every CSV in a namespace that holds more than one
+       OperatorGroup, so a second operator sharing a namespace must not bring
+       its own. The old operator-deployment chart had no way to say that. It
+       rendered one OperatorGroup per operator entry, so enabling both
+       `openshift-logging` and `loki` put two in openshift-logging and broke
+       both CSVs.
+
+       Same wave as the main Subscription: they install in parallel and the
+       wave does not advance until all of them report AtLatestKnown.
+
+       Identical in every chart under charts/operators/, and empty in most.
+       Do not edit one copy. */}}
+{{- $v := index .Values .Chart.Name }}
+{{- range $key, $extra := $v.extraOperators }}
+{{- if $extra.include }}
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: {{ $extra.package }}
+  namespace: {{ $extra.namespace | default $v.operator.namespace }}
+  labels:
+    operator: {{ $.Chart.Name }}
+    component: {{ $key }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-28"
+spec:
+  name: {{ $extra.package }}
+  channel: {{ required (printf "%s: extraOperators.%s.channel is required — a Subscription with an unresolvable channel is created and then silently installs nothing" $.Chart.Name $key) $extra.channel }}
+  source: {{ $extra.source }}
+  sourceNamespace: {{ $extra.sourceNamespace }}
+  installPlanApproval: {{ $extra.installPlanApproval }}
+  {{- with $extra.startingCSV }}
+  startingCSV: {{ . }}
+  {{- end }}
+---
+{{- end }}
+{{- end }}
+{{- end }}

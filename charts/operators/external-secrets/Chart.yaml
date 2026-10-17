@@ -1,0 +1,7 @@
+apiVersion: v2
+name: external-secrets
+description: external-secrets — operator subscription and platform-level ExternalSecret CRs for cluster-wide secrets (ingress certs, OIDC, pull secrets)
+version: 0.1.0
+annotations:
+  oca.io/target: spoke
+  oca.io/maturity: incubating

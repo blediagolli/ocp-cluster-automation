@@ -1,0 +1,67 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: cluster-import
+  namespace: openshift-gitops
+spec:
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: git@github.com:YOUR_ORG/ocp-cluster-automation.git
+              revision: main
+              files:
+                - path: "clusters/**/conf.yaml"
+          - list:
+              elementsYaml: "{{ if .deployImport }}[{}]{{ else }}[]{{ end }}"
+  template:
+    metadata:
+      name: 'import-{{.cluster.environment}}-{{.cluster.name}}'
+      labels:
+        environment: '{{.cluster.environment}}'
+        cluster: '{{.cluster.name}}'
+        type: import
+    spec:
+      project: platform
+      source:
+        repoURL: git@github.com:YOUR_ORG/ocp-cluster-automation.git
+        targetRevision: main
+        path: charts/platform-config/acm-managed-cluster
+        helm:
+          # Pinned so the release name does not inherit the Application name
+          # above. Helm caps a release name at 53 characters, and a cluster
+          # named after its full DNS name pushes that name past the limit,
+          # which fails the render before anything reaches the cluster.
+          releaseName: acm-managed-cluster
+          ignoreMissingValueFiles: true
+          valueFiles:
+            - '/env/{{.cluster.environment}}/conf.yaml'
+            - '/env/{{.cluster.environment}}/platform-config.yaml'
+            - '/{{.path.path}}/conf.yaml'
+            - '/{{.path.path}}/platform-config.yaml'
+      destination:
+        server: 'https://kubernetes.default.svc'
+      ignoreDifferences:
+        - group: cluster.open-cluster-management.io
+          kind: ManagedCluster
+          jsonPointers:
+            - /metadata/labels
+            - /spec/leaseDurationSeconds
+            - /spec/managedClusterClientConfigs
+      syncPolicy:
+        automated:
+          selfHeal: true
+          prune: true
+        syncOptions:
+          - RespectIgnoreDifferences=true
+        retry:
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 10m
+          limit: 5

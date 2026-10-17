@@ -1,0 +1,8 @@
+apiVersion: v2
+name: cloudnative-pg
+description: cloudnative-pg — operator subscription
+version: 0.1.0
+annotations:
+  oca.io/target: spoke
+  oca.io/maturity: incubating
+  oca.io/operand-from: cost-management-service/templates/dependencies/postgres.yaml

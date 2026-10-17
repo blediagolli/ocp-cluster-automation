@@ -1,0 +1,82 @@
+cluster:
+  baseDomain: ""
+  storageClass: ""
+
+vault:
+  include: false
+  namespace: vault
+  createNamespace: true
+
+  replicas: 3
+  image: docker.io/hashicorp/vault:1.17.2
+
+  route:
+    enabled: true
+    # hostname auto-derived from cluster.baseDomain when empty
+    hostname: ""
+
+  storage:
+    size: 10Gi
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+  audit:
+    enabled: false
+
+  # Auto-unseal. With seal.type "shamir" (the default) Vault starts sealed and
+  # someone has to run `vault operator unseal` on every replica after every
+  # restart — until they do, every ExternalSecret backed by this Vault fails.
+  #
+  # "transit" unseals against another Vault's transit engine. In this repo the
+  # hub Vault is the transit provider and managed-cluster Vaults seal against
+  # it, so only the hub ever needs a human. The hub cannot seal against itself.
+  #
+  # The token is NOT stored here. It comes from a pre-existing Secret in the
+  # Vault namespace, because Vault needs it at startup — before any
+  # ExternalSecret could have created it. See HANDOFF.md.
+  seal:
+    type: shamir
+    transit:
+      # Address of the provider Vault, e.g. https://vault.apps.<hub domain>
+      address: ""
+      keyName: autounseal
+      mountPath: transit/
+      # Secret holding the provider token, mounted as VAULT_TOKEN.
+      tokenSecret:
+        name: vault-transit-unseal
+        key: token
+      # Set true only if the provider serves a certificate this Vault cannot
+      # verify. Prefer fixing trust over disabling it.
+      tlsSkipVerify: false
+
+  serviceAccount:
+    name: vault
+
+  # Kubernetes auth for ExternalSecrets
+  kubernetesAuth:
+    enabled: true
+    # Path where the Kubernetes auth method is mounted
+    path: kubernetes
+
+secretStore:
+  include: false
+  name: vault
+  kind: ClusterSecretStore
+  # Vault server address — auto-derived from namespace if empty
+  server: ""
+  # Path to the KV v2 secrets engine
+  kvVersion: "2"
+  path: secret
+  auth:
+    # ServiceAccount used by ExternalSecrets to authenticate to Vault
+    serviceAccountRef:
+      name: external-secrets-sa
+      namespace: vault
+    # Vault role that the ServiceAccount maps to
+    role: external-secrets

@@ -1,0 +1,7 @@
+apiVersion: v2
+name: openshift-group-sync
+description: LDAP/AD group sync CronJob for OpenShift
+version: 0.1.0
+annotations:
+  oca.io/target: spoke
+  oca.io/maturity: incubating

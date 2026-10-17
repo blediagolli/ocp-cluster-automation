@@ -1,0 +1,38 @@
+{{- $v := index .Values .Chart.Name }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  serviceAccountName: default
+  containers:
+    - name: test
+      image: registry.redhat.io/openshift4/ose-cli:latest
+      command:
+        - /bin/bash
+        - -c
+        - |
+          FAILED=0
+          {{- if $v.argocd.include }}
+          echo "--- Checking ArgoCD CR ---"
+          PHASE=$(oc get argocd {{ $v.argocd.name }} -n {{ $v.argocd.namespace }} -o jsonpath='{.status.phase}' 2>/dev/null)
+          if [ "$PHASE" = "Available" ]; then
+            echo "  PASS: ArgoCD {{ $v.argocd.name }} phase=Available"
+          else
+            echo "  FAIL: ArgoCD {{ $v.argocd.name }} phase=$PHASE (expected Available)"
+            FAILED=1
+          fi
+          {{- end }}
+          {{- if $v.appProject.include }}
+          echo "--- Checking AppProject ---"
+          if oc get appproject {{ $v.appProject.name }} -n {{ $v.argocd.namespace }} &>/dev/null; then
+            echo "  PASS: AppProject {{ $v.appProject.name }} exists"
+          else
+            echo "  FAIL: AppProject {{ $v.appProject.name }} not found"
+            FAILED=1
+          fi
+          {{- end }}
+          exit $FAILED

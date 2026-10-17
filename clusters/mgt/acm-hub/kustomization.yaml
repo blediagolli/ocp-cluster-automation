@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# There is no `policies` entry here. ACM Policies are not applied through the
+# hub overlay -- they live in policies/ at the repo root and reach the hub via
+# the hub-acm-policies ApplicationSet below, because a PolicyGenerator
+# directory needs `kustomize build --enable-alpha-plugins` and `oc kustomize`
+# has no such flag. See docs/governance/acm-policies.md.
+#
+# That is the mechanical half. The other half is what this directory means: a
+# clusters/<env>/<name>/ tree is configuration applied *to* that cluster, read
+# by charts whose Argo destination is that cluster. A policy is not acm-hub's
+# configuration -- it is fleet governance the hub happens to host, placed
+# against a clusterset and evaluated on every member. So policies would not
+# belong here even if `oc kustomize` could build them.
+#
+# Both halves matter if you are about to move the tree in: `make validate-hub`
+# runs `oc kustomize clusters/mgt/acm-hub`, so a PolicyGenerator directory
+# under this path builds everywhere except there.
+#
+# This directory previously held an empty `policies/` overlay (resources: [])
+# left over from a 4.11-era plan to apply version-specific policies here. It
+# was never populated and its presence next to the real policies/ tree was
+# misleading, so it is gone rather than kept as a stub.
+resources:
+- applications
+- applicationsets

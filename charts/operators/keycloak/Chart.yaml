@@ -1,0 +1,8 @@
+apiVersion: v2
+name: keycloak
+description: Red Hat build of Keycloak — operator subscription, instance and realm
+version: 0.1.0
+annotations:
+  # the estate's IdP; spokes' openshift-oauth and openshift-group-sync point at it
+  oca.io/target: hub
+  oca.io/maturity: incubating

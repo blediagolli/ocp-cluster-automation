@@ -1,0 +1,174 @@
+# Whether this chart installs its operator, or only configures one that is
+# already there. Set per cluster in conf.yaml, which every operator
+# Application reads; false drops the Namespace, OperatorGroup and
+# Subscriptions and keeps the CRs. Replaces conf.yaml's deployOperators,
+# which used to switch a whole Application on and off.
+installOperators: true
+
+# All of this chart's values nest under the chart name, so a shared
+# operators.yaml can carry several operators without their `operator:`
+# blocks colliding. A per-operator file uses the identical shape, which is
+# what lets a block move between the two by cut-and-paste.
+#
+# The templates reach them with `index .Values .Chart.Name`, so the chart
+# directory name and this top-level key must stay in step.
+advanced-cluster-management:
+  operator:
+    # --- facts about this operator, not settings ---
+    # Values only so that namespace.yaml, operatorgroup.yaml and
+    # subscription.yaml stay byte-identical across every chart under
+    # charts/operators/. Overriding them per cluster is not meaningful.
+    namespace: open-cluster-management
+    operatorGroup: open-cluster-management
+    package: advanced-cluster-management
+    sourceNamespace: openshift-marketplace
+    # Does not support the AllNamespaces install mode: a global OperatorGroup
+    # leaves the CSV Failed with UnsupportedOperatorGroup. Hence a dedicated
+    # namespace and a targetNamespaces OperatorGroup.
+    clusterScoped: false
+    skipNamespace: false
+    skipOperatorGroup: false
+    # The only operator in the repo that needs either. Empty everywhere else.
+    namespaceLabels:
+      # Opts open-cluster-management into the platform Prometheus, which is
+      # what makes the hub's own components show up in the console's
+      # monitoring views rather than only in ACM's.
+      openshift.io/cluster-monitoring: "true"
+    namespaceAnnotations:
+      # Explicitly empty, not unset: it stops a cluster-wide default node
+      # selector from being applied to this namespace, so ACM's pods stay
+      # free to land on any node.
+      openshift.io/node-selector: ""
+
+    # --- the parts you actually set ---
+    channel: release-2.17
+    source: redhat-operators
+    installPlanApproval: Automatic
+    # Pin to a specific CSV instead of taking the channel head.
+    startingCSV: ""
+
+  # Namespace for the CRs below. Empty inherits operator.namespace.
+  namespace: ""
+  # Only consulted when namespace above differs from operator.namespace.
+  createNamespace: false
+
+  # ---- from charts/operator-instances/acm-multiclusterhub ----
+  multiClusterHub:
+    include: false
+    name: multiclusterhub
+    namespace: open-cluster-management
+    availabilityConfig: High
+    disableHubSelfManagement: false
+    localClusterName: local-cluster
+    overrides:
+      components:
+        - name: app-lifecycle
+          enabled: true
+        - name: cluster-lifecycle
+          enabled: true
+        - name: console
+          enabled: true
+        - name: grc
+          enabled: true
+        - name: insights
+          enabled: true
+        - name: multicluster-engine
+          enabled: true
+        - name: multicluster-observability
+          enabled: true
+        - name: search
+          enabled: true
+        - name: submariner-addon
+          enabled: true
+        - name: volsync
+          enabled: true
+        - name: cluster-backup
+          enabled: false
+        - name: fine-grained-rbac
+          enabled: false
+        - name: siteconfig
+          enabled: false
+        - name: cnv-mtv-integrations
+          enabled: false
+
+  assistedService:
+    include: false
+    databaseStorage: 10Gi
+    filesystemStorage: 100Gi
+    imageStorage: 50Gi
+    logLevel: info
+    isoImageType: minimal-iso
+
+  hiveConfig:
+    include: false
+    logLevel: debug
+    targetNamespace: hive
+    featureGates:
+      - AlphaAgentInstallStrategy
+    provisioning:
+      provisioningNetwork: Disabled
+      watchAllNamespaces: true
+
+  gitopsCluster:
+    include: false
+    name: argo-acm-clusters
+    argoNamespace: openshift-gitops
+    placementName: default
+    clusterSet: default
+    matchEnvironments:
+      - dev
+      - prod
+
+  consolePlugins:
+    include: false
+    plugins:
+      - acm
+      - mce
+
+  # ---- from charts/operator-instances/acm-observability ----
+  multiClusterObservability:
+    include: false
+    createNamespace: true
+    name: observability
+    namespace: open-cluster-management-observability
+    enableDownsampling: true
+    alertmanagerStorageSize: 1Gi
+    compactStorageSize: 50Gi
+    receiveStorageSize: 50Gi
+    ruleStorageSize: 50Gi
+    storeStorageSize: 50Gi
+    observabilityAddonSpec:
+      interval: 300
+      scrapeSizeLimitBytes: 1073741824
+      workers: 1
+  setupImage: registry.redhat.io/openshift4/ose-cli:latest
+  pullSecret:
+    include: true
+    secretName: multiclusterhub-operator-pull-secret
+    sourceNamespace: openshift-config
+    sourceSecretName: pull-secret
+  objectStorage:
+    include: true
+    secretName: thanos-object-storage
+    key: thanos.yaml
+    bucket: observability
+    endpoint: s3.openshift-storage.svc
+    insecure: false
+    accessKey: ""
+    secretKey: ""
+    httpConfig:
+      tlsConfig:
+        caFile: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+    objectBucketClaim:
+      include: true
+      name: observability-obc
+      bucketName: observability
+      storageClassName: openshift-storage.noobaa.io
+  observabilityConsoleLink:
+    include: false
+    name: observability
+    href: ""
+    location: ApplicationMenu
+    section: Red Hat applications
+    text: Red Hat Advanced Cluster Management Observability
+    imageURL: https://upload.wikimedia.org/wikipedia/commons/3/3a/OpenShift-LogoType.svg

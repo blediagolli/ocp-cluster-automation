@@ -1,0 +1,7 @@
+apiVersion: v2
+name: rbac
+description: Centralized RBAC management — ClusterRoles, Roles, ClusterRoleBindings, RoleBindings
+version: 0.1.0
+annotations:
+  oca.io/target: spoke
+  oca.io/maturity: incubating

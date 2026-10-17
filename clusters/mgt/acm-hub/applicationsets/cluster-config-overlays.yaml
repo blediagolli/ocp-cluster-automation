@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: cluster-config-overlays
+  namespace: openshift-gitops
+spec:
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: git@github.com:YOUR_ORG/ocp-cluster-automation.git
+              revision: main
+              files:
+                - path: "clusters/**/conf.yaml"
+          # Also gated on clusterRegistered: an overlay for a cluster ArgoCD
+          # cannot reach would fail this ApplicationSet on an unresolvable
+          # destination. See cluster-operators.
+          - list:
+              elementsYaml: "{{ $d := index . \"deployOverlay\" }}{{ if and $d .clusterRegistered }}[{}]{{ else }}[]{{ end }}"
+  template:
+    metadata:
+      name: 'overlay-{{.cluster.environment}}-{{.cluster.name}}'
+      labels:
+        environment: '{{.cluster.environment}}'
+        cluster: '{{.cluster.name}}'
+        type: config-overlay
+    spec:
+      project: platform
+      source:
+        repoURL: git@github.com:YOUR_ORG/ocp-cluster-automation.git
+        targetRevision: main
+        path: '{{.path.path}}/overlay'
+      destination:
+        server: '{{ or .cluster.address (printf "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/%s" .cluster.name) }}'
+      syncPolicy:
+        automated:
+          selfHeal: true

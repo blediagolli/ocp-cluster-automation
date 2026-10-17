@@ -1,0 +1,23 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.tempo.include }}
+apiVersion: tempo.grafana.com/v1alpha1
+kind: TempoStack
+metadata:
+  name: {{ $v.tempo.name }}
+  namespace: {{ $v.tempo.namespace }}
+spec:
+  storage:
+    secret:
+      name: {{ $v.tempo.storage.secret.name }}
+      type: {{ $v.tempo.storage.secret.type }}
+    tls:
+      enabled: {{ $v.tempo.storage.tls.enabled }}
+      caName: {{ $v.tempo.storage.tls.caName }}
+  storageSize: {{ $v.tempo.storageSize }}
+  template:
+    queryFrontend:
+      jaegerQuery:
+        enabled: {{ $v.tempo.template.queryFrontend.jaegerQuery.enabled }}
+        ingress:
+          type: {{ $v.tempo.template.queryFrontend.jaegerQuery.ingress.type }}
+{{- end }}

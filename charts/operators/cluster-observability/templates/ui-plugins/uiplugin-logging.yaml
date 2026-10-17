@@ -1,0 +1,23 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.uiPlugins.logging.include }}
+apiVersion: observability.openshift.io/v1alpha1
+kind: UIPlugin
+metadata:
+  name: logging
+spec:
+  type: Logging
+  logging:
+    lokiStack:
+      name: {{ $v.uiPlugins.logging.lokiStack.name }}
+    {{- with $v.uiPlugins.logging.logsLimit }}
+    {{- if gt (int .) 0 }}
+    logsLimit: {{ . }}
+    {{- end }}
+    {{- end }}
+    {{- with $v.uiPlugins.logging.timeout }}
+    timeout: {{ . }}
+    {{- end }}
+    {{- with $v.uiPlugins.logging.schema }}
+    schema: {{ . }}
+    {{- end }}
+{{- end }}

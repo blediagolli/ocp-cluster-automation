@@ -1,0 +1,8 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.nmstate.include }}
+apiVersion: nmstate.io/v1
+kind: NMState
+metadata:
+  name: {{ $v.nmstate.name }}
+spec: {}
+{{- end }}

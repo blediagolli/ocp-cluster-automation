@@ -1,0 +1,157 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: hub-acm-policies
+  namespace: openshift-gitops
+spec:
+  # Deliberately no preserveResourcesOnDeletion, unlike the other ApplicationSets
+  # here. Those deploy config that should outlive a refactor of the repo; these
+  # deploy governance controls, and a control that survives the deletion of its
+  # own definition is worse than no control -- it keeps reporting on a rule
+  # nobody can find. Removing a directory under policies/ removes the Policy.
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    # Gated on deployPolicies, because every Policy here needs CRDs that only
+    # Advanced Cluster Management installs. Ungated, a hub with no ACM gets
+    # nine Applications stuck Missing against policy.open-cluster-management.io
+    # resources that do not exist — which is what happened on the first sync of
+    # the rebuilt hub.
+    #
+    # The shape is a nested matrix rather than the single list: generator the
+    # other ApplicationSets here use, because this one's discovery globs
+    # policies/ and so has no cluster context of its own to read a flag from.
+    - matrix:
+        generators:
+          # Inner matrix: the hub's conf.yaml, kept only when deployPolicies is
+          # true. Yields exactly one element, or none at all. The path is the
+          # hub's specifically, not clusters/**/conf.yaml — policies are only
+          # ever deployed to the hub, so globbing every cluster would multiply
+          # each policy by the number of clusters in the repo.
+          - matrix:
+              generators:
+                - git:
+                    repoURL: git@github.com:YOUR_ORG/ocp-cluster-automation.git
+                    revision: main
+                    files:
+                      - path: 'clusters/mgt/acm-hub/conf.yaml'
+                - list:
+                    elementsYaml: '{{ if .deployPolicies }}[{}]{{ else }}[]{{ end }}'
+          # Marker-file discovery rather than a directories: generator. Globbing
+          # for kustomization.yaml matches exactly the directories the CMP can
+          # actually render, so an unfinished directory or a stray README never
+          # becomes an Application that fails to sync.
+          #
+          # pathParamPrefix is what keeps this generator's path.* apart from the
+          # conf.yaml generator's above. Both are git generators, so both emit
+          # `path`, and without a prefix one of them silently wins the merge for
+          # the whole matrix. It is not the one you would guess: with
+          # goTemplate: true the matrix merges the *second* generator first and
+          # then overlays the first, so conf.yaml won and every policy rendered
+          # as `policy-acm-hub` — nine Applications collapsing onto one name.
+          # The ApplicationSet then refused to generate any of them at all:
+          #
+          #     ApplicationSet hub-acm-policies contains applications with
+          #     duplicate name: policy-acm-hub
+          #
+          # So deployPolicies: true deployed nothing. Prefixing is the fix
+          # rather than swapping the order, because the order only works by
+          # relying on that merge precedence staying what it is.
+          - git:
+              repoURL: git@github.com:YOUR_ORG/ocp-cluster-automation.git
+              revision: main
+              pathParamPrefix: policy
+              files:
+                - path: 'policies/*/*/kustomization.yaml'
+      # Per-policy opt-out, for a policy that is authored in the repo but not
+      # meant to be delivered yet. Annotate its kustomization.yaml:
+      #
+      #     metadata:
+      #       annotations:
+      #         oca.io/deploy: "false"
+      #
+      # The selector filters generated parameters *before* any Application is
+      # built, so a gated policy produces no Application at all — not an empty
+      # one, and not a Policy with spec.disabled. It is still rendered by
+      # `make validate-policies`, which globs the directories itself and never
+      # reads this annotation, so a gated policy stays checked.
+      #
+      # It has to live in kustomization.yaml because that is the file this
+      # generator globs, and a git files generator parses the globbed file's
+      # *contents* into parameters — the same mechanism that reads
+      # deployPolicies out of conf.yaml above. A separate gate file cannot
+      # work: a matrix is a cross product, not a join, so a second glob would
+      # pair every policy with every gate file. Inside kustomization.yaml,
+      # metadata.annotations is the only legal home — kustomize rejects an
+      # unknown top-level field outright, and drops this annotation from the
+      # rendered output rather than stamping it onto the Policy.
+      #
+      # NotIn rather than matchLabels, so the default is on: a missing key
+      # satisfies NotIn, which means the policies that carry no annotation are
+      # untouched and only an explicit "false" withdraws one. Governance
+      # controls should not need an opt-in to be enforced.
+      #
+      # Gating a policy that is already live DELETES it. There is no
+      # preserveResourcesOnDeletion here (see the note at the top of this
+      # file), so flipping an established policy removes its Application and
+      # its Policy from the hub. This is an authoring state, not a pause
+      # button — and never gate policy-framework, which owns the namespace and
+      # the PolicySet that every other policy here depends on.
+      selector:
+        matchExpressions:
+          - key: metadata.annotations.oca.io/deploy
+            operator: NotIn
+            values:
+              - "false"
+  template:
+    metadata:
+      # policy.path.*, not path.* — the latter is the conf.yaml generator's and
+      # points at clusters/mgt/acm-hub. basename is the policy directory name,
+      # e.g. cluster-labels; segments 1 of policies/<tier>/<name> is the tier.
+      name: 'policy-{{.policy.path.basename}}'
+      labels:
+        type: acm-policy
+        tier: '{{ index .policy.path.segments 1 }}'
+    spec:
+      project: platform
+      source:
+        repoURL: git@github.com:YOUR_ORG/ocp-cluster-automation.git
+        targetRevision: main
+        path: '{{.policy.path.path}}'
+        plugin:
+          # Must match the ConfigManagementPlugin name registered on the
+          # repo-server sidecar; see
+          # clusters/mgt/acm-hub/bootstrap/openshift-gitops/instance/policy-generator-cmp.yaml
+          name: policy-generator
+          env:
+            - name: POLICY_NAMESPACE
+              value: open-cluster-management-policies
+            # Policies attest; the charts configure. The one policy that has to
+            # write (cluster-labels) overrides this in its own generator config,
+            # because ManagedCluster labels have no other writer. Everything else
+            # stays inform. See docs/governance/acm-policies.md.
+            - name: REMEDIATION
+              value: inform
+            - name: EVAL_COMPLIANT
+              value: 10m
+            - name: EVAL_NONCOMPLIANT
+              value: 30s
+      destination:
+        # Always the hub. The policy framework runs here and evaluates every
+        # managed cluster from here; nothing in policies/ is ever deployed to a
+        # spoke directly.
+        server: 'https://kubernetes.default.svc'
+        namespace: open-cluster-management-policies
+      syncPolicy:
+        automated:
+          selfHeal: true
+          prune: true
+        syncOptions:
+          - CreateNamespace=true
+        retry:
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 10m
+          limit: 5

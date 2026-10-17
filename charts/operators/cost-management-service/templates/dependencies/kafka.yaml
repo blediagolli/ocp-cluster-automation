@@ -1,0 +1,84 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if and $v.costManagementService.include $v.costManagementService.kafka.include }}
+{{- $cms := $v.costManagementService }}
+{{- $kafka := $cms.kafka }}
+{{- $sc := include "cost-management-service.storageClass" (dict "component" $kafka.storageClass "root" $) }}
+{{- /* KRaft with a dual-role KafkaNodePool. On AMQ Streams 3.2.x this is the
+       only shape there is: spec.kafka.replicas, spec.kafka.storage and
+       spec.zookeeper have all been removed from the CRD, so replicas and
+       storage can only come from a node pool. The two annotations below are
+       no-ops on this version — kept because they are load-bearing on older
+       ones and silently dropping them makes a downgrade fail obscurely. */}}
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: dual-role
+  namespace: {{ $cms.namespace }}
+  labels:
+    strimzi.io/cluster: {{ $kafka.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-6"
+spec:
+  replicas: {{ $kafka.replicas }}
+  roles:
+    - controller
+    - broker
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: persistent-claim
+        size: {{ $kafka.storageSize }}
+        deleteClaim: false
+        {{- with $sc }}
+        class: {{ . }}
+        {{- end }}
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: {{ $kafka.name }}
+  namespace: {{ $cms.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+    strimzi.io/node-pools: enabled
+    strimzi.io/kraft: enabled
+spec:
+  kafka:
+    version: {{ $kafka.version | quote }}
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+    config:
+      # All three must be <= replicas or every topic creation fails with
+      # INVALID_REPLICATION_FACTOR. The single-broker default is the reason
+      # these are templated rather than left at Kafka's defaults of 3.
+      offsets.topic.replication.factor: {{ $kafka.replicas }}
+      transaction.state.log.replication.factor: {{ $kafka.replicas }}
+      transaction.state.log.min.isr: 1
+      default.replication.factor: {{ $kafka.replicas }}
+      min.insync.replicas: 1
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
+{{- range $kafka.topics }}
+---
+{{- /* The cost management operator expects this topic to already exist and
+       does not create it, so these are load-bearing. The Topic Operator above
+       is what turns them into real topics. */}}
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: {{ .name }}
+  namespace: {{ $cms.namespace }}
+  labels:
+    strimzi.io/cluster: {{ $kafka.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+spec:
+  partitions: {{ .partitions }}
+  replicas: {{ .replicas }}
+{{- end }}
+{{- end }}

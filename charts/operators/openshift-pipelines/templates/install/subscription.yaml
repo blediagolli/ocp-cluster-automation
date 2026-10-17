@@ -1,0 +1,45 @@
+{{- /* Gated on installOperators, from conf.yaml: false means the operator
+       is installed by something other than this repo — an ACM policy, or by
+       hand — and this chart contributes only the CRs. Without it, migrating
+       a cluster that set deployOperators: false would install operators on it
+       that were never there. */}}
+{{- if .Values.installOperators }}
+{{- /* Wave -28, and this wave boundary is the load-bearing part of merging
+       the install and the instance into one chart.
+
+       ArgoCD ships a health check for operators.coreos.com/Subscription that
+       reports Healthy only once status.state is AtLatestKnown with the CSV
+       installed. Because waves advance only when every resource in the
+       previous wave is Healthy, nothing else in this chart can be applied
+       until the operator is actually running and its CRDs are registered.
+       -28 is below every wave the CR templates use, so a chart's own ladder
+       needs no adjusting when it is merged.
+
+       Split across two Applications, as this used to be, nothing expressed
+       that ordering: the CR Application would sync first as often as not,
+       fail on a CRD that did not exist yet, and recover only by retry
+       backoff. That is what the hand-written CRD-wait hook Jobs in this repo
+       exist to paper over.
+
+       Identical in every chart under charts/operators/. Do not edit one
+       copy. */}}
+{{- $v := index .Values .Chart.Name }}
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: {{ $v.operator.package }}
+  namespace: {{ $v.operator.namespace }}
+  labels:
+    operator: {{ .Chart.Name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-28"
+spec:
+  name: {{ $v.operator.package }}
+  channel: {{ required (printf "%s: operator.channel is required — a Subscription with an unresolvable channel is created and then silently installs nothing" .Chart.Name) $v.operator.channel }}
+  source: {{ $v.operator.source }}
+  sourceNamespace: {{ $v.operator.sourceNamespace }}
+  installPlanApproval: {{ $v.operator.installPlanApproval }}
+  {{- with $v.operator.startingCSV }}
+  startingCSV: {{ . }}
+  {{- end }}
+{{- end }}

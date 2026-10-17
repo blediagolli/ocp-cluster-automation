@@ -1,0 +1,53 @@
+{{- /*
+Human access to the <team>-gitops namespace itself -- reading the ArgoCD CR,
+the operator's pods and their logs when the instance will not come up. This is
+separate from the in-ArgoCD RBAC in argocd.yaml, which governs the web UI and
+API; a team with role:admin there still cannot `oc logs` the repo-server
+without this.
+
+Same two groups as namespace-config binds on the tenant namespaces, read from
+the same teams/<team>.yaml, so the two cannot drift.
+*/ -}}
+{{- include "onboarding.validate" . }}
+{{- if not (include "onboarding.quiescing" .) }}
+{{- $gitops := include "onboarding.teamGitops" . }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Values.team.name }}-admin
+  namespace: {{ $gitops }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    {{- include "onboarding.labels" . | nindent 4 }}
+    app.kubernetes.io/component: rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+  - kind: Group
+    apiGroup: rbac.authorization.k8s.io
+    name: {{ .Values.team.admins }}
+{{- with .Values.team.readers }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $.Values.team.name }}-view
+  namespace: {{ $gitops }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    {{- include "onboarding.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: Group
+    apiGroup: rbac.authorization.k8s.io
+    name: {{ . }}
+{{- end }}
+{{- end }}

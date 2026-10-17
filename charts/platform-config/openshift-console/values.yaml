@@ -1,0 +1,64 @@
+# ---------------------------------------------------------------------------
+# Console CR — custom branding and developer catalog
+#
+# This is operator.openshift.io/v1 Console, not config.openshift.io/v1. The
+# config one holds only authentication.logoutRedirect; every customization
+# field below belongs to the operator CR and is silently pruned off the other.
+# ---------------------------------------------------------------------------
+console:
+  include: false
+  branding:
+    customLogoFile:
+      # ConfigMap in openshift-config holding the image:
+      #   oc create configmap custom-logo --from-file=logo.svg -n openshift-config
+      # The key needs a file extension so the console serves the right MIME type.
+      name: ""
+      key: ""
+    customProductName: ""
+  developerCatalog:
+    categories: []
+    # - id: languages
+    #   label: Languages
+    #   tags:
+    #     - java
+    #     - python
+    #     - go
+    types:
+      state: Enabled
+      enabled: []
+      # - BuilderImage
+      # - Template
+      # - HelmChart
+      disabled: []
+
+# ---------------------------------------------------------------------------
+# ConsoleNotifications — banners across the top or bottom of the console
+# ---------------------------------------------------------------------------
+consoleNotifications: []
+# - name: cluster-identity
+#   include: false
+#   text: "dev cluster — not backed up"
+#   location: BannerTop
+#   # location options: BannerTop, BannerBottom, BannerTopBottom
+#   color: "#fff"
+#   backgroundColor: "#8476d1"
+#   link:
+#     href: "https://wiki.example.com/maintenance"
+#     text: "Details"
+
+# ---------------------------------------------------------------------------
+# ConsoleLinks — additional links in the console UI
+# ---------------------------------------------------------------------------
+consoleLinks: []
+# - name: documentation
+#   include: false
+#   text: "Internal Documentation"
+#   href: "https://docs.example.com"
+#   location: HelpMenu
+#   # location options: HelpMenu, UserMenu, ApplicationMenu, NamespaceDashboard
+#   applicationMenu:
+#     section: ""
+#     imageURL: ""
+#   namespaceDashboard:
+#     namespaces: []
+#     # - my-namespace

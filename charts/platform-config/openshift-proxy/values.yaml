@@ -1,0 +1,11 @@
+proxy:
+  include: false
+  httpProxy: ""
+  httpsProxy: ""
+  noProxy: ""
+  # Comma-separated list of domains/CIDRs to exclude from proxying
+  # Example: ".cluster.local,.svc,10.128.0.0/14,172.30.0.0/16,localhost,127.0.0.1"
+  trustedCA:
+    name: ""
+    # Name of a ConfigMap in the openshift-config namespace containing
+    # a ca-bundle.crt key with PEM-encoded CA certificates

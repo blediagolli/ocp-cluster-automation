@@ -1,0 +1,16 @@
+{{- $v := index .Values .Chart.Name }}
+{{- range $v.monitoringStacks }}
+{{- if .include }}
+{{- if .createNamespace | default false }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  labels:
+    openshift.io/cluster-monitoring: "true"
+{{- end }}
+{{- end }}
+{{- end }}

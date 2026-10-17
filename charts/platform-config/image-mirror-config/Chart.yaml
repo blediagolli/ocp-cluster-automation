@@ -1,0 +1,7 @@
+apiVersion: v2
+name: image-mirror-config
+description: ImageDigestMirrorSet for registry mirroring
+version: 0.1.0
+annotations:
+  oca.io/target: spoke
+  oca.io/maturity: incubating

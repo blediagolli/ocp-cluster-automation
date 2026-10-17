@@ -1,0 +1,12 @@
+{{- if and .Values.provision.include (eq (include "cluster.isAgent" .) "true") .Values.vsphereControlPlane.enabled (eq .Values.vsphereControlPlane.automation "govc") }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.cluster.name }}-vsphere-cp-govc
+  namespace: {{ .Values.cluster.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+data:
+  govc.sh: |
+{{ .Files.Get "files/vsphere-cp-govc.sh" | indent 4 }}
+{{- end }}

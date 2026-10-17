@@ -1,0 +1,14 @@
+{{- if .Values.containerRuntimeConfig.include }}
+apiVersion: machineconfiguration.openshift.io/v1
+kind: ContainerRuntimeConfig
+metadata:
+  name: {{ .Values.containerRuntimeConfig.name }}
+spec:
+  containerRuntimeConfig:
+    pidsLimit: {{ .Values.containerRuntimeConfig.pidsLimit }}
+    logSizeMax: {{ .Values.containerRuntimeConfig.logSizeMax | quote }}
+    logLevel: {{ .Values.containerRuntimeConfig.logLevel | quote }}
+  machineConfigPoolSelector:
+    matchLabels:
+      pools.operator.machineconfiguration.openshift.io/{{ .Values.containerRuntimeConfig.machineConfigPoolSelector }}: ""
+{{- end }}

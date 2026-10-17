@@ -1,0 +1,176 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.argocd.include }}
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: {{ $v.argocd.name }}
+  namespace: {{ $v.argocd.namespace }}
+spec:
+  applicationSet:
+    resources:
+      {{- toYaml $v.argocd.applicationSet.resources | nindent 6 }}
+    webhookServer:
+      ingress:
+        enabled: false
+      route:
+        enabled: false
+  controller:
+    processors: {}
+    resources:
+      {{- toYaml $v.argocd.controller.resources | nindent 6 }}
+    sharding: {}
+  grafana:
+    enabled: false
+    ingress:
+      enabled: false
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 250m
+        memory: 128Mi
+    route:
+      enabled: false
+  ha:
+    enabled: {{ $v.argocd.ha.enabled }}
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 250m
+        memory: 128Mi
+  imageUpdater:
+    enabled: false
+  initialSSHKnownHosts: {}
+  monitoring:
+    enabled: false
+  networkPolicy: {}
+  notifications:
+    enabled: false
+  prometheus:
+    enabled: false
+    ingress:
+      enabled: false
+    route:
+      enabled: false
+  rbac:
+    defaultPolicy: {{ $v.argocd.rbac.defaultPolicy }}
+    policy: |
+      {{- $v.argocd.rbac.policy | nindent 6 }}
+    scopes: '{{ $v.argocd.rbac.scopes }}'
+  redis:
+    resources:
+      {{- toYaml $v.argocd.redis.resources | nindent 6 }}
+  repo:
+    resources:
+      {{- toYaml $v.argocd.repo.resources | nindent 6 }}
+    {{- if $v.argocd.policyGenerator.include }}
+    {{- $pg := $v.argocd.policyGenerator }}
+    env:
+      - name: KUSTOMIZE_PLUGIN_HOME
+        value: /etc/kustomize/plugin
+      # Not read by anything. It exists so that editing the plugin ConfigMap
+      # changes the ArgoCD CR too, which makes the operator roll the repo-server.
+      # The sidecar mounts plugin.yaml with subPath and a subPath mount never
+      # picks up a ConfigMap update -- without this the ConfigMap changes, the
+      # running sidecar keeps the old config, and the edit silently does nothing.
+      - name: POLICY_GENERATOR_CMP_CONFIG_SHA
+        value: {{ include "openshift-gitops.policyGeneratorPluginYaml" . | sha256sum | quote }}
+    initContainers:
+      # The binary's path inside the ACM image varies by ACM version, so search the known
+      # locations rather than pinning one. Output is mounted at /policy-generator-tmp so it
+      # cannot shadow any of the source paths being searched.
+      - name: policy-generator-install
+        image: {{ $pg.acmImage }}
+        command: [/bin/sh, -c]
+        args:
+          - |
+            set -e
+            for src in \
+              /etc/kustomize/plugin/policy.open-cluster-management.io/v1/policygenerator/PolicyGenerator \
+              /policy-generator/PolicyGenerator \
+              /policy-generator/PolicyGenerator-rhel8 \
+              /policy-generator/PolicyGenerator-not-fips-compliant; do
+              if [ -f "$src" ]; then
+                cp "$src" /policy-generator-tmp/PolicyGenerator
+                chmod +x /policy-generator-tmp/PolicyGenerator
+                exit 0
+              fi
+            done
+            echo "PolicyGenerator binary not found in ACM image" >&2
+            exit 1
+        volumeMounts:
+          - name: policy-generator
+            mountPath: /policy-generator-tmp
+    sidecarContainers:
+      # var-files and plugins are the repo-server's operator-provided shared volumes; the
+      # CMP protocol requires both. cmp-tmp exists because the sidecar's root filesystem
+      # gives it nowhere else to unpack a working copy of the repo.
+      - name: policy-generator
+        image: {{ $pg.sidecarImage }}
+        command: [/var/run/argocd/argocd-cmp-server]
+        securityContext:
+          runAsNonRoot: true
+        env:
+          - name: KUSTOMIZE_PLUGIN_HOME
+            value: /etc/kustomize/plugin
+        volumeMounts:
+          - name: var-files
+            mountPath: /var/run/argocd
+          - name: plugins
+            mountPath: /home/argocd/cmp-server/plugins
+          - name: policy-generator-cmp-config
+            mountPath: /home/argocd/cmp-server/config/plugin.yaml
+            subPath: plugin.yaml
+          - name: cmp-tmp
+            mountPath: /tmp
+          - name: policy-generator
+            mountPath: /etc/kustomize/plugin/policy.open-cluster-management.io/v1/policygenerator
+        resources:
+          {{- toYaml $pg.resources | nindent 10 }}
+    volumeMounts:
+      # Also mounted into the repo-server itself so a plain `kustomize build` from the
+      # repo-server (not via the CMP) resolves the plugin identically.
+      - name: policy-generator
+        mountPath: /etc/kustomize/plugin/policy.open-cluster-management.io/v1/policygenerator
+    volumes:
+      - name: policy-generator
+        emptyDir: {}
+      - name: policy-generator-cmp-config
+        configMap:
+          name: policy-generator-cmp-plugin
+      - name: cmp-tmp
+        emptyDir: {}
+    {{- end }}
+  resourceExclusions: |
+    {{- $v.argocd.resourceExclusions | nindent 4 }}
+  server:
+    autoscale:
+      enabled: {{ $v.argocd.server.autoscale.enabled }}
+    grpc:
+      ingress:
+        enabled: false
+    ingress:
+      enabled: false
+    resources:
+      {{- toYaml $v.argocd.server.resources | nindent 6 }}
+    route:
+      enabled: {{ $v.argocd.server.route.enabled }}
+    service:
+      type: ""
+  sso:
+    dex:
+      openShiftOAuth: true
+      resources:
+        limits:
+          cpu: 500m
+          memory: 256Mi
+        requests:
+          cpu: 250m
+          memory: 128Mi
+    provider: dex
+  tls:
+    ca: {}
+{{- end }}

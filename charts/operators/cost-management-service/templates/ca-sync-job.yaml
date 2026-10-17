@@ -1,0 +1,188 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if and $v.costManagementService.include $v.costManagementService.caSync.include $v.costManagementService.caSync.copies }}
+{{- $cms := $v.costManagementService }}
+{{- $name := printf "%s-ca-sync" $cms.name }}
+{{- /* Two fields in the CR take a Secret with key ca.crt:
+
+         spec.objectStorage.caCertSecretName    — verifying NooBaa's S3 endpoint
+         spec.auth.keycloak.tls.caCertSecretName — verifying the Keycloak Route
+
+       Both CAs exist on every OpenShift cluster already, and both are
+       published only as ConfigMaps. Turning a ConfigMap into a Secret is the
+       whole job.
+
+       It has to be a Job because nothing else here can do it: the chart never
+       sees cluster state at render time, and ESO's kubernetes provider reads
+       Secrets only. PreSync rather than a hashed name so it re-runs on every
+       sync — both CAs rotate on their own (the service CA roughly every 26
+       months, the router cert far more often if it is ACME-issued) and a
+       one-shot copy would go stale with no warning. */}}
+{{- $remoteSources := list }}
+{{- range $cms.caSync.copies }}
+{{- if .sourceNamespace }}
+{{- $remoteSources = append $remoteSources .sourceConfigMap }}
+{{- end }}
+{{- end }}
+{{- $remoteSources = $remoteSources | uniq }}
+{{- $localSources := list }}
+{{- range $cms.caSync.copies }}
+{{- if not .sourceNamespace }}
+{{- $localSources = append $localSources .sourceConfigMap }}
+{{- end }}
+{{- end }}
+{{- $localSources = $localSources | uniq }}
+{{- $secretNames := list }}
+{{- range $cms.caSync.copies }}
+{{- $secretNames = append $secretNames .secretName }}
+{{- end }}
+{{- $secretNames = $secretNames | uniq }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}
+  namespace: {{ $cms.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $name }}
+  namespace: {{ $cms.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+rules:
+  {{- with $localSources }}
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get"]
+    resourceNames:
+      {{- toYaml . | nindent 6 }}
+  {{- end }}
+  # create cannot take a resourceNames restriction — the name is not known at
+  # admission time — so it is scoped as tightly as the API allows, and every
+  # verb that *can* name an object names only the Secrets this job writes.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "patch", "update"]
+    resourceNames:
+      {{- toYaml $secretNames | nindent 6 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $name }}
+  namespace: {{ $cms.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $name }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $name }}
+    namespace: {{ $cms.namespace }}
+{{- with $remoteSources }}
+---
+{{- /* Only rendered when a copy names a source outside this namespace, which
+       on the default values is the router CA in openshift-config-managed.
+       Cluster-scoped and not a Role in that namespace on purpose: the chart
+       should not be planting its own RBAC inside a cluster-owned namespace,
+       and resourceNames keeps this to get on two specifically named objects
+       whose entire contents are public CA certificates. */}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $cms.namespace }}-ca-sync
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get"]
+    resourceNames:
+      {{- toYaml . | nindent 6 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $cms.namespace }}-ca-sync
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ $cms.namespace }}-ca-sync
+subjects:
+  - kind: ServiceAccount
+    name: {{ $name }}
+    namespace: {{ $cms.namespace }}
+{{- end }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $name }}
+  namespace: {{ $cms.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 6
+  template:
+    metadata:
+      name: {{ $name }}
+    spec:
+      serviceAccountName: {{ $name }}
+      restartPolicy: OnFailure
+      containers:
+        - name: ca-sync
+          image: {{ $cms.caSync.image }}
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -eo pipefail
+
+              # One block per copy, rendered rather than looped so the source
+              # names stay visible in the manifest. Two things to know about
+              # the shape of each:
+              #
+              # oc extract rather than -o jsonpath, because every key here has
+              # a dot in it and escaping that through both Helm and a jsonpath
+              # filter is the kind of thing that silently returns empty.
+              #
+              # An empty source means the operator that publishes it is not
+              # healthy. Writing an empty ca.crt would fail verification later
+              # in a far more confusing way than stopping here.
+              {{- range $c := $cms.caSync.copies }}
+              {{- $srcNs := default $cms.namespace $c.sourceNamespace }}
+
+              echo "=== {{ $c.secretName }} ==="
+              TMP="$(mktemp -d)"
+              oc extract "configmap/{{ $c.sourceConfigMap }}" -n "{{ $srcNs }}" \
+                --keys="{{ $c.sourceKey }}" --to="${TMP}" --confirm >/dev/null 2>&1 || true
+              CA="$(cat "${TMP}/{{ $c.sourceKey }}" 2>/dev/null || true)"
+              if [ -z "${CA}" ]; then
+                echo "FAIL: {{ $srcNs }}/{{ $c.sourceConfigMap }} has no {{ $c.sourceKey }}"
+                exit 1
+              fi
+              echo "  $(grep -c 'BEGIN CERTIFICATE' <<<"${CA}") certificate(s) from {{ $srcNs }}/{{ $c.sourceConfigMap }}"
+
+              # --dry-run=client | apply, so this both creates and updates.
+              oc create secret generic "{{ $c.secretName }}" -n "{{ $cms.namespace }}" \
+                --from-literal=ca.crt="${CA}" \
+                --dry-run=client -o yaml | oc apply -f -
+              {{- end }}
+
+              echo "PASS: {{ $secretNames | join ", " }}"
+{{- end }}

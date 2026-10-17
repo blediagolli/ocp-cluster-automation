@@ -1,0 +1,8 @@
+apiVersion: v2
+name: node-maintenance
+description: node-maintenance — operator subscription
+version: 0.1.0
+annotations:
+  oca.io/target: spoke
+  oca.io/maturity: incubating
+  oca.io/operand-from: a NodeMaintenance is created per event, by a human

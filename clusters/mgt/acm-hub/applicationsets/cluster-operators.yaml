@@ -1,0 +1,105 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: cluster-operators
+  namespace: openshift-gitops
+spec:
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: git@github.com:YOUR_ORG/ocp-cluster-automation.git
+              revision: main
+              files:
+                - path: "clusters/**/conf.yaml"
+          # Same shape as operatorInstanceCharts, which this replaces. Under
+          # missingkey=error a map lookup fails before any | default can run,
+          # so every conf.yaml declares operatorCharts, empty where unused —
+          # the same convention operatorInstanceCharts already follows.
+          #
+          # clusterRegistered gates the whole list. A cluster described here
+          # but not yet imported has no cluster secret, so ArgoCD cannot
+          # resolve the destination and rejects the Application — which fails
+          # this ApplicationSet and shows as a Degraded platform-root, for
+          # every cluster, not just that one. Yielding [] generates nothing
+          # for it instead, so there is no destination to resolve.
+          - list:
+              elementsYaml: "{{ if .clusterRegistered }}{{ .operatorCharts | toJson }}{{ else }}[]{{ end }}"
+  template:
+    metadata:
+      name: 'op-{{.cluster.environment}}-{{.cluster.name}}-{{.chart}}'
+      labels:
+        environment: '{{.cluster.environment}}'
+        cluster: '{{.cluster.name}}'
+        type: operators
+    spec:
+      project: platform
+      source:
+        repoURL: git@github.com:YOUR_ORG/ocp-cluster-automation.git
+        targetRevision: main
+        path: 'charts/operators/{{.chart}}'
+        helm:
+          # Pinned so the release name does not inherit the Application name
+          # above. Helm caps a release name at 53 characters, and a cluster
+          # named after its full DNS name pushes that name past the limit,
+          # which fails the render before anything reaches the cluster.
+          releaseName: '{{.chart}}'
+          ignoreMissingValueFiles: true
+          # Two places per level, both optional. operators.yaml is shared: small
+          # operators keep their handful of lines there rather than each earning
+          # a file. operators/<chart>.yaml is for the ones big enough that they
+          # would drown the shared file — keycloak is ~190 lines on its own.
+          #
+          # Because every chart nests its values under its own name, a block is
+          # cut-and-paste identical between the two, so promoting an operator out
+          # of the shared file is a move, not a rewrite.
+          #
+          # Reading both at each level means a chart can take defaults from the
+          # shared env file and overrides from a per-cluster dedicated file, or
+          # any other mix; later files win, and ignoreMissingValueFiles makes the
+          # unused ones free.
+          valueFiles:
+            - '/env/{{.cluster.environment}}/conf.yaml'
+            - '/env/{{.cluster.environment}}/operators.yaml'
+            - '/env/{{.cluster.environment}}/operators/{{.chart}}.yaml'
+            - '/{{.path.path}}/conf.yaml'
+            - '/{{.path.path}}/operators.yaml'
+            - '/{{.path.path}}/operators/{{.chart}}.yaml'
+      destination:
+        server: '{{ or .cluster.address (printf "https://cluster-proxy-addon-user.multicluster-engine.svc.cluster.local:9092/%s" .cluster.name) }}'
+      syncPolicy:
+        automated:
+          # No prune. An operator chart owns its Subscription and its CRs; a
+          # transient render failure that dropped the CR would otherwise take
+          # the operand with it.
+          selfHeal: true
+        syncOptions:
+          - ApplyOutOfSyncOnly=true
+          - RespectIgnoreDifferences=true
+          # Waves order the apply, not the dry-run. Every chart here installs
+          # an operator and then applies that operator's CRs, so on a cluster
+          # that has never had the operator the CRDs do not exist when ArgoCD
+          # computes the diff, and comparison fails with `no matches for kind
+          # "Keycloak"` before wave -28 ever runs. Deferring validation to
+          # apply time lets comparison succeed; the Subscription's health
+          # check still guarantees the CRD is registered by the time the CR
+          # is applied.
+          #
+          # Set once here rather than annotated onto every CR in forty charts.
+          # Some CRs carry the annotation too, inherited from the charts they
+          # came from; that is redundant, not wrong.
+          - SkipDryRunOnMissingResource=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 30s
+            maxDuration: 10m
+            factor: 2
+  ignoreApplicationDifferences:
+    - jsonPointers:
+        - /spec/syncPolicy

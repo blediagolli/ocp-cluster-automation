@@ -1,0 +1,167 @@
+{{- $v := index .Values .Chart.Name }}
+{{- if $v.quayRegistry.include }}
+apiVersion: quay.redhat.com/v1
+kind: QuayRegistry
+metadata:
+  name: {{ $v.quayRegistry.name }}
+  namespace: {{ $v.quayRegistry.namespace }}
+spec:
+  configBundleSecret: quay-registry-config-bundle
+  components:
+    - kind: quay
+      managed: {{ $v.quayRegistry.components.quay.managed }}
+      {{- if $v.quayRegistry.components.quay.managed }}
+      overrides:
+        replicas: {{ $v.quayRegistry.components.quay.replicas }}
+        {{- with $v.quayRegistry.components.quay.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- if $v.quayRegistry.scheduling.include }}
+        {{- with $v.quayRegistry.scheduling.affinity }}
+        affinity:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with $v.quayRegistry.scheduling.tolerations }}
+        tolerations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- end }}
+      {{- end }}
+    - kind: clair
+      managed: {{ $v.quayRegistry.components.clair.managed }}
+      {{- if $v.quayRegistry.components.clair.managed }}
+      overrides:
+        {{- with $v.quayRegistry.components.clair.replicas }}
+        replicas: {{ . }}
+        {{- end }}
+        {{- with $v.quayRegistry.components.clair.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- if $v.quayRegistry.scheduling.include }}
+        {{- with $v.quayRegistry.scheduling.affinity }}
+        affinity:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with $v.quayRegistry.scheduling.tolerations }}
+        tolerations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- end }}
+      {{- end }}
+    - kind: clairpostgres
+      managed: {{ $v.quayRegistry.components.clairPostgres.managed }}
+      {{- if $v.quayRegistry.components.clairPostgres.managed }}
+      overrides:
+        {{- with $v.quayRegistry.components.clairPostgres.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with $v.quayRegistry.components.clairPostgres.volumeSize }}
+        volumeSize: {{ . }}
+        {{- end }}
+        {{- if $v.quayRegistry.scheduling.include }}
+        {{- with $v.quayRegistry.scheduling.affinity }}
+        affinity:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with $v.quayRegistry.scheduling.tolerations }}
+        tolerations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- end }}
+      {{- end }}
+    - kind: postgres
+      managed: {{ $v.quayRegistry.components.postgres.managed }}
+      {{- if $v.quayRegistry.components.postgres.managed }}
+      overrides:
+        {{- with $v.quayRegistry.components.postgres.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with $v.quayRegistry.components.postgres.volumeSize }}
+        volumeSize: {{ . }}
+        {{- end }}
+        {{- if $v.quayRegistry.scheduling.include }}
+        {{- with $v.quayRegistry.scheduling.affinity }}
+        affinity:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with $v.quayRegistry.scheduling.tolerations }}
+        tolerations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- end }}
+      {{- end }}
+    - kind: objectstorage
+      {{- if $v.quayRegistry.externalStorage.include }}
+      managed: false
+      {{- else }}
+      managed: {{ $v.quayRegistry.components.objectstorage.managed }}
+      {{- end }}
+      {{- if and $v.quayRegistry.components.objectstorage.managed (not $v.quayRegistry.externalStorage.include) $v.quayRegistry.scheduling.include }}
+      overrides:
+        {{- with $v.quayRegistry.scheduling.affinity }}
+        affinity:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with $v.quayRegistry.scheduling.tolerations }}
+        tolerations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- end }}
+    - kind: redis
+      managed: {{ $v.quayRegistry.components.redis.managed }}
+      {{- if $v.quayRegistry.components.redis.managed }}
+      overrides:
+        {{- with $v.quayRegistry.components.redis.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- if $v.quayRegistry.scheduling.include }}
+        {{- with $v.quayRegistry.scheduling.affinity }}
+        affinity:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with $v.quayRegistry.scheduling.tolerations }}
+        tolerations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- end }}
+      {{- end }}
+    - kind: horizontalpodautoscaler
+      managed: {{ $v.quayRegistry.components.hpa.managed }}
+    - kind: route
+      managed: {{ $v.quayRegistry.components.route.managed }}
+    - kind: mirror
+      managed: {{ $v.quayRegistry.components.mirror.managed }}
+      {{- if $v.quayRegistry.components.mirror.managed }}
+      overrides:
+        {{- with $v.quayRegistry.components.mirror.replicas }}
+        replicas: {{ . }}
+        {{- end }}
+        {{- with $v.quayRegistry.components.mirror.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- if $v.quayRegistry.scheduling.include }}
+        {{- with $v.quayRegistry.scheduling.affinity }}
+        affinity:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with $v.quayRegistry.scheduling.tolerations }}
+        tolerations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- end }}
+      {{- end }}
+    - kind: monitoring
+      managed: {{ $v.quayRegistry.components.monitoring.managed }}
+    - kind: tls
+      {{- if $v.quayRegistry.customTls.include }}
+      managed: false
+      {{- else }}
+      managed: {{ $v.quayRegistry.components.tls.managed }}
+      {{- end }}
+{{- end }}
